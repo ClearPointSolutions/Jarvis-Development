@@ -1,8 +1,41 @@
 # Jarvis V1 Status
 
 Last updated: 2026-09-07
-Current phase: M1 — Persistence and shared contracts complete
-Overall state: architecture approved; M0 and M1 complete; M2 not started
+Current phase: M2 — approved parallel foundation group in progress
+Overall state: architecture approved; M0 and M1 complete; M2A/M2B/M2C active; M3 not started
+
+## Active M2 parallel-group criteria
+
+Integration base: frozen M1 contract commit `76d41c8c6193e7d541ca24e6fbf84dee5693e8c2`.
+
+### M2A — Authentication and API Security
+
+- [ ] Provide explicit one-time local owner bootstrap and Argon2id password verification.
+- [ ] Persist only hashed opaque sessions with idle/absolute expiry, rotation, logout, and revocation.
+- [ ] Enforce same-origin/CSRF protection, object authorization, login rate limiting, secure cookies/headers, and normalized API errors.
+- [ ] Emit redacted authentication/session audit events and expose only anonymous liveness.
+- [ ] Pass deterministic AUTH-001 through AUTH-005 tests and security boundary checks.
+
+### M2B — Event Writer, Projections, and SSE
+
+- [ ] Normalize and validate registered event payloads, recursively redact secrets, and extract oversized content to authorized artifact metadata/storage.
+- [ ] Preserve globally commit-safe and per-run ordering, deduplication, append-only storage, and transactional projection watermarks.
+- [ ] Implement authorized replay/pagination and SSE with `Last-Event-ID`, keepalive, reset semantics, and LISTEN/NOTIFY used only as a wakeup.
+- [ ] Render unknown allowed event types safely and reject unsupported schema majors explicitly.
+- [ ] Pass deterministic EVT-001 through EVT-008 concurrency, loss, replay, redaction, and boundary tests.
+
+### M2C — Frontend Shell and Accessibility Baseline
+
+- [ ] Build the responsive mission-control shell and required route skeletons using shared design tokens.
+- [ ] Establish generated API-client consumption, TanStack Query server state, ephemeral Zustand state, and login/session boundaries without browser token storage.
+- [ ] Provide honest loading/error/empty/demo states, sanitized Markdown, and a read-only terminal renderer.
+- [ ] Pass production build, type/lint/component, keyboard, screen-reader, automated accessibility, and serious-console-error checks.
+
+### Integration-owner gates
+
+- [ ] Own all shared migrations/models, generated Python/TypeScript contracts, root lockfiles, central registries, shared Compose, and this status ledger.
+- [ ] Merge only milestone branches that pass their focused gates, then run the full repository verification suite from the merged branch.
+- [ ] Inspect the final diff and secret scan, record branch hashes/merge order/findings/evidence, and stop before M3.
 
 ## M1 completion criteria
 
@@ -27,7 +60,7 @@ Overall state: architecture approved; M0 and M1 complete; M2 not started
 - [x] Prove a fresh local install can execute the empty/scaffold quality gates.
 - [x] Review M0; commit is the milestone boundary immediately following this status update.
 
-M2A, M2B, and M2C are explicitly out of scope for this turn.
+M3 and all remote staging/deployment work are explicitly out of scope for this turn.
 
 ## Architecture milestone criteria
 
