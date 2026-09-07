@@ -24,6 +24,49 @@ pytestmark = pytest.mark.integration
 ROOT = "/api/v1/workflow-templates"
 
 
+@pytest.mark.parametrize("encoding", ["utf-16", "utf-16-be", "utf-32", "latin-1"])
+async def test_m4_non_utf8_cannot_bypass_preparse_depth_limit(
+    integrated_api: IntegratedApi, encoding: str
+) -> None:
+    headers, doc = await create(integrated_api)
+    raw = json.dumps({"label": '"'})[:-1] + ',"spec":' + "[" * 20000 + "0" + "]" * 20000 + "}"
+    content = raw.encode(encoding) if encoding != "latin-1" else b'{"label":"\xff"}'
+    response = await integrated_api.client.post(
+        f"{ROOT}/{doc['template']['id']}/validate",
+        content=content,
+        headers={**headers, "content-type": "application/json"},
+    )
+    assert response.status_code == 422 and response.json()["error"]["code"] == "workflow.encoding"
+
+
+async def test_m4_inherited_boolean_policy_survives_save_and_idempotency(
+    integrated_api: IntegratedApi,
+) -> None:
+    headers, doc = await create(integrated_api)
+    path = f"{ROOT}/{doc['template']['id']}/draft"
+    spec = deepcopy(doc["version"]["spec"])
+    spec["defaults"] = {"accepts_runtime_instructions": True}
+    spec["nodes"][0]["policy"] = {}
+    body = {**command(doc), "spec": spec}
+    response = await integrated_api.client.put(path, json=body, headers=headers)
+    assert response.status_code == 200, response.text
+    saved = response.json()
+    assert saved["version"]["spec"]["nodes"][0]["policy"]["accepts_runtime_instructions"] is True
+    assert (await integrated_api.client.put(path, json=body, headers=headers)).json() == saved
+    spec["nodes"][0]["policy"] = {"accepts_runtime_instructions": False}
+    response = await integrated_api.client.put(path, json=body, headers=headers)
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "workflow.idempotency_conflict"
+    response = await integrated_api.client.put(
+        path, json={**command(saved), "spec": spec}, headers=headers
+    )
+    assert response.status_code == 200, response.text
+    assert (
+        response.json()["version"]["spec"]["nodes"][0]["policy"]["accepts_runtime_instructions"]
+        is False
+    )
+
+
 async def test_m4_raw_json_depth_is_bounded_before_recursive_parser(
     integrated_api: IntegratedApi,
 ) -> None:

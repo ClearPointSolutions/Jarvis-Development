@@ -172,6 +172,22 @@ class BoundedRequestBodyMiddleware:
             )
             await response(scope, receive, send)
             return
+        if workflow:
+            try:
+                body.decode("utf-8")
+                # UTF-16/32 without a BOM can also decode as UTF-8 with NULs.
+                # Raw NULs are invalid JSON; require the documented UTF-8 wire format.
+                if 0 in body:
+                    raise ValueError("NUL in workflow JSON")
+            except (UnicodeDecodeError, ValueError):
+                response = problem_response(
+                    status_code=422,
+                    code="workflow.encoding",
+                    message="Workflow JSON must use UTF-8",
+                    request_id_value=request_id(request),
+                )
+                await response(scope, receive, send)
+                return
         if workflow and _workflow_depth_exceeded(body):
             await audit_denial(request, "request_too_large")
             response = problem_response(

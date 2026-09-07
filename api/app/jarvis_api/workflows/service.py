@@ -259,7 +259,11 @@ class WorkflowService:
                 session,
                 scope=f"workflow:{actor}:{action}:{identity or 'new'}",
                 key=body.idempotency_key,
-                request_digest=sha256_digest(body),
+                # Omission and an explicit false policy override are different
+                # instructions even though Pydantic supplies the same default.
+                request_digest=sha256_digest(
+                    body.model_dump(mode="json", by_alias=True, exclude_unset=True)
+                ),
             )
         except IdempotencyConflictError:
             raise problem(
@@ -402,10 +406,20 @@ class WorkflowService:
                 raise problem(
                     409, "immutable", "Published versions are immutable; create a new draft"
                 )
-            # Keep invalid semantic drafts for correction; publication owns executable validation.
-            version.spec_json = body.spec.canonical_payload()
+            # Materialize inheritance before serialization loses model_fields_set.
+            # Invalid config/topology drafts remain editable; publication owns
+            # executable validation and typed config normalization.
+            spec = body.spec.model_copy(
+                update={
+                    "nodes": tuple(
+                        node.model_copy(update={"policy": effective_policy(body.spec, node)})
+                        for node in body.spec.nodes
+                    )
+                }
+            )
+            version.spec_json = spec.canonical_payload()
             version.layout_json = body.layout.model_dump(mode="json")
-            version.content_hash = body.spec.content_hash
+            version.content_hash = spec.content_hash
             row.name = body.spec.name
             row.description = body.spec.description
             self._touch(row)
