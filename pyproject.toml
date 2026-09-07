@@ -1,0 +1,79 @@
+[build-system]
+requires = ["setuptools==80.10.2", "wheel==0.46.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jarvis-v1"
+version = "0.1.0"
+description = "Jarvis Mission Control API, orchestration runtime, and shared contracts"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "alembic==1.19.2",
+  "fastapi==0.141.1",
+  "httpx==0.28.1",
+  "langgraph==1.2.11",
+  "langgraph-checkpoint-postgres==3.1.2",
+  "openai==3.8.0",
+  "psycopg[binary,pool]==3.3.5",
+  "psycopg-pool==3.3.1",
+  "pydantic==2.13.5",
+  "pydantic-settings==2.15.0",
+  "sqlalchemy==2.0.52",
+  "uuid6==2025.0.1",
+  "uvicorn[standard]==0.52.4",
+]
+
+[project.optional-dependencies]
+dev = [
+  "mypy==2.3.1",
+  "pip-tools==7.6.1",
+  "pytest==9.1.1",
+  "pytest-asyncio==1.4.0",
+  "pytest-cov==7.1.0",
+  "ruff==0.16.6",
+]
+
+[project.scripts]
+jarvis-api = "jarvis_api.main:run"
+jarvis-orchestrator = "jarvis_orchestrator.main:run"
+jarvis-contracts = "jarvis_contracts.generate:main"
+
+[tool.setuptools.packages.find]
+where = ["api/app", "orchestrator/app", "packages/contracts/src"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-config --strict-markers"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+  "integration: requires TEST_DATABASE_URL pointing to an isolated PostgreSQL database",
+  "compatibility: verifies pinned third-party integration behavior",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["jarvis_api", "jarvis_orchestrator", "jarvis_contracts"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["api/app", "orchestrator/app", "packages/contracts/src", "tests", "scripts"]
+exclude = ["docs/reference/legacy"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"api/migrations/versions/*.py" = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["api/app", "orchestrator/app", "packages/contracts/src", "tests"]
+plugins = ["pydantic.mypy"]
+warn_unused_configs = true

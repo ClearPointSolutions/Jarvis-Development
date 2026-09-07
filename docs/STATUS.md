@@ -1,8 +1,21 @@
 # Jarvis V1 Status
 
 Last updated: 2026-09-07
-Current phase: Architecture (Prompt 01)
-Overall state: architecture complete; application implementation not started
+Current phase: M0 — Repository and verification foundation complete
+Overall state: architecture approved; M0 complete; M1 queued; M2 not started
+
+## Active M0 criteria
+
+- [x] Establish the backend, orchestrator, frontend, shared-contract, deployment, script, and test layout.
+- [x] Pin a Python 3.12 and Node-compatible dependency set with reproducible lock files.
+- [x] Establish formatting, linting, type checking, unit/component testing, Playwright, and production-build gates.
+- [x] Add safe `scripts/dev.sh`, `scripts/demo.sh`, `scripts/verify.sh`, and `scripts/deploy-core.sh` behavior.
+- [x] Add a names/safe-examples-only `.env.example` and deterministic secret scanning with a failing canary test.
+- [x] Add CI using PostgreSQL 16 and the same verification entrypoint.
+- [x] Prove a fresh local install can execute the empty/scaffold quality gates.
+- [x] Review M0; commit is the milestone boundary immediately following this status update.
+
+M1 criteria will be activated only after the M0 commit. M2A, M2B, and M2C are explicitly out of scope for this turn.
 
 ## Architecture milestone criteria
 
@@ -56,9 +69,11 @@ Overall state: architecture complete; application implementation not started
 
 ## Current implementation state
 
-No V1 backend, frontend, database migration, Compose service, deployment, or remote change exists yet. This is intentional: Prompt 01 stops after the documentation commit.
-
-The Git worktree was clean before documentation authoring. Reference/legacy files were read only and are not modified by this milestone.
+M0 provides importable Python 3.12 API/orchestrator/contract packages, a minimal
+Next.js application, exact Python and npm locks, an isolated PostgreSQL 16 local
+Compose definition, safe scripts, CI, and deterministic verification. No database
+model, migration, production runtime behavior, deployment, or remote change exists
+yet. Reference and legacy files remain unmodified.
 
 ## Validation evidence
 
@@ -74,16 +89,26 @@ Architecture validation on 2026-09-07:
 - Staged-scope review: exactly the 13 required new architecture documents; no application or reference/legacy file is modified.
 - Synthetic secret-pattern review of staged content: no private-key block, live-token prefix, credential assignment, or bearer value found.
 
-Application test/build commands were not run because this repository still contains no V1 application and Prompt 01 forbids beginning implementation. Executable JSON/Markdown/Git validation is proportionate to this documentation-only milestone.
+M0 validation on 2026-09-07:
+
+- Python 3.12.14 lock installation and `pip check`: passed.
+- `npm install` from the exact package manifest and `npm audit --audit-level=high`: passed with zero vulnerabilities after selecting patched Vite/Vitest releases.
+- `scripts/verify.sh`: passed (Ruff format/lint, strict mypy, 5 pytest tests at 88.46% coverage, frontend Prettier/ESLint/TypeScript/Vitest, Next production build, and one Chromium Playwright smoke test).
+- Secret scanner self-test detected its synthetic private-key canary; repository scan was clean.
+- All shell scripts parse; `demo.sh` and `deploy-core.sh` refuse safely with exit code 2.
+- PostgreSQL integration is intentionally not active until M1 adds its migration and deterministic tests.
+
+During Prompt 01, application test/build commands were not run because the
+repository contained no V1 application and that prompt forbade implementation.
+Executable JSON/Markdown/Git validation was proportionate to that earlier
+documentation-only milestone; the M0 application gates are recorded above.
 
 ## Next milestone
 
-After human review of the architecture commit, begin M0 in `docs/IMPLEMENTATION_PLAN.md` under Prompt 02. First actions:
-
-1. put M0 criteria and active state here;
-2. establish backend/frontend/repository verification scaffolding and lock strategy;
-3. select/pin compatible dependency versions with focused LangGraph/Postgres interrupt/checkpoint spikes;
-4. do not access or deploy to the real homelab during local implementation.
+Begin M1 only after the coherent M0 commit. Activate the M1 criteria in this file,
+then implement the durable contracts, PostgreSQL/Alembic foundation, shared-contract
+generation, and ADR-022 compatibility spikes. Do not begin M2 or access/deploy to
+the real homelab.
 
 ## Open gates and risks
 

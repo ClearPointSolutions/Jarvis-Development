@@ -1,0 +1,50 @@
+name: verify
+
+on:
+  pull_request:
+  push:
+    branches: [main, "codex/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16.10-bookworm
+        env:
+          POSTGRES_DB: jarvis_v1_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_USER: jarvis_v1_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jarvis_v1_dev -d jarvis_v1_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://jarvis_v1_dev@127.0.0.1:5432/jarvis_v1_test
+      DATABASE_URL: postgresql+psycopg://jarvis_v1_dev@127.0.0.1:5432/jarvis_v1_test
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.19.0"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: python -m pip install -r requirements.lock
+      - run: python -m pip install -e . --no-deps
+      - run: npm ci
+        working-directory: web
+      - run: npx playwright install --with-deps chromium
+        working-directory: web
+      - run: scripts/verify.sh

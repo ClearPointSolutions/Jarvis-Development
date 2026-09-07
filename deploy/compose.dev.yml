@@ -1,0 +1,22 @@
+name: jarvis-v1-dev
+
+services:
+  postgres:
+    image: postgres:16.10-bookworm
+    environment:
+      POSTGRES_DB: jarvis_v1_test
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_USER: jarvis_v1_dev
+    ports:
+      - "127.0.0.1:55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jarvis_v1_dev -d jarvis_v1_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - jarvis_v1_postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+
+volumes:
+  jarvis_v1_postgres_data:

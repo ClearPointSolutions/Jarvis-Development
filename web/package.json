@@ -1,0 +1,50 @@
+{
+  "name": "jarvis-v1-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.9.0 <21"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --max-warnings=0",
+    "format:check": "prettier --check .",
+    "format:write": "prettier --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "contracts:generate": "json2ts -i ../packages/contracts/generated/jarvis-contracts.schema.json -o ../packages/contracts/generated/jarvis-contracts.ts --bannerComment '/* Generated from authoritative Pydantic contracts. Do not edit. */'",
+    "contracts:check": "npm run contracts:generate && git diff --exit-code -- ../packages/contracts/generated"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "5.102.8",
+    "@xterm/xterm": "6.0.0",
+    "@xyflow/react": "12.11.6",
+    "next": "16.3.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zustand": "5.0.15"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@tailwindcss/postcss": "4.1.18",
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.7",
+    "@types/node": "20.19.43",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.3.4",
+    "jsdom": "26.1.0",
+    "json-schema-to-typescript": "16.0.0",
+    "prettier": "3.9.6",
+    "tailwindcss": "4.1.18",
+    "typescript": "5.9.3",
+    "vite": "6.4.3",
+    "vitest": "3.2.7"
+  }
+}
