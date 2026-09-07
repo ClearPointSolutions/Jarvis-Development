@@ -11,5 +11,7 @@ export function useSession() {
   return useQuery({
     queryKey: sessionQueryKey,
     queryFn: () => apiClient.getSession(),
+    refetchOnWindowFocus: true,
+    refetchInterval: 30_000,
   });
 }

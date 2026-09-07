@@ -1,11 +1,18 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
+import { safeFilename } from "@/lib/content-safety";
 import { EventRow } from "./event-row";
 import { sanitizeTerminalOutput } from "./read-only-terminal";
 import { SafeMarkdown, safeMarkdownUrl } from "./safe-markdown";
 
 describe("untrusted content presentation", () => {
+  it("displays artifact basenames without direction overrides", () => {
+    expect(safeFilename("../../secrets/trace\u202Etxt.exe")).toBe(
+      "tracetxt.exe",
+    );
+    expect(safeFilename("C:\\output\\safe.txt")).toBe("safe.txt");
+  });
   it("renders Markdown without raw HTML or executable URLs", () => {
     const { container } = render(
       <SafeMarkdown>

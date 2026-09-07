@@ -33,6 +33,7 @@ export function SafeMarkdown({ children }: { children: string }) {
     <div className="markdown-content">
       <Markdown
         components={{ a: SafeLink }}
+        disallowedElements={["img"]}
         skipHtml
         urlTransform={safeMarkdownUrl}
       >

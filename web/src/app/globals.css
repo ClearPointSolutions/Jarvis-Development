@@ -768,3 +768,69 @@ h3 {
     transition-duration: 0.01ms !important;
   }
 }
+.mission-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+.mission-grid h2 {
+  font-size: 1.1rem;
+}
+.mission-grid p,
+.graph-empty small {
+  color: var(--text-muted);
+}
+.graph-region {
+  min-height: 21rem;
+}
+.graph-empty {
+  min-height: 12rem;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  border: 1px dashed var(--border);
+  padding: 1rem;
+}
+.activity-panel {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  padding: 1.25rem;
+}
+.activity-panel h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+.activity-list {
+  display: grid;
+  gap: 0.5rem;
+  max-height: 32rem;
+  overflow: auto;
+  margin-top: 1rem;
+}
+.projection {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+.sidebar {
+  overflow-y: auto;
+}
+h1 {
+  font-size: clamp(2rem, 4vw, 2.8rem);
+}
+@media (max-width: 1100px) {
+  .mission-grid {
+    grid-template-columns: 1fr;
+  }
+  .graph-region {
+    min-height: 15rem;
+  }
+}
+@media (max-width: 800px) {
+  .sidebar:not(.sidebar-open) {
+    visibility: hidden;
+  }
+}

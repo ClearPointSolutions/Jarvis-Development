@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { ErrorState, LoadingState } from "@/components/states";
@@ -9,6 +10,7 @@ import { useSession } from "@/lib/session";
 
 export function SessionBoundary({ children }: { children: ReactNode }) {
   const session = useSession();
+  const pathname = usePathname();
 
   if (session.isPending)
     return <LoadingState label="Checking your secure session" />;
@@ -26,7 +28,10 @@ export function SessionBoundary({ children }: { children: ReactNode }) {
             This route is protected. Sign in with the locally bootstrapped owner
             account.
           </p>
-          <Link className="button button-primary" href="/login">
+          <Link
+            className="button button-primary"
+            href={`/login?returnTo=${encodeURIComponent(pathname ?? "/")}`}
+          >
             Go to sign in
           </Link>
         </section>

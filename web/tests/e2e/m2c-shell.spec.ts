@@ -41,10 +41,12 @@ test("desktop shell is keyboard accessible, secure, and free of serious violatio
   await expect(
     page.getByRole("heading", { name: "Mission overview" }),
   ).toBeVisible();
-  await expect(page.getByText("Demo fixture", { exact: true })).toBeVisible();
-  await expect(page.getByText(/not runtime activity/i)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Live graph" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Organizer" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
-  await expect(page.getByText("Foundation ready")).toBeVisible();
+  await expect(
+    page.getByText("M2 foundation", { exact: true }).first(),
+  ).toBeVisible();
 
   const csp = response?.headers()["content-security-policy"] ?? "";
   const scriptPolicy = csp
@@ -144,4 +146,77 @@ test("login posts only to the exact API route and stores no browser token", asyn
     })),
   ).toEqual({ local: [], session: [], cookie: "" });
   expect(seriousErrors).toEqual([]);
+});
+
+test("sign out clears the authenticated shell and revoked session cannot reopen it", async ({
+  page,
+}) => {
+  let active = true;
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      status: active ? 200 : 401,
+      contentType: "application/json",
+      body: JSON.stringify(
+        active
+          ? demoSession
+          : {
+              error: {
+                code: "auth.required",
+                message: "Sign in required",
+                request_id: "synthetic-request-id",
+                details: {},
+              },
+            },
+      ),
+    }),
+  );
+  await page.route("**/api/v1/auth/logout", async (route) => {
+    expect(route.request().headers()["x-csrf-token"]).toBe(
+      demoSession.csrf_token,
+    );
+    active = false;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ revoked: true }),
+    });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Sign in to Mission Control" }),
+  ).toBeVisible();
+  await page.goto("/workers");
+  await expect(
+    page.getByRole("heading", { name: "Your session is required" }),
+  ).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Primary" })).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByRole("link", { name: "Go to sign in" }),
+  ).toHaveAttribute("href", "/login?returnTo=%2Fworkers");
+});
+
+test("mobile drawer traps keyboard focus and restores its trigger", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installDemoSession(page);
+  await page.goto("/");
+  const menu = page.getByRole("button", { name: "Toggle navigation" });
+  await menu.click();
+  await expect(
+    page.getByRole("link", { name: "Mission", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(
+    page.getByRole("link", { name: "Developer", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(
+    page.getByRole("link", { name: "Mission", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeFocused();
+  await expect(menu).toHaveAttribute("aria-expanded", "false");
 });

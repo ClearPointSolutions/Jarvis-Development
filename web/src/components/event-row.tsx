@@ -1,3 +1,4 @@
+import { safeDisplayText } from "@/lib/content-safety";
 import type { NormalizedEvent } from "@jarvis/contracts";
 
 import { DemoBadge, StatusLabel } from "@/components/states";
@@ -27,7 +28,7 @@ export function EventRow({ event }: { event: NormalizedEvent }) {
       <div className="event-row-meta">
         <StatusLabel
           label={event.severity}
-          tone={severityTone[event.severity]}
+          tone={severityTone[event.severity] ?? "neutral"}
         />
         {event.mode === "demo" ? <DemoBadge /> : null}
         <time dateTime={event.recorded_at}>
@@ -35,8 +36,8 @@ export function EventRow({ event }: { event: NormalizedEvent }) {
         </time>
       </div>
       <h3>{knownLabel ?? "Observable event"}</h3>
-      <p>{event.message}</p>
-      <code>{event.type}</code>
+      <p>{safeDisplayText(event.message)}</p>
+      <code>{safeDisplayText(event.type)}</code>
       {!knownLabel ? (
         <span className="unknown-label">Unknown event type</span>
       ) : null}

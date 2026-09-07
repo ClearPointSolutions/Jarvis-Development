@@ -29,6 +29,38 @@ function client(overrides: Partial<BrowserApiClient> = {}): BrowserApiClient {
 }
 
 describe("session and login boundaries", () => {
+  it.each([401, 429])(
+    "announces login failure %s and clears password",
+    async (status) => {
+      render(
+        <AppProviders
+          apiClient={client({
+            login: vi
+              .fn()
+              .mockRejectedValue(
+                new ApiRequestError(
+                  "Invalid credentials",
+                  status,
+                  "auth.denied",
+                ),
+              ),
+          })}
+        >
+          <LoginForm onAuthenticated={vi.fn()} />
+        </AppProviders>,
+      );
+      const user = userEvent.setup();
+      await user.type(screen.getByLabelText("Username"), "owner");
+      await user.type(screen.getByLabelText("Password"), "synthetic-password");
+      await user.click(
+        screen.getByRole("button", { name: "Sign in securely" }),
+      );
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        status === 429 ? "Too many" : "Invalid credentials",
+      );
+      expect(screen.getByLabelText("Password")).toHaveValue("");
+    },
+  );
   it("shows a loading status, then protected content", async () => {
     let resolveSession: (value: typeof session) => void = () => undefined;
     const pending = new Promise<typeof session>((resolve) => {

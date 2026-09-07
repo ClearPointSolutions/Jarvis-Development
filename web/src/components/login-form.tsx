@@ -32,9 +32,13 @@ export function LoginForm({
       formElement.reset();
       onAuthenticated();
     } catch (cause) {
+      const passwordField = formElement.elements.namedItem("password");
+      if (passwordField instanceof HTMLInputElement) passwordField.value = "";
       setError(
         cause instanceof ApiRequestError
-          ? cause.message
+          ? cause.status === 429
+            ? "Too many sign-in attempts. Wait before trying again."
+            : cause.message
           : "Sign in is temporarily unavailable.",
       );
     } finally {

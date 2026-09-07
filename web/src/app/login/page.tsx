@@ -18,7 +18,20 @@ export default function LoginPage() {
           Your credentials are sent only to the same-origin API and are never
           stored by the browser.
         </p>
-        <LoginForm onAuthenticated={() => router.replace("/")} />
+        <LoginForm
+          onAuthenticated={() => {
+            const target = new URLSearchParams(window.location.search).get(
+              "returnTo",
+            );
+            router.replace(
+              target?.startsWith("/") &&
+                !target.startsWith("//") &&
+                !target.includes("\\")
+                ? target
+                : "/",
+            );
+          }}
+        />
       </section>
     </main>
   );

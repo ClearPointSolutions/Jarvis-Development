@@ -7,6 +7,7 @@ const MAX_TERMINAL_CHARACTERS = 131_072;
 
 export function sanitizeTerminalOutput(input: string): string {
   const withoutOsc = input
+    .replaceAll("\r", "")
     .replace(/\u001B\][\s\S]*?(?:\u0007|\u001B\\)/g, "")
     .replace(/\u001B\][^\u0007]*(?:$|\u0007)/g, "");
   const withoutControls = withoutOsc
@@ -44,6 +45,7 @@ export function ReadOnlyTerminal({
         theme: { background: "#071018", foreground: "#d8e8eb" },
       });
       terminal.open(root);
+      if (terminal.textarea) terminal.textarea.tabIndex = -1;
       terminal.write(safeOutput.replaceAll("\n", "\r\n"));
     });
     return () => {

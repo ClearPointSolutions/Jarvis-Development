@@ -2,13 +2,22 @@ import { EmptyState } from "@/components/states";
 
 const routeCopy = {
   projects: ["Projects", "No project data is available in the M2 shell."],
+  workers: [
+    "Workers",
+    "Worker registration and connectivity are not available yet.",
+  ],
+  providers: [
+    "Providers and models",
+    "Provider configuration is not available yet.",
+  ],
+  debug: ["Developer views", "Runtime diagnostics are not available yet."],
   runs: ["Runs", "No durable runs have been loaded."],
   workflows: [
     "Workflows",
     "Workflow editing begins only after its approved milestone.",
   ],
   registry: ["Registry", "Configuration controls are not exposed before M3."],
-  approvals: ["Approvals", "No durable approval requests are waiting."],
+  approvals: ["Approvals", "Approval review is not available yet."],
   artifacts: ["Artifacts", "No authorized artifact metadata is available."],
   health: [
     "Health",
@@ -31,7 +40,7 @@ export function FoundationRoute({ route }: { route: FoundationRouteName }) {
           implemented.
         </p>
       </header>
-      <EmptyState description={description} title={`${title} are quiet`} />
+      <EmptyState description={description} title="Not available yet" />
     </div>
   );
 }
