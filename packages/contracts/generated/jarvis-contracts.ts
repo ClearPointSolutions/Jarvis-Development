@@ -229,6 +229,12 @@ export type SchemaVersion6 = "1.0";
 export type SnapshotHash = string;
 export type WorkflowContentHash = string;
 export type WorkflowVersionId1 = string;
+export type LastEventAt = string | null;
+export type LastEventPosition = number;
+export type LastRunSequence = number;
+export type ReadCursor = number;
+export type RunId7 = string;
+export type Status2 = string;
 export type AbsoluteExpiresAt = string;
 export type CsrfToken = string;
 export type IdleExpiresAt = string;
@@ -239,7 +245,7 @@ export type AcceptanceCriteria = string[];
 export type CreatedAt7 = string;
 export type Id10 = string;
 export type Key3 = string;
-export type RunId7 = string;
+export type RunId8 = string;
 export type TaskStatus =
   | "pending"
   | "ready"
@@ -354,6 +360,7 @@ export interface JarvisContractBundle {
   run_command_receipt?: RunCommandReceipt | null;
   run_command_request?: RunCommandRequest | null;
   run_configuration_snapshot?: RunConfigurationSnapshot | null;
+  run_event_snapshot?: RunEventSnapshotResponse | null;
   session_response?: SessionResponse | null;
   task?: Task | null;
   task_attempt?: TaskAttempt | null;
@@ -641,6 +648,14 @@ export interface ResolvedRevision {
   kind: ConfigurationKind;
   revision_id: RevisionId;
 }
+export interface RunEventSnapshotResponse {
+  last_event_at: LastEventAt;
+  last_event_position: LastEventPosition;
+  last_run_sequence: LastRunSequence;
+  read_cursor: ReadCursor;
+  run_id: RunId7;
+  status: Status2;
+}
 export interface SessionResponse {
   absolute_expires_at: AbsoluteExpiresAt;
   csrf_token: CsrfToken;
@@ -657,7 +672,7 @@ export interface Task {
   created_at: CreatedAt7;
   id: Id10;
   key: Key3;
-  run_id: RunId7;
+  run_id: RunId8;
   status: TaskStatus;
   title: Title;
   updated_at: UpdatedAt3;
