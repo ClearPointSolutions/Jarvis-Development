@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Final
 from uuid import UUID
 
 from pydantic import JsonValue
@@ -11,6 +13,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid6 import uuid7
 
+from jarvis_contracts.api import EventPage
 from jarvis_contracts.commands import RunCommandReceipt, RunCommandRequest
 from jarvis_contracts.enums import CommandStatus, EffectStatus
 from jarvis_contracts.events import (
@@ -45,6 +48,55 @@ class IdempotencyConflictError(ValueError):
 
 class OptimisticConcurrencyConflictError(ValueError):
     """A command targeted a stale mutable run version."""
+
+
+class UnsupportedEventSchemaError(ValueError):
+    """A stored event cannot be represented by this API's contract major."""
+
+    def __init__(self, *, global_position: int, schema_version: str) -> None:
+        self.global_position = global_position
+        self.schema_version = schema_version
+        super().__init__(
+            f"event at position {global_position} uses unsupported schema {schema_version}"
+        )
+
+
+class EventCursorExpiredError(ValueError):
+    """A replay cursor precedes the retained global event range."""
+
+    def __init__(self, *, requested: int, earliest: int, latest: int) -> None:
+        self.requested = requested
+        self.earliest = earliest
+        self.latest = latest
+        super().__init__(f"event cursor {requested} precedes retained position {earliest}")
+
+
+class RunSequenceGapError(ValueError):
+    """A run's durable event sequence contains a missing position."""
+
+    def __init__(self, *, expected: int, actual: int, global_position: int) -> None:
+        self.expected = expected
+        self.actual = actual
+        self.global_position = global_position
+        super().__init__(
+            f"run event sequence gap at position {global_position}: "
+            f"expected {expected}, received {actual}"
+        )
+
+
+@dataclass(frozen=True)
+class RunProjectionSnapshot:
+    """Run projection and commit-safe event cursor from one database statement."""
+
+    run_id: UUID
+    status: str
+    last_event_position: int
+    last_run_sequence: int
+    last_event_at: datetime | None
+    read_cursor: int
+
+
+SUPPORTED_EVENT_SCHEMA_MAJOR: Final = "1"
 
 
 class Uuid7Generator:
@@ -130,7 +182,126 @@ class EventRepository:
         session.add(row)
         await session.flush()
         await session.refresh(row, attribute_names=["recorded_at"])
+
+        if event.scope.run_id is not None:
+            run = await session.scalar(
+                select(RunModel).where(RunModel.id == event.scope.run_id).with_for_update()
+            )
+            if run is None:
+                raise PersistenceInvariantError("run event references a missing run")
+            run.last_event_position = row.global_position
+            run.last_run_sequence = run_sequence or 0
+            run.last_event_at = row.recorded_at
+            await session.flush()
         return self._to_contract(row)
+
+    async def page(
+        self,
+        session: AsyncSession,
+        *,
+        run_id: UUID,
+        after: int,
+        limit: int,
+    ) -> EventPage:
+        """Read an owner-visible run page at one committed high-water boundary."""
+
+        if after < 0:
+            raise ValueError("event cursor cannot be negative")
+        if limit < 1 or limit > 1_000:
+            raise ValueError("event page limit must be between 1 and 1000")
+
+        counter = await session.scalar(
+            select(EventGlobalCounterModel.last_position).where(EventGlobalCounterModel.id == 1)
+        )
+        if counter is None:
+            raise PersistenceInvariantError("event global counter is not initialized")
+
+        earliest = await session.scalar(select(func.min(EventModel.global_position)))
+        if after > 0 and earliest is not None and after < earliest - 1:
+            raise EventCursorExpiredError(requested=after, earliest=earliest, latest=counter)
+
+        rows = list(
+            (
+                await session.scalars(
+                    select(EventModel)
+                    .where(
+                        EventModel.run_id == run_id,
+                        EventModel.global_position > after,
+                        EventModel.global_position <= counter,
+                        EventModel.visibility.in_(("owner", "operator")),
+                    )
+                    .order_by(EventModel.global_position)
+                    .limit(limit + 1)
+                )
+            ).all()
+        )
+        has_more = len(rows) > limit
+        visible_rows = rows[:limit]
+        if visible_rows:
+            prior_sequence = await session.scalar(
+                select(func.max(EventModel.run_sequence)).where(
+                    EventModel.run_id == run_id,
+                    EventModel.global_position <= after,
+                )
+            )
+            durable_rows = (
+                await session.execute(
+                    select(EventModel.run_sequence, EventModel.global_position)
+                    .where(
+                        EventModel.run_id == run_id,
+                        EventModel.global_position > after,
+                        EventModel.global_position <= visible_rows[-1].global_position,
+                    )
+                    .order_by(EventModel.global_position)
+                )
+            ).all()
+            expected = (prior_sequence or 0) + 1
+            for actual, global_position in durable_rows:
+                if actual != expected:
+                    raise RunSequenceGapError(
+                        expected=expected,
+                        actual=actual,
+                        global_position=global_position,
+                    )
+                expected += 1
+        items = tuple(self._to_contract(row) for row in visible_rows)
+        return EventPage(
+            items=items,
+            after=after,
+            high_watermark=counter,
+            next_after=items[-1].global_position if has_more else None,
+        )
+
+    async def run_projection_snapshot(
+        self, session: AsyncSession, *, run_id: UUID
+    ) -> RunProjectionSnapshot | None:
+        """Read projection fields and the event cursor from the same MVCC statement."""
+
+        row = (
+            await session.execute(
+                select(
+                    RunModel.id,
+                    RunModel.status,
+                    RunModel.last_event_position,
+                    RunModel.last_run_sequence,
+                    RunModel.last_event_at,
+                    EventGlobalCounterModel.last_position.label("read_cursor"),
+                )
+                .select_from(RunModel)
+                .join(EventGlobalCounterModel, EventGlobalCounterModel.id == 1)
+                .where(RunModel.id == run_id)
+            )
+        ).one_or_none()
+        if row is None:
+            return None
+        return RunProjectionSnapshot(
+            run_id=row.id,
+            status=row.status,
+            last_event_position=row.last_event_position,
+            last_run_sequence=row.last_run_sequence,
+            last_event_at=row.last_event_at,
+            read_cursor=row.read_cursor,
+        )
 
     async def _find_duplicate(
         self,
@@ -173,6 +344,12 @@ class EventRepository:
 
     @staticmethod
     def _to_contract(row: EventModel) -> NormalizedEvent:
+        schema_major = row.schema_version.partition(".")[0]
+        if schema_major != SUPPORTED_EVENT_SCHEMA_MAJOR:
+            raise UnsupportedEventSchemaError(
+                global_position=row.global_position,
+                schema_version=row.schema_version,
+            )
         trace = EventTrace.model_validate(row.trace_json) if row.trace_json else None
         return NormalizedEvent(
             schema_version="1.0",
