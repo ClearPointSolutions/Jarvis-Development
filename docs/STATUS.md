@@ -1,41 +1,49 @@
 # Jarvis V1 Status
 
 Last updated: 2026-09-07
-Current phase: M2 — approved parallel foundation group in progress
-Overall state: architecture approved; M0 and M1 complete; M2A/M2B/M2C active; M3 not started
+Current phase: M2 — local acceptance complete; remote push/CI pending
+Overall state: M0 and M1 complete; M2A/M2B/M2C integrated; M3 not started
 
 ## Active M2 parallel-group criteria
 
-Integration base: frozen M1 contract commit `76d41c8c6193e7d541ca24e6fbf84dee5693e8c2`.
+Integration base: fetched authoritative main `1fc4c8ecdcb46291efc8896c0edcd652b9f70b61`.
+Uncommitted work in all three original worktrees was scanned and committed before
+reconciliation; backup branches preserve it. No reset, clean or worktree deletion
+was used. M2 delivery evidence is recorded in `docs/M2_COMPLETION.md`.
 
 ### M2A — Authentication and API Security
 
-- [ ] Provide explicit one-time local owner bootstrap and Argon2id password verification.
-- [ ] Persist only hashed opaque sessions with idle/absolute expiry, rotation, logout, and revocation.
-- [ ] Enforce same-origin/CSRF protection, object authorization, login rate limiting, secure cookies/headers, and normalized API errors.
-- [ ] Emit redacted authentication/session audit events and expose only anonymous liveness.
-- [ ] Pass deterministic AUTH-001 through AUTH-005 tests and security boundary checks.
+- [x] Provide explicit one-time local owner bootstrap and Argon2id password verification.
+- [x] Persist only hashed opaque sessions with idle/absolute expiry, rotation, logout, and revocation.
+- [x] Enforce same-origin/CSRF protection, object authorization, login rate limiting, secure cookies/headers, and normalized API errors.
+- [x] Emit redacted authentication/session audit events and expose only anonymous liveness.
+- [x] Pass deterministic AUTH-001 through AUTH-005 tests and security boundary checks.
 
 ### M2B — Event Writer, Projections, and SSE
 
-- [ ] Normalize and validate registered event payloads, recursively redact secrets, and extract oversized content to authorized artifact metadata/storage.
-- [ ] Preserve globally commit-safe and per-run ordering, deduplication, append-only storage, and transactional projection watermarks.
-- [ ] Implement authorized replay/pagination and SSE with `Last-Event-ID`, keepalive, reset semantics, and LISTEN/NOTIFY used only as a wakeup.
-- [ ] Render unknown allowed event types safely and reject unsupported schema majors explicitly.
-- [ ] Pass deterministic EVT-001 through EVT-008 concurrency, loss, replay, redaction, and boundary tests.
+- [x] Normalize and validate registered event payloads, recursively redact secrets, and extract oversized content to authorized artifact metadata/storage.
+- [x] Preserve globally commit-safe and per-run ordering, deduplication, append-only storage, and transactional projection watermarks.
+- [x] Implement authorized replay/pagination and SSE with `Last-Event-ID`, keepalive, reset semantics, and LISTEN/NOTIFY used only as a wakeup.
+- [x] Render unknown allowed event types safely and reject unsupported schema majors explicitly.
+- [x] Pass deterministic EVT-001 through EVT-008 concurrency, loss, replay, redaction, and boundary tests.
 
 ### M2C — Frontend Shell and Accessibility Baseline
 
-- [ ] Build the responsive mission-control shell and required route skeletons using shared design tokens.
-- [ ] Establish generated API-client consumption, TanStack Query server state, ephemeral Zustand state, and login/session boundaries without browser token storage.
-- [ ] Provide honest loading/error/empty/demo states, sanitized Markdown, and a read-only terminal renderer.
-- [ ] Pass production build, type/lint/component, keyboard, screen-reader, automated accessibility, and serious-console-error checks.
+- [x] Build the responsive mission-control shell and required route skeletons using shared design tokens.
+- [x] Establish generated API-client consumption, TanStack Query server state, ephemeral Zustand state, and login/session boundaries without browser token storage.
+- [x] Provide honest loading/error/empty/demo states, sanitized Markdown, and a read-only terminal renderer.
+- [x] Pass production build, type/lint/component, keyboard, screen-reader, automated accessibility, and serious-console-error checks.
 
 ### Integration-owner gates
 
-- [ ] Own all shared migrations/models, generated Python/TypeScript contracts, root lockfiles, central registries, shared Compose, and this status ledger.
-- [ ] Merge only milestone branches that pass their focused gates, then run the full repository verification suite from the merged branch.
-- [ ] Inspect the final diff and secret scan, record branch hashes/merge order/findings/evidence, and stop before M3.
+- [x] Own all shared migrations/models, generated Python/TypeScript contracts, root lockfiles, central registries, shared Compose, and this status ledger.
+- [x] Merge only milestone branches that pass their focused gates, then run the full repository verification suite from the merged branch.
+- [x] Inspect the final diff and secret scan, record branch hashes/merge order/findings/evidence, and stop before M3.
+
+
+### Remote completion gate
+
+- [ ] Push the integrated M2 work and verify GitHub CI on final main.
 
 ## M1 completion criteria
 
@@ -120,8 +128,11 @@ Compose definition. M1 adds authoritative frozen Pydantic contracts and generate
 JSON Schema/TypeScript, 20 `control` tables, three append-only/ordering
 `event_store` tables, LangGraph-owned checkpoint tables, logical roles, an Alembic
 baseline, transactional event/command/idempotency/effect/lease repositories, and
-deterministic test utilities. No M2 API, SSE, authentication, frontend shell feature,
-deployment, or remote change has begun. Reference and legacy files remain unmodified.
+deterministic test utilities. M2 now adds real authentication, event normalization,
+authorized replay/SSE/artifact delivery and the frontend shell; the integrated
+Chromium/API/PostgreSQL vertical test passes. Final full-gate and CI evidence is
+recorded below and in `docs/M2_COMPLETION.md`. Reference and legacy files remain
+unmodified. No deployment or homelab change has occurred.
 
 ## Validation evidence
 
@@ -166,9 +177,8 @@ documentation-only milestone; the M0 application gates are recorded above.
 
 ## Next milestone
 
-After the M1 commit, the contracts are stable enough to begin the approved parallel
-M2A authentication/security, M2B event/SSE, and M2C frontend-shell group from the
-same pinned contract revision. M2 remains explicitly unstarted in this turn.
+M3 remains unstarted. Stop after M2 integration, its verification and documentation;
+provider routing, workflow execution, Worker-01 and deployment require later work.
 
 ## Open gates and risks
 
