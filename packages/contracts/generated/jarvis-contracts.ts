@@ -493,8 +493,39 @@ export type Health1 = "healthy" | "degraded" | "unavailable" | "misconfigured" |
 export type Issues = string[];
 export type NetworkChecked = boolean;
 export type Valid = boolean;
+export type Archived2 = boolean;
+export type ExpectedVersion1 = number;
+export type IdempotencyKey6 = string;
+export type ExpectedVersion2 = number;
+export type IdempotencyKey7 = string;
+export type Description3 = string;
+export type IdempotencyKey8 = string;
+export type Key6 = string;
+export type Name3 = string;
+export type Archived3 = boolean;
+export type CreatedAt10 = string;
+export type CurrentDraftVersionId = string | null;
+export type CurrentPublishedVersionId = string | null;
+export type Description4 = string;
+export type Id15 = string;
+export type Key7 = string;
+export type Name4 = string;
+export type UpdatedAt5 = string;
+export type Version5 = number;
+export type CompilerVersion = string;
+export type ContentHash3 = string;
+export type CreatedAt11 = string;
+export type Id16 = string;
+export type X = number;
+export type Y = number;
+export type X1 = number;
+export type Y1 = number;
+export type Zoom = number;
+export type Published = boolean;
+export type PublishedAt = string | null;
+export type SnapshotHash2 = string | null;
 export type AcceptsRuntimeInstructions = boolean;
-export type ActionType = string | null;
+export type ActionType = ("github.push_and_pr" | "git.integrate" | "worker.execute") | null;
 export type ExpiresInSeconds = number | null;
 export type RequiredGrantFrom = string | null;
 export type MaxConcurrency1 = number | null;
@@ -502,21 +533,26 @@ export type ModelRouteRef = string | null;
 export type PermissionPolicyRef = string | null;
 export type RetryPolicyRef = string | null;
 export type TimeoutSeconds = number | null;
-export type Verification1 = {
-  [k: string]: JsonValue;
-} | null;
-export type WorkerSelector = string | null;
-export type Description3 = string;
+export type Required = boolean;
+export type Source1 = "task";
+/**
+ * @maxItems 64
+ */
+export type Requires = string[];
+export type RevisionId2 = string;
+export type Description5 = string;
 export type Fallback = boolean;
 export type From = string;
-export type Id15 = string;
+export type Id17 = string;
 export type IterationKey = string | null;
-export type WorkflowEdgeKind = "always" | "on_result" | "retry" | "iterate";
+export type WorkflowEdgeKind = "always" | "on_result" | "retry" | "iterate" | "on_failure";
 export type MaxIterations = number | null;
 export type Priority1 = number;
 export type ProgressPath = string | null;
-export type RetryClass = string | null;
 export type To = string;
+/**
+ * @maxItems 64
+ */
 export type Args = Predicate[];
 export type PredicateOperator = "eq" | "neq" | "in" | "exists" | "lt" | "lte" | "gt" | "gte" | "and" | "or" | "not";
 export type Path = string | null;
@@ -525,15 +561,16 @@ export type Path = string | null;
  */
 export type Edges = WorkflowEdge[];
 export type Entrypoint = string;
-export type Key6 = string;
-export type Name3 = string;
+export type Key8 = string;
+export type Name5 = string;
 /**
  * @minItems 1
  * @maxItems 500
  */
-export type Nodes = [WorkflowNode, ...WorkflowNode[]];
-export type Id16 = string;
+export type Nodes1 = [WorkflowNode, ...WorkflowNode[]];
+export type Id18 = string;
 export type Label = string;
+export type NodeVersion = "1.0";
 export type WorkflowNodeType =
   | "organizer"
   | "architect"
@@ -549,14 +586,96 @@ export type WorkflowNodeType =
   | "github_publish"
   | "finalize";
 export type ResultPath = string;
-export type SpecVersion = "1.0";
-export type CompilerVersion = string;
-export type ContentHash3 = string;
-export type Id17 = string;
-export type Published = boolean;
-export type SpecVersion1 = "1.0";
-export type Version5 = number;
+export type SpecVersion = "1.0" | "1.1";
+export type StateSchema = "jarvis.workflow_state.v1";
+export type Version6 = number;
 export type WorkflowTemplateId = string;
+export type ExpectedVersion3 = number;
+export type IdempotencyKey9 = string;
+export type ExpectedVersion4 = number;
+export type IdempotencyKey10 = string;
+export type SourceVersionId = string | null;
+export type WorkflowNodeConfigs =
+  | OrganizerConfig
+  | ArchitectConfig
+  | DispatchConfig
+  | WorkerConfig
+  | VerifyConfig
+  | ReviewerConfig
+  | IntegrateConfig
+  | RouterConfig
+  | FanoutConfig
+  | JoinConfig
+  | ApprovalConfig
+  | PublishConfig
+  | FinalizeConfig
+  | null;
+export type SummaryLimit = number;
+export type MaxTasks = number;
+export type OutputSchema = "task_plan.v1";
+export type Parallelism = 1;
+export type ReadyOrder = "dependency_then_task_key";
+export type TaskSource = "current_task";
+export type CommandsSource = "task.verification";
+export type StopOnFailure = true;
+export type RequiresRepositorySnapshot = true;
+export type RepositorySource = "project";
+export type RunCombinedGates = true;
+export type CancellationStrategy = "wait_all";
+/**
+ * @maxItems 64
+ */
+export type Children = string[];
+export type JoinId = string;
+export type MaxFanout = number;
+export type FanoutId = string;
+export type RequireAll = true;
+export type ActionType1 = "github.push_and_pr" | "git.integrate" | "worker.execute";
+export type ExpiresInSeconds1 = number | null;
+export type RepositorySource1 = "project";
+export type WaitForCi = boolean;
+export type Outcome1 = "derive" | "failed" | "blocked" | "cancelled";
+export type ExternalBehavior = boolean;
+export type InputChannels = string[];
+export type OutputChannels = string[];
+export type RequiredCapabilities1 = string[];
+export type Items3 = NodeTypeDefinition[];
+export type CompilerVersion1 = "1.0.0";
+export type Archived4 = boolean;
+export type ConfigurationId1 = string;
+export type ContentHash4 = string;
+export type Description6 = string;
+export type DisplayName2 = string;
+export type Enabled2 = boolean;
+export type Key9 = string;
+export type Revision2 = number;
+export type RevisionId3 = string;
+export type Spec3 =
+  WorkerSpec | ProviderSpec | ModelProfileSpec | RoutePolicySpec | RetryRegistrySpec | PermissionPolicySpec;
+export type Revisions = WorkflowResolvedRevision[];
+export type WorkflowContentHash1 = string;
+export type Items4 = WorkflowTemplateRecord[];
+export type NextAfter3 = string | null;
+export type ExpectedVersion5 = number;
+export type IdempotencyKey11 = string;
+export type ContentHash5 = string | null;
+export type Code4 = string;
+export type EdgeId = string | null;
+export type Message4 = string;
+export type NodeId2 = string | null;
+export type Path1 = string | null;
+export type Issues1 = WorkflowIssue[];
+export type SnapshotHash3 = string | null;
+export type Valid1 = boolean;
+export type CompilerVersion2 = string;
+export type ContentHash6 = string;
+export type Id19 = string;
+export type Published1 = boolean;
+export type SpecVersion1 = "1.0" | "1.1";
+export type Version7 = number;
+export type WorkflowTemplateId1 = string;
+export type Items5 = WorkflowVersionRecord[];
+export type NextAfter4 = string | null;
 
 export interface JarvisContractBundle {
   accounting_page?: AccountingPage | null;
@@ -597,8 +716,21 @@ export interface JarvisContractBundle {
   task?: Task | null;
   task_attempt?: TaskAttempt | null;
   validation_report?: ValidationReport | null;
+  workflow_archive_request?: WorkflowArchiveRequest | null;
+  workflow_command?: WorkflowCommand | null;
+  workflow_create?: WorkflowCreateRequest | null;
+  workflow_document?: WorkflowDocument | null;
+  workflow_draft_write?: WorkflowDraftWrite | null;
+  workflow_new_draft?: WorkflowNewDraft | null;
+  workflow_node_configs?: WorkflowNodeConfigs;
+  workflow_node_types?: NodeTypePage | null;
+  workflow_snapshot?: WorkflowResolvedSnapshot | null;
   workflow_spec?: WorkflowSpec | null;
+  workflow_template_page?: WorkflowTemplatePage | null;
+  workflow_validate_request?: WorkflowValidateRequest | null;
+  workflow_validation?: WorkflowValidationReport | null;
   workflow_version?: WorkflowVersionContract | null;
+  workflow_version_page?: WorkflowVersionPage | null;
 }
 export interface AccountingPage {
   items: Items;
@@ -1214,16 +1346,78 @@ export interface ValidationReport {
   network_checked?: NetworkChecked;
   valid: Valid;
 }
-export interface WorkflowSpec {
-  defaults?: NodePolicy;
+export interface WorkflowArchiveRequest {
+  archived: Archived2;
+  expected_version: ExpectedVersion1;
+  idempotency_key: IdempotencyKey6;
+}
+export interface WorkflowCommand {
+  expected_version: ExpectedVersion2;
+  idempotency_key: IdempotencyKey7;
+}
+export interface WorkflowCreateRequest {
   description?: Description3;
-  edges: Edges;
-  entrypoint: Entrypoint;
+  idempotency_key: IdempotencyKey8;
   key: Key6;
   name: Name3;
-  nodes: Nodes;
+}
+export interface WorkflowDocument {
+  template: WorkflowTemplateRecord;
+  version: WorkflowVersionRecord;
+}
+export interface WorkflowTemplateRecord {
+  archived: Archived3;
+  created_at: CreatedAt10;
+  current_draft_version_id?: CurrentDraftVersionId;
+  current_published_version_id?: CurrentPublishedVersionId;
+  description: Description4;
+  id: Id15;
+  key: Key7;
+  name: Name4;
+  updated_at: UpdatedAt5;
+  version: Version5;
+}
+export interface WorkflowVersionRecord {
+  compiler_version: CompilerVersion;
+  content_hash: ContentHash3;
+  created_at: CreatedAt11;
+  id: Id16;
+  layout: WorkflowLayout;
+  published: Published;
+  published_at?: PublishedAt;
+  snapshot_hash?: SnapshotHash2;
+  spec: WorkflowSpec;
+  version: Version6;
+  workflow_template_id: WorkflowTemplateId;
+}
+export interface WorkflowLayout {
+  nodes?: Nodes;
+  viewport?: WorkflowViewport | null;
+}
+export interface Nodes {
+  [k: string]: WorkflowPosition;
+}
+export interface WorkflowPosition {
+  x: X;
+  y: Y;
+}
+export interface WorkflowViewport {
+  x: X1;
+  y: Y1;
+  zoom?: Zoom;
+}
+export interface WorkflowSpec {
+  defaults?: NodePolicy;
+  description?: Description5;
+  edges: Edges;
+  entrypoint: Entrypoint;
+  key: Key8;
+  name: Name5;
+  nodes: Nodes1;
   outputs: WorkflowOutputs;
+  reducers?: Reducers;
   spec_version?: SpecVersion;
+  state_schema?: StateSchema;
 }
 export interface NodePolicy {
   accepts_runtime_instructions?: AcceptsRuntimeInstructions;
@@ -1233,24 +1427,32 @@ export interface NodePolicy {
   permission_policy_ref?: PermissionPolicyRef;
   retry_policy_ref?: RetryPolicyRef;
   timeout_seconds?: TimeoutSeconds;
-  verification?: Verification1;
-  worker_selector?: WorkerSelector;
+  verification?: VerificationPolicy | null;
+  worker_selector?: WorkerSelector | null;
 }
 export interface ApprovalPolicy {
   action_type?: ActionType;
   expires_in_seconds?: ExpiresInSeconds;
   required_grant_from?: RequiredGrantFrom;
 }
+export interface VerificationPolicy {
+  required?: Required;
+  source?: Source1;
+}
+export interface WorkerSelector {
+  requires?: Requires;
+  revision_id: RevisionId2;
+}
 export interface WorkflowEdge {
   fallback?: Fallback;
   from: From;
-  id: Id15;
+  id: Id17;
   iteration_key?: IterationKey;
   kind: WorkflowEdgeKind;
   max_iterations?: MaxIterations;
   priority?: Priority1;
   progress_path?: ProgressPath;
-  retry_class?: RetryClass;
+  retry_class?: FailureClass | null;
   to: To;
   when?: Predicate | null;
 }
@@ -1262,8 +1464,9 @@ export interface Predicate {
 }
 export interface WorkflowNode {
   config: Config;
-  id: Id16;
+  id: Id18;
   label: Label;
+  node_version?: NodeVersion;
   policy?: NodePolicy;
   type: WorkflowNodeType;
 }
@@ -1273,17 +1476,150 @@ export interface Config {
 export interface WorkflowOutputs {
   result_path: ResultPath;
 }
-export interface WorkflowVersionContract {
-  compiler_version: CompilerVersion;
-  content_hash: ContentHash3;
-  id: Id17;
-  layout: Layout;
-  published: Published;
+export interface Reducers {
+  [k: string]: "merge_by_id" | "set_union" | "max_map";
+}
+export interface WorkflowDraftWrite {
+  expected_version: ExpectedVersion3;
+  idempotency_key: IdempotencyKey9;
+  layout?: WorkflowLayout;
   spec: WorkflowSpec;
-  spec_version?: SpecVersion1;
-  version: Version5;
-  workflow_template_id: WorkflowTemplateId;
+}
+export interface WorkflowNewDraft {
+  expected_version: ExpectedVersion4;
+  idempotency_key: IdempotencyKey10;
+  source_version_id?: SourceVersionId;
+}
+export interface OrganizerConfig {
+  summary_limit?: SummaryLimit;
+}
+export interface ArchitectConfig {
+  max_tasks?: MaxTasks;
+  output_schema?: OutputSchema;
+}
+export interface DispatchConfig {
+  parallelism?: Parallelism;
+  ready_order?: ReadyOrder;
+}
+export interface WorkerConfig {
+  task_source?: TaskSource;
+}
+export interface VerifyConfig {
+  commands_source?: CommandsSource;
+  stop_on_failure?: StopOnFailure;
+}
+export interface ReviewerConfig {
+  requires_repository_snapshot?: RequiresRepositorySnapshot;
+}
+export interface IntegrateConfig {
+  repository_source?: RepositorySource;
+  run_combined_gates?: RunCombinedGates;
+}
+export interface RouterConfig {}
+export interface FanoutConfig {
+  cancellation_strategy?: CancellationStrategy;
+  children?: Children;
+  join_id?: JoinId;
+  max_fanout?: MaxFanout;
+}
+export interface JoinConfig {
+  fanout_id?: FanoutId;
+  require_all?: RequireAll;
+}
+export interface ApprovalConfig {
+  action_type?: ActionType1;
+  expires_in_seconds?: ExpiresInSeconds1;
+}
+export interface PublishConfig {
+  repository_source?: RepositorySource1;
+  wait_for_ci?: WaitForCi;
+}
+export interface FinalizeConfig {
+  outcome?: Outcome1;
+}
+export interface NodeTypePage {
+  items: Items3;
+}
+export interface NodeTypeDefinition {
+  config_schema: ConfigSchema;
+  default_config: DefaultConfig;
+  external_behavior: ExternalBehavior;
+  input_channels: InputChannels;
+  output_channels: OutputChannels;
+  policy_schema: PolicySchema;
+  required_capabilities: RequiredCapabilities1;
+  type: WorkflowNodeType;
+}
+export interface ConfigSchema {
+  [k: string]: JsonValue;
+}
+export interface DefaultConfig {
+  [k: string]: JsonValue;
+}
+export interface PolicySchema {
+  [k: string]: JsonValue;
+}
+export interface WorkflowResolvedSnapshot {
+  compiler_version?: CompilerVersion1;
+  revisions?: Revisions;
+  workflow_content_hash: WorkflowContentHash1;
+}
+export interface WorkflowResolvedRevision {
+  archived?: Archived4;
+  configuration_id: ConfigurationId1;
+  content_hash: ContentHash4;
+  description?: Description6;
+  display_name: DisplayName2;
+  enabled?: Enabled2;
+  key: Key9;
+  revision: Revision2;
+  revision_id: RevisionId3;
+  spec: Spec3;
+}
+export interface WorkflowTemplatePage {
+  items: Items4;
+  next_after?: NextAfter3;
+}
+export interface WorkflowValidateRequest {
+  expected_version: ExpectedVersion5;
+  idempotency_key: IdempotencyKey11;
+  layout?: Layout;
+  spec: Spec4;
 }
 export interface Layout {
   [k: string]: JsonValue;
+}
+export interface Spec4 {
+  [k: string]: JsonValue;
+}
+export interface WorkflowValidationReport {
+  content_hash?: ContentHash5;
+  issues?: Issues1;
+  snapshot_hash?: SnapshotHash3;
+  valid: Valid1;
+}
+export interface WorkflowIssue {
+  code: Code4;
+  edge_id?: EdgeId;
+  message: Message4;
+  node_id?: NodeId2;
+  path?: Path1;
+}
+export interface WorkflowVersionContract {
+  compiler_version: CompilerVersion2;
+  content_hash: ContentHash6;
+  id: Id19;
+  layout: Layout1;
+  published: Published1;
+  spec: WorkflowSpec;
+  spec_version?: SpecVersion1;
+  version: Version7;
+  workflow_template_id: WorkflowTemplateId1;
+}
+export interface Layout1 {
+  [k: string]: JsonValue;
+}
+export interface WorkflowVersionPage {
+  items: Items5;
+  next_after?: NextAfter4;
 }

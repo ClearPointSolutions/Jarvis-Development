@@ -4,11 +4,26 @@ from __future__ import annotations
 
 from enum import StrEnum
 from typing import Annotated, Literal
+from uuid import UUID
 
 from pydantic import Field, JsonValue, model_validator
 
 from jarvis_contracts.base import ContractModel, sha256_digest
+from jarvis_contracts.enums import FailureClass
 from jarvis_contracts.ids import WorkflowTemplateId, WorkflowVersionId
+from jarvis_contracts.registry import Capability
+
+SPEC_VERSION = "1.1"
+COMPILER_VERSION: Literal["1.0.0"] = "1.0.0"
+MAX_WORKFLOW_BYTES = 1_048_576
+MAX_JSON_DEPTH = 24
+MAX_NODES = 500
+MAX_EDGES = 2_000
+MAX_GRAPH_DEPTH = 500
+MAX_PREDICATE_DEPTH = 8
+MAX_PREDICATE_COUNT = 64
+MAX_ITERATIONS = 10_000
+MAX_FANOUT = 64
 
 
 class WorkflowNodeType(StrEnum):
@@ -32,6 +47,7 @@ class WorkflowEdgeKind(StrEnum):
     ON_RESULT = "on_result"
     RETRY = "retry"
     ITERATE = "iterate"
+    ON_FAILURE = "on_failure"
 
 
 class PredicateOperator(StrEnum):
@@ -52,14 +68,18 @@ class Predicate(ContractModel):
     op: PredicateOperator
     path: str | None = Field(default=None, pattern=r"^\$\.[A-Za-z0-9_.-]+$")
     value: JsonValue | None = None
-    args: tuple[Predicate, ...] = ()
+    args: tuple[Predicate, ...] = Field(default=(), max_length=64)
 
     @model_validator(mode="after")
     def validate_shape(self) -> Predicate:
         logical = {PredicateOperator.AND, PredicateOperator.OR, PredicateOperator.NOT}
         if self.op in logical:
             required = 1 if self.op is PredicateOperator.NOT else 2
-            if len(self.args) < required or self.path is not None:
+            if (
+                len(self.args) < required
+                or self.path is not None
+                or (self.op is PredicateOperator.NOT and len(self.args) != 1)
+            ):
                 raise ValueError(f"{self.op.value} requires {required} predicate argument(s)")
         elif self.path is None or self.args:
             raise ValueError(f"{self.op.value} requires a path and no predicate arguments")
@@ -69,17 +89,27 @@ class Predicate(ContractModel):
 
 
 class ApprovalPolicy(ContractModel):
-    required_grant_from: str | None = None
-    action_type: str | None = None
+    required_grant_from: str | None = Field(default=None, max_length=80)
+    action_type: Literal["github.push_and_pr", "git.integrate", "worker.execute"] | None = None
     expires_in_seconds: Annotated[int, Field(gt=0)] | None = None
 
 
+class VerificationPolicy(ContractModel):
+    source: Literal["task"] = "task"
+    required: bool = True
+
+
+class WorkerSelector(ContractModel):
+    revision_id: UUID
+    requires: tuple[Capability, ...] = Field(default=(), max_length=64)
+
+
 class NodePolicy(ContractModel):
-    worker_selector: str | None = None
-    model_route_ref: str | None = None
-    retry_policy_ref: str | None = None
-    permission_policy_ref: str | None = None
-    verification: dict[str, JsonValue] | None = None
+    worker_selector: WorkerSelector | None = None
+    model_route_ref: UUID | None = None
+    retry_policy_ref: UUID | None = None
+    permission_policy_ref: UUID | None = None
+    verification: VerificationPolicy | None = None
     approval: ApprovalPolicy | None = None
     timeout_seconds: Annotated[int, Field(gt=0, le=86_400)] | None = None
     max_concurrency: Annotated[int, Field(gt=0, le=1_000)] | None = None
@@ -89,6 +119,7 @@ class NodePolicy(ContractModel):
 class WorkflowNode(ContractModel):
     id: str = Field(min_length=1, max_length=80, pattern=r"^[a-z][a-z0-9_-]*$")
     type: WorkflowNodeType
+    node_version: Literal["1.0"] = "1.0"
     label: str = Field(min_length=1, max_length=160)
     config: dict[str, JsonValue]
     policy: NodePolicy = Field(default_factory=NodePolicy)
@@ -102,7 +133,7 @@ class WorkflowEdge(ContractModel):
     when: Predicate | None = None
     priority: int = 0
     fallback: bool = False
-    retry_class: str | None = None
+    retry_class: FailureClass | None = None
     iteration_key: str | None = None
     progress_path: str | None = Field(default=None, pattern=r"^\$\.[A-Za-z0-9_.-]+$")
     max_iterations: Annotated[int, Field(gt=0, le=10_000)] | None = None
@@ -126,8 +157,23 @@ class WorkflowOutputs(ContractModel):
     result_path: str = Field(pattern=r"^\$\.[A-Za-z0-9_.-]+$")
 
 
+ReducerKind = Literal["merge_by_id", "set_union", "max_map"]
+
+
+def default_reducers() -> dict[str, ReducerKind]:
+    return {
+        "results": "merge_by_id",
+        "child_results": "merge_by_id",
+        "expected_children": "set_union",
+        "completed_children": "set_union",
+        "counters": "max_map",
+    }
+
+
 class WorkflowSpec(ContractModel):
-    spec_version: Literal["1.0"] = "1.0"
+    spec_version: Literal["1.0", "1.1"] = "1.1"
+    state_schema: Literal["jarvis.workflow_state.v1"] = "jarvis.workflow_state.v1"
+    reducers: dict[str, ReducerKind] = Field(default_factory=default_reducers)
     key: str = Field(min_length=1, max_length=100, pattern=r"^[a-z][a-z0-9_-]*$")
     name: str = Field(min_length=1, max_length=160)
     description: str = Field(default="", max_length=2_000)
@@ -159,14 +205,25 @@ class WorkflowSpec(ContractModel):
 
     @property
     def content_hash(self) -> str:
-        return sha256_digest(self)
+        return sha256_digest(self.canonical_payload())
+
+    def canonical_payload(self) -> dict[str, JsonValue]:
+        payload = self.model_dump(mode="json", by_alias=True)
+        payload["nodes"] = [
+            n.model_dump(mode="json", by_alias=True) for n in sorted(self.nodes, key=lambda n: n.id)
+        ]
+        payload["edges"] = [
+            e.model_dump(mode="json", by_alias=True)
+            for e in sorted(self.edges, key=lambda e: (e.source, e.priority, e.id))
+        ]
+        return payload
 
 
 class WorkflowVersionContract(ContractModel):
     id: WorkflowVersionId
     workflow_template_id: WorkflowTemplateId
     version: Annotated[int, Field(gt=0)]
-    spec_version: Literal["1.0"] = "1.0"
+    spec_version: Literal["1.0", "1.1"] = "1.1"
     compiler_version: str = Field(min_length=1, max_length=40)
     spec: WorkflowSpec
     layout: dict[str, JsonValue]

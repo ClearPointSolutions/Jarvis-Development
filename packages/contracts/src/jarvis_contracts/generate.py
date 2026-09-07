@@ -50,9 +50,66 @@ from jarvis_contracts.registry import (
     ValidationReport,
 )
 from jarvis_contracts.workflow import WorkflowSpec, WorkflowVersionContract
+from jarvis_contracts.workflow_api import (
+    WorkflowArchiveRequest,
+    WorkflowCommand,
+    WorkflowCreateRequest,
+    WorkflowDocument,
+    WorkflowDraftWrite,
+    WorkflowNewDraft,
+    WorkflowResolvedSnapshot,
+    WorkflowTemplatePage,
+    WorkflowValidateRequest,
+    WorkflowValidationReport,
+    WorkflowVersionPage,
+)
+from jarvis_contracts.workflow_nodes import (
+    ApprovalConfig,
+    ArchitectConfig,
+    DispatchConfig,
+    FanoutConfig,
+    FinalizeConfig,
+    IntegrateConfig,
+    JoinConfig,
+    NodeTypePage,
+    OrganizerConfig,
+    PublishConfig,
+    ReviewerConfig,
+    RouterConfig,
+    VerifyConfig,
+    WorkerConfig,
+)
 
 
 class JarvisContractBundle(ContractModel):
+    workflow_create: WorkflowCreateRequest | None = None
+    workflow_command: WorkflowCommand | None = None
+    workflow_draft_write: WorkflowDraftWrite | None = None
+    workflow_validate_request: WorkflowValidateRequest | None = None
+    workflow_new_draft: WorkflowNewDraft | None = None
+    workflow_archive_request: WorkflowArchiveRequest | None = None
+    workflow_document: WorkflowDocument | None = None
+    workflow_template_page: WorkflowTemplatePage | None = None
+    workflow_version_page: WorkflowVersionPage | None = None
+    workflow_validation: WorkflowValidationReport | None = None
+    workflow_snapshot: WorkflowResolvedSnapshot | None = None
+    workflow_node_types: NodeTypePage | None = None
+    workflow_node_configs: (
+        OrganizerConfig
+        | ArchitectConfig
+        | DispatchConfig
+        | WorkerConfig
+        | VerifyConfig
+        | ReviewerConfig
+        | IntegrateConfig
+        | RouterConfig
+        | FanoutConfig
+        | JoinConfig
+        | ApprovalConfig
+        | PublishConfig
+        | FinalizeConfig
+        | None
+    ) = None
     registry_write: RegistryWrite | None = None
     registry_record: RegistryRecord | None = None
     registry_page: RegistryPage | None = None

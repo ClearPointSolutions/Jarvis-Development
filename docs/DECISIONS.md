@@ -284,6 +284,26 @@ checks the exact profile pricing/route binding and stores immutable usage/cost
 records. Unknown costs remain null. Approval-needed spend decisions persist as
 typed audit outcomes; no M9 approval workflow is implemented early.
 
+### ADR-026 — M4 executable contract refinement
+
+**Supersedes:** only the incomplete M1 workflow envelope and illustrative string
+reference syntax in the workflow design; ADR-006/007/023 remain unchanged.
+
+**Decision:** Pin executable spec 1.1 with exact M3 revision UUID references,
+typed static config models, explicit reducers, bounded fanout/join and separate
+typed layout. Canonical ordering is nodes by ID and edges by source/priority/ID.
+See `M4_CONTRACT.md` for the shared API and compiler boundary.
+
+**Evidence:** M1 stored untyped config/verification dictionaries and string worker
+selectors, while M3 uses immutable revision UUIDs. Executing those placeholders
+without a supported-version boundary would imply semantics they never provided.
+
+**Consequences:** No old migration or published row is rewritten. Old 1.0 fixtures
+remain recognizable; executable compilation requires 1.1. Layout is immutable
+when published and excluded from the execution hash. Schema/backend/frontend
+consume one authority. External runtime services are injected and fail closed
+when unavailable; no M5 queue, M9 approval execution or external effect is enabled.
+
 ## Unresolved rework risks and required spikes
 
 These do not block architecture, but they are explicit gates:
