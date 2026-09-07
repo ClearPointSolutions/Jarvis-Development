@@ -1,5 +1,14 @@
 # M3 configuration and provider routing evidence
 
+## Publication reconciliation — 2026-09-07
+
+M3 is fully complete. Fetched `origin/main` and local main are
+`940cd631d54ba4bcc976b9175dd42b1fedd7386f`. GitHub `verify` run
+[34167362184](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34167362184)
+is completed with conclusion `success` for that exact SHA, independently checked
+through GitHub Actions metadata. **READY FOR M4**. The publication/credential
+blockers recorded below describe the historical local M3 session and are superseded.
+
 Date: 2026-09-07. Base: fetched `origin/main` at
 `ac6206b3b1bfb8e4adca1f414f81807e0a92ebcc` (merged M2). Dedicated branch:
 `codex/m3-config-routing`. Shared API/database contracts were pinned in `d31bb53`
