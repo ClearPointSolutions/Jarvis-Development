@@ -219,13 +219,21 @@ These behaviors are evidence and compatibility constraints, not code to transpla
 
 **Consequences:** Architecture specifies behavior rather than stale exact versions. Any necessary API adaptation stays inside adapters/compiler.
 
+### ADR-023 — LangGraph owns checkpoint namespaces
+
+**Decision:** A top-level run uses one globally unique, stable `configurable.thread_id` for checkpoint recovery. Jarvis binds that thread to an immutable run configuration snapshot and workflow version in its relational model and may include those IDs as additional configurable metadata. Jarvis does not place an application-defined partition key in `checkpoint_ns`; LangGraph owns that value for compiled subgraph addressing.
+
+**Why:** The ADR-022 spike against LangGraph 1.2.11 showed that state inspection interprets a non-empty `checkpoint_ns` as a compiled subgraph path. An arbitrary Jarvis namespace therefore makes `aget_state` fail with a missing-subgraph error even though the checkpoint was durably written.
+
+**Consequences:** Restart recovery and version binding remain stable without colliding with LangGraph's subgraph protocol. The workflow compiler must preserve LangGraph-generated namespaces and correlate checkpoints through `runs.langgraph_thread_id` plus immutable snapshot metadata.
+
 ## Unresolved rework risks and required spikes
 
 These do not block architecture, but they are explicit gates:
 
 1. **Legacy runner idempotency/streaming:** determine whether the V1 wrapper can reliably detach, persist PID/result, stream useful facts, and cancel a process group under Worker-01 permissions. Otherwise retain concurrency one and unknown-outcome blocking.
 2. **Worker worktrees:** prove OpenHands `Conversation(workspace=...)` and persistence paths behave correctly per isolated worktree. If not, use per-task cloned workspace or serialized project execution behind the same adapter.
-3. **LangGraph/checkpointer API/schema:** verify selected current versions' async PostgresSaver setup, interrupt streaming shape, checkpoint namespaces, pending writes, and migration behavior with PostgreSQL 16.
+3. **LangGraph/checkpointer API/schema:** resolved for M1 by the pinned compatibility suite. Async saver setup is idempotent, interrupt/resume survives reconnect by stable thread ID, streaming shapes are covered, LangGraph owns subgraph namespaces per ADR-023, and PostgreSQL 16 persistence is verified. Pending-write crash injection remains part of M5 runtime-node testing.
 4. **Atomic domain/checkpoint boundary:** effect ledger handles cross-boundary crashes, but failure injection must verify every node's prepare/commit ordering.
 5. **SSE through chosen Next.js/proxy topology:** verify no buffering, cookie/origin behavior, connection limits, and graceful deployment reconnect.
 6. **Ollama capabilities/usage:** probe the deployed version/models rather than assuming structured output, tool calling, tokenizer counts, or concurrent capacity.

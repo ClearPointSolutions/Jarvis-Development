@@ -193,7 +193,7 @@ Draft validation returns node/edge-addressed errors suitable for the GUI. The se
 9. An `iterate` edge compiles with a guard that verifies the configured progress value strictly increased since the prior traversal and remains within `max_iterations`. Lack of progress or bound exhaustion is an orchestration failure, not another traversal.
 10. A `fanout` factory returns LangGraph `Send` instructions bounded by configured and runtime capacity. The matching join uses a reducer keyed by child execution ID; completion requires the snapshotted expected set.
 11. Terminal success/failure/cancel outcomes route to `END` only after `finalize` persists the corresponding events/projections.
-12. Compile with the production Postgres checkpointer. Invocation always includes `configurable.thread_id = runs.langgraph_thread_id`; checkpoint namespace includes run/workflow version.
+12. Compile with the production Postgres checkpointer. Invocation always includes the globally unique stable `configurable.thread_id = runs.langgraph_thread_id`; immutable run and workflow-version identity is carried by the run snapshot and Jarvis configuration metadata. `checkpoint_ns` is reserved for LangGraph's compiled subgraph namespace and is never repurposed as an application partition key.
 13. Cache compiled graph structure by `(workflow_content_hash, config_snapshot_hash, compiler_version)` inside an orchestrator process. A cache miss after restart recompiles deterministically.
 14. Emit `graph.compiled` with hashes, compiler version, node/edge counts, and no secrets. A compile error blocks the run without starting effects.
 

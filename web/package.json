@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=20.9.0 <21"
+    "node": ">=20.19.0 <21"
   },
   "scripts": {
     "dev": "next dev",
@@ -16,8 +16,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "contracts:generate": "json2ts -i ../packages/contracts/generated/jarvis-contracts.schema.json -o ../packages/contracts/generated/jarvis-contracts.ts --bannerComment '/* Generated from authoritative Pydantic contracts. Do not edit. */'",
-    "contracts:check": "npm run contracts:generate && git diff --exit-code -- ../packages/contracts/generated"
+    "contracts:generate": "json2ts -i ../packages/contracts/generated/jarvis-contracts.schema.json -o ../packages/contracts/generated/jarvis-contracts.ts --bannerComment \"/* Generated from authoritative Pydantic contracts. Do not edit. */\"",
+    "contracts:check": "node scripts/check-contracts.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "5.102.8",

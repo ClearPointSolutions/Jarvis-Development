@@ -1,8 +1,20 @@
 # Jarvis V1 Status
 
 Last updated: 2026-09-07
-Current phase: M0 — Repository and verification foundation complete
-Overall state: architecture approved; M0 complete; M1 queued; M2 not started
+Current phase: M1 — Persistence and shared contracts complete
+Overall state: architecture approved; M0 and M1 complete; M2 not started
+
+## M1 completion criteria
+
+- [x] Establish SQLAlchemy 2.x and Alembic with `control`, `event_store`, and LangGraph-owned schemas plus least-privilege logical roles.
+- [x] Implement authoritative Pydantic IDs/statuses and versioned workflow, event, failure, command, configuration, snapshot, queue, lease, effect, and artifact contracts.
+- [x] Generate deterministic TypeScript types and JSON Schema from the Python authority and enforce drift checks.
+- [x] Implement the M1 relational model and transactional repositories with deterministic clock, ID, and idempotency utilities.
+- [x] Enforce append-only event storage and ordering/deduplication invariants in PostgreSQL.
+- [x] Bootstrap LangGraph Postgres checkpointing and prove stable-thread persistence, streaming APIs, and durable interrupt/resume behavior.
+- [x] Prove PostgreSQL 16, OpenAI SDK, and React Flow compatibility for the selected pins required by ADR-022.
+- [x] Pass migration up/down, constraints/race/idempotency, unit, integration, frontend, build, browser, audit, and secret gates.
+- [x] Review M1; the coherent commit immediately following this status update is the milestone boundary. Stop before M2A/M2B/M2C.
 
 ## Active M0 criteria
 
@@ -15,7 +27,7 @@ Overall state: architecture approved; M0 complete; M1 queued; M2 not started
 - [x] Prove a fresh local install can execute the empty/scaffold quality gates.
 - [x] Review M0; commit is the milestone boundary immediately following this status update.
 
-M1 criteria will be activated only after the M0 commit. M2A, M2B, and M2C are explicitly out of scope for this turn.
+M2A, M2B, and M2C are explicitly out of scope for this turn.
 
 ## Architecture milestone criteria
 
@@ -69,11 +81,14 @@ M1 criteria will be activated only after the M0 commit. M2A, M2B, and M2C are ex
 
 ## Current implementation state
 
-M0 provides importable Python 3.12 API/orchestrator/contract packages, a minimal
-Next.js application, exact Python and npm locks, an isolated PostgreSQL 16 local
-Compose definition, safe scripts, CI, and deterministic verification. No database
-model, migration, production runtime behavior, deployment, or remote change exists
-yet. Reference and legacy files remain unmodified.
+M0 provides the Python 3.12 API/orchestrator package layout, minimal Next.js shell,
+exact Python/npm locks, safe scripts, CI, secret scanning, and local PostgreSQL
+Compose definition. M1 adds authoritative frozen Pydantic contracts and generated
+JSON Schema/TypeScript, 20 `control` tables, three append-only/ordering
+`event_store` tables, LangGraph-owned checkpoint tables, logical roles, an Alembic
+baseline, transactional event/command/idempotency/effect/lease repositories, and
+deterministic test utilities. No M2 API, SSE, authentication, frontend shell feature,
+deployment, or remote change has begun. Reference and legacy files remain unmodified.
 
 ## Validation evidence
 
@@ -98,6 +113,19 @@ M0 validation on 2026-09-07:
 - All shell scripts parse; `demo.sh` and `deploy-core.sh` refuse safely with exit code 2.
 - PostgreSQL integration is intentionally not active until M1 adds its migration and deterministic tests.
 
+M1 validation on 2026-09-07:
+
+- Python 3.12.14 installed `requirements.lock`; `pip check` reported no broken requirements.
+- Local `postgres:16.10-bookworm` reported PostgreSQL 16.10. Alembic downgrade/upgrade and metadata-drift check passed while excluding the package-owned `langgraph` schema.
+- `pytest --cov`: 25 passed with 92.99% branch coverage. Tests cover constraints, immutable revisions/snapshots/published workflows, append-only events, concurrent gap-free ordering, event/command/effect/request idempotency conflicts, command sequencing/optimistic versions, lease expiry/fencing, logical-role permissions, and deterministic clocks/IDs.
+- LangGraph 1.2.11 compiled/invoked and produced `astream(..., stream_mode="updates")` plus `astream_events(..., version="v2")`; `langgraph-checkpoint-postgres` 3.1.2 setup was idempotent and an interrupt survived saver closure/reopen before same-thread `Command(resume=...)` completion.
+- OpenAI 3.8.0 Responses API types/client succeeded against an in-process `httpx2` 2.12.0 mock transport with no external request.
+- React 19.2.8 and React Flow 12.11.6 initialized typed nodes/edge in Vitest; all three frontend tests, TypeScript, ESLint, Prettier, Next 16.3.4 production build, and the Chromium Playwright smoke/console check passed.
+- JSON Schema and TypeScript generation checks passed byte-for-byte. `npm audit --audit-level=high` reported zero vulnerabilities.
+- `scripts/verify.sh` passed every enabled M0/M1 gate with the disposable database configured; the secret canary was detected and the repository scan was clean.
+- ADR-022 exposed one runtime contract correction: arbitrary non-empty `checkpoint_ns` is interpreted as a LangGraph subgraph path. ADR-023 reserves that field for LangGraph and uses the stable run thread ID plus immutable snapshot metadata for Jarvis correlation.
+- No homelab address was contacted, no SSH was attempted, and no deployment was run.
+
 During Prompt 01, application test/build commands were not run because the
 repository contained no V1 application and that prompt forbade implementation.
 Executable JSON/Markdown/Git validation was proportionate to that earlier
@@ -105,11 +133,10 @@ documentation-only milestone; the M0 application gates are recorded above.
 
 ## Next milestone
 
-Begin M1 only after the coherent M0 commit. Activate the M1 criteria in this file,
-then implement the durable contracts, PostgreSQL/Alembic foundation, shared-contract
-generation, and ADR-022 compatibility spikes. Do not begin M2 or access/deploy to
-the real homelab.
+After the M1 commit, the contracts are stable enough to begin the approved parallel
+M2A authentication/security, M2B event/SSE, and M2C frontend-shell group from the
+same pinned contract revision. M2 remains explicitly unstarted in this turn.
 
 ## Open gates and risks
 
-The unresolved spikes in `docs/DECISIONS.md` are implementation gates, especially legacy runner idempotency/worktree compatibility, current LangGraph/checkpointer compatibility, SSE proxy behavior, deployed Ollama capabilities, GitHub credential form, and safe narrow health collection. Real Worker-01, GitHub, and restart tests remain Prompt 03 gates; side-by-side deployment remains Prompt 04.
+The unresolved spikes in `docs/DECISIONS.md` remain implementation gates, especially legacy runner idempotency/worktree compatibility, SSE proxy behavior, deployed Ollama capabilities, GitHub credential form, and safe narrow health collection. LangGraph/checkpointer API/schema compatibility is resolved for M1 by ADR-023 and the pinned tests; pending-write crash injection remains an M5 runtime-node concern. Real Worker-01, GitHub, and restart tests remain Prompt 03 gates; side-by-side deployment remains Prompt 04.

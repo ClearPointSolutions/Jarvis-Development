@@ -47,4 +47,11 @@ jobs:
         working-directory: web
       - run: npx playwright install --with-deps chromium
         working-directory: web
+      - name: Bootstrap PostgreSQL logical roles
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: "5432"
+          PGDATABASE: jarvis_v1_test
+          PGUSER: jarvis_v1_dev
+        run: psql -v ON_ERROR_STOP=1 -f deploy/postgres/init/001_roles.sql
       - run: scripts/verify.sh

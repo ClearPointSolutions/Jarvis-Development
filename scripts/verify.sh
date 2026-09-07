@@ -23,14 +23,17 @@ echo "== Python format, lint, and types =="
 "$PYTHON_BIN" -m ruff check .
 "$PYTHON_BIN" -m mypy
 
-echo "== Python unit and compatibility tests =="
-"$PYTHON_BIN" -m pytest -m "not integration" --cov --cov-report=term-missing
-
 if [ -n "${TEST_DATABASE_URL:-}" ] && [ -f alembic.ini ]; then
-  echo "== PostgreSQL migration and integration tests =="
+  echo "== PostgreSQL migration and full Python test suite =="
   DATABASE_URL="$TEST_DATABASE_URL" "$PYTHON_BIN" -m alembic upgrade head
-  "$PYTHON_BIN" -m pytest -m integration
+  "$PYTHON_BIN" -m pytest --cov --cov-report=term-missing
 else
+  echo "== Python unit and compatibility tests (PostgreSQL disabled) =="
+  "$PYTHON_BIN" -m pytest -m "not integration" \
+    --cov=jarvis_api \
+    --cov=jarvis_orchestrator \
+    --cov=jarvis_contracts \
+    --cov-report=term-missing
   echo "== PostgreSQL tests skipped (set TEST_DATABASE_URL to enable) =="
 fi
 

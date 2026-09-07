@@ -12,6 +12,7 @@ dependencies = [
   "alembic==1.19.2",
   "fastapi==0.141.1",
   "httpx==0.28.1",
+  "httpx2==2.12.0",
   "langgraph==1.2.11",
   "langgraph-checkpoint-postgres==3.1.2",
   "openai==3.8.0",
@@ -40,7 +41,7 @@ jarvis-orchestrator = "jarvis_orchestrator.main:run"
 jarvis-contracts = "jarvis_contracts.generate:main"
 
 [tool.setuptools.packages.find]
-where = ["api/app", "orchestrator/app", "packages/contracts/src"]
+where = ["api/app", "orchestrator/app", "packages/contracts/src", "packages/persistence/src"]
 
 [tool.pytest.ini_options]
 addopts = "-ra --strict-config --strict-markers"
@@ -53,7 +54,7 @@ markers = [
 
 [tool.coverage.run]
 branch = true
-source = ["jarvis_api", "jarvis_orchestrator", "jarvis_contracts"]
+source = ["jarvis_api", "jarvis_orchestrator", "jarvis_contracts", "jarvis_persistence"]
 
 [tool.coverage.report]
 fail_under = 80
@@ -62,7 +63,14 @@ show_missing = true
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-src = ["api/app", "orchestrator/app", "packages/contracts/src", "tests", "scripts"]
+src = [
+  "api/app",
+  "orchestrator/app",
+  "packages/contracts/src",
+  "packages/persistence/src",
+  "tests",
+  "scripts",
+]
 exclude = ["docs/reference/legacy"]
 
 [tool.ruff.lint]
@@ -70,10 +78,17 @@ select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
 "api/migrations/versions/*.py" = ["E501"]
+"packages/persistence/src/jarvis_persistence/models.py" = ["N811"]
 
 [tool.mypy]
 python_version = "3.12"
 strict = true
-files = ["api/app", "orchestrator/app", "packages/contracts/src", "tests"]
+files = [
+  "api/app",
+  "orchestrator/app",
+  "packages/contracts/src",
+  "packages/persistence/src",
+  "tests",
+]
 plugins = ["pydantic.mypy"]
 warn_unused_configs = true

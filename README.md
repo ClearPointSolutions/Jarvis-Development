@@ -29,5 +29,16 @@ Run the complete local gate with `scripts/verify.sh`. Database tests run when
 `scripts/demo.sh` and `scripts/deploy-core.sh` intentionally refuse to run until
 their later milestones are implemented.
 
+Start the disposable local PostgreSQL database and include its M1 gates with:
+
+```sh
+docker compose -f deploy/compose.dev.yml up -d --wait postgres
+export TEST_DATABASE_URL=postgresql+psycopg://jarvis_v1_dev@127.0.0.1:55432/jarvis_v1_test
+scripts/verify.sh
+```
+
+The Compose database uses loopback-only trust authentication and is for isolated
+local testing only. Production credentials and roles are supplied outside Git.
+
 Architecture and milestone authority lives in `docs/`. Never put secrets in the
 repository or browser-visible environment variables.
