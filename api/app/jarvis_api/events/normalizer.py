@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from pydantic import Field, JsonValue, field_validator
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from jarvis_api.events.artifacts import EventArtifactSink
@@ -22,6 +23,7 @@ from jarvis_contracts.events import (
     NormalizedEvent,
 )
 from jarvis_contracts.ids import EventId
+from jarvis_persistence.models import EventGlobalCounterModel
 from jarvis_persistence.repositories import EventRepository
 
 
@@ -127,12 +129,27 @@ class EventNormalizer:
             raise TypeError("event source redaction did not return an object")
         source = EventSource.model_validate(source_report.value)
 
-        raw_message = intent.message or definition.default_message
+        raw_message = definition.default_message
         message, message_counts = self._redactor.redact_text(raw_message)
         if len(message) > 1_024:
             message = f"{message[:1021]}..."
 
-        artifact_refs = list(intent.artifact_refs)
+        artifact_refs = [
+            ArtifactReference(
+                artifact_id=reference.artifact_id,
+                relation=self._redactor.redact_text(reference.relation)[0],
+            )
+            for reference in intent.artifact_refs
+        ]
+        safe_scope = intent.scope.model_copy(
+            update={
+                "workflow_node_id": (
+                    self._redactor.redact_text(intent.scope.workflow_node_id)[0]
+                    if intent.scope.workflow_node_id is not None
+                    else None
+                )
+            }
+        )
         extracted = False
         encoded_data = canonical_json(redacted_data)
         if len(encoded_data) > self._inline_bytes:
@@ -166,16 +183,21 @@ class EventNormalizer:
             message=message,
             mode=intent.mode,
             visibility=intent.visibility,
-            scope=intent.scope,
+            scope=safe_scope,
             source=source,
-            correlation_id=intent.correlation_id,
+            correlation_id=self._redactor.redact_text(intent.correlation_id)[0],
             causation_event_id=intent.causation_event_id,
-            idempotency_key=intent.idempotency_key,
+            idempotency_key=(
+                self._redactor.redact_text(intent.idempotency_key)[0]
+                if intent.idempotency_key is not None
+                else None
+            ),
             trace=intent.trace,
             data=redacted_data,
             artifact_refs=tuple(artifact_refs),
         )
-        if len(canonical_json(event)) > self._max_bytes:
+        # Reserve ordering/timestamp/UUID overhead added by persistence.
+        if len(canonical_json(event)) + 256 > self._max_bytes:
             raise ValueError("normalized event exceeds the configured persistence limit")
         return PreparedEvent(
             event=event,
@@ -197,6 +219,12 @@ class EventWriter:
         self._repository = repository
 
     async def append(self, session: AsyncSession, intent: EventIntent) -> WrittenEvent:
+        # Artifacts can acquire unique-key locks, so take the global lock before
+        # normalization too. Every event producer follows this same lock order.
+        await session.scalar(
+            select(EventGlobalCounterModel).where(EventGlobalCounterModel.id == 1).with_for_update()
+        )
+        await self._repository.validate_scope(session, intent.scope, intent.artifact_refs)
         prepared = await self._normalizer.prepare(session, intent)
         written = await self._repository.append(session, prepared.event)
         return WrittenEvent(

@@ -3,17 +3,19 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Awaitable, Callable
-from datetime import datetime
+from pathlib import Path
 from typing import Protocol
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, ConfigDict, Field
+from fastapi.responses import FileResponse, StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from jarvis_api.events.artifacts import artifact_path
 from jarvis_api.events.sse import EventStream, SseConnectionLimiter, resolve_event_cursor
-from jarvis_contracts.api import EventPage
+from jarvis_contracts.api import EventPage, RunEventSnapshotResponse
+from jarvis_persistence.models import ArtifactModel, EventModel
 from jarvis_persistence.repositories import (
     EventCursorExpiredError,
     EventRepository,
@@ -32,19 +34,6 @@ StreamGuardDependency = Callable[..., Awaitable[None]]
 RunAuthorizer = Callable[[AsyncSession, EventPrincipal, UUID], Awaitable[bool]]
 
 
-class RunEventSnapshotResponse(BaseModel):
-    """Authoritative event projection boundary consumed before opening SSE."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    run_id: UUID
-    status: str = Field(min_length=1, max_length=30)
-    last_event_position: int = Field(ge=0)
-    last_run_sequence: int = Field(ge=0)
-    last_event_at: datetime | None
-    read_cursor: int = Field(ge=0)
-
-
 def build_event_router(
     *,
     session_factory: async_sessionmaker[AsyncSession],
@@ -55,6 +44,8 @@ def build_event_router(
     stream_guard_dependency: StreamGuardDependency,
     authorize_run: RunAuthorizer,
     default_page_size: int,
+    authorize_stream: Callable[[EventPrincipal], Awaitable[bool]],
+    artifact_root: Path | None = None,
 ) -> APIRouter:
     """Build routes without coupling event delivery to an auth implementation."""
 
@@ -169,6 +160,11 @@ def build_event_router(
                     after=cursor,
                     is_disconnected=request.is_disconnected,
                 ):
+                    if not await authorize_stream(principal):
+                        return
+                    async with session_factory() as session:
+                        if not await authorize_run(session, principal, run_id):
+                            return
                     yield frame
             finally:
                 await limiter.release(principal_key)
@@ -181,6 +177,42 @@ def build_event_router(
                 "Connection": "keep-alive",
                 "X-Accel-Buffering": "no",
             },
+        )
+
+    @router.get("/artifacts/{artifact_id}", operation_id="get_event_artifact")
+    async def get_artifact(
+        artifact_id: UUID, principal: EventPrincipal = principal_marker
+    ) -> FileResponse:
+        if artifact_root is None:
+            raise HTTPException(status_code=404, detail="not found")
+        async with session_factory() as session:
+            artifact = await session.get(ArtifactModel, artifact_id)
+            # Only artifacts referenced by a visible persisted event are downloadable.
+            visible = await session.scalar(
+                select(EventModel.global_position)
+                .where(
+                    EventModel.artifact_refs_json.contains([{"artifact_id": str(artifact_id)}]),
+                    EventModel.visibility.in_(("owner", "operator")),
+                )
+                .limit(1)
+            )
+            if artifact is None or visible is None:
+                raise HTTPException(status_code=404, detail="not found")
+            if artifact.run_id is not None and not await authorize_run(
+                session, principal, artifact.run_id
+            ):
+                raise HTTPException(status_code=404, detail="not found")
+            try:
+                path = artifact_path(artifact_root, artifact.storage_key)
+            except ValueError:
+                raise HTTPException(status_code=404, detail="not found") from None
+            if not path.is_file():
+                raise HTTPException(status_code=404, detail="not found")
+        return FileResponse(
+            path,
+            media_type="application/octet-stream",
+            filename=f"{artifact_id}.json",
+            headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
         )
 
     return router

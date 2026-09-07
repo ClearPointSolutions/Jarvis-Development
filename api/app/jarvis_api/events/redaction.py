@@ -10,7 +10,7 @@ from pydantic import JsonValue
 
 _SECRET_FIELD: Final = re.compile(
     r"(?:^|[_-])(?:api[_-]?key|access[_-]?key|client[_-]?secret|token|password|passwd|"
-    r"authorization|cookie|private[_-]?key|connection[_-]?(?:string|url)|database[_-]?url)"
+    r"authorization|cookie|secret|private[_-]?key|connection[_-]?(?:string|url)|database[_-]?url)"
     r"(?:$|[_-])",
     re.IGNORECASE,
 )
@@ -26,17 +26,21 @@ _HIDDEN_REASONING_FIELDS: Final = frozenset(
     }
 )
 _PRIVATE_KEY: Final = re.compile(
-    r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----.*?-----END [A-Z0-9 ]*PRIVATE KEY-----",
+    r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----.*?(?:-----END [A-Z0-9 ]*PRIVATE KEY-----|$)",
     re.DOTALL,
 )
 _BEARER: Final = re.compile(r"(?i)\bbearer\s+[a-z0-9._~+/=-]+")
 _CREDENTIAL_URL: Final = re.compile(r"(?i)\b([a-z][a-z0-9+.-]*://)([^\s/@:]+)(?::[^\s/@]*)?@")
-_ENV_ASSIGNMENT: Final = re.compile(
-    r"(?im)^(\s*[A-Z_][A-Z0-9_]*(?:TOKEN|PASSWORD|SECRET|API_KEY|PRIVATE_KEY)\s*=)\s*[^\r\n]*"
+_ENV_ASSIGNMENT: Final = re.compile(r"(?m)^(\s*(?:export\s+)?[A-Z_][A-Z0-9_]*\s*=)\s*[^\r\n]*")
+_JWT: Final = re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b")
+_PROVIDER_TOKEN: Final = re.compile(
+    r"\b(?:sk-(?:proj-|ant-)?[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9]{20,}|"
+    r"github_pat_[A-Za-z0-9_]{20,}|xox[baprs]-[A-Za-z0-9-]{16,}|AKIA[A-Z0-9]{16})\b"
 )
+_HEADER: Final = re.compile(r"(?im)\b(?:authorization|(?:set-)?cookie)\s*:\s*[^\r\n]+")
 _INLINE_ASSIGNMENT: Final = re.compile(
     r"(?i)\b(password|passwd|token|api[_-]?key|client[_-]?secret)\s*([:=])\s*"
-    r"([^\s,;]+)"
+    r"(\"[^\"]*\"|'[^']*'|[^\s,;]+)"
 )
 
 
@@ -71,8 +75,10 @@ class RecursiveRedactor:
         if isinstance(value, dict):
             result: dict[str, JsonValue] = {}
             for raw_key, item in value.items():
-                key = str(raw_key)
-                normalized_key = key.casefold().replace("-", "_")
+                key = self._redact_string(str(raw_key), counts)
+                normalized_key = (
+                    re.sub(r"([a-z])([A-Z])", r"\1_\2", key).casefold().replace("-", "_")
+                )
                 if normalized_key in _HIDDEN_REASONING_FIELDS:
                     self._increment(counts, "hidden_reasoning")
                     continue
@@ -95,6 +101,14 @@ class RecursiveRedactor:
             if matches:
                 result = result.replace(secret, self._placeholder("known_secret"))
                 self._increment(counts, "known_secret", matches)
+
+        for pattern, rule in (
+            (_HEADER, "header"),
+            (_JWT, "jwt"),
+            (_PROVIDER_TOKEN, "provider_token"),
+        ):
+            result, count = pattern.subn(self._placeholder(rule), result)
+            self._increment(counts, rule, count)
 
         result, count = _PRIVATE_KEY.subn(self._placeholder("private_key"), result)
         self._increment(counts, "private_key", count)

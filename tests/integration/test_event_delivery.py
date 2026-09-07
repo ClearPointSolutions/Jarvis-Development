@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 from uuid import UUID
 
 import httpx
 import pytest
 from fastapi import FastAPI, HTTPException, Request
-from sqlalchemy import select
+from sqlalchemy import select, text
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from uuid6 import uuid7
 
@@ -19,8 +21,10 @@ from jarvis_api.events.redaction import RecursiveRedactor
 from jarvis_api.events.router import EventPrincipal, build_event_router
 from jarvis_api.events.sse import (
     EventStream,
+    PollingEventWakeups,
     PostgresEventWakeups,
     SseConnectionLimiter,
+    parse_sse_data,
 )
 from jarvis_contracts.commands import RunCommandRequest
 from jarvis_contracts.enums import (
@@ -319,6 +323,9 @@ async def test_router_authorizes_objects_and_last_event_id_wins(
         )
         return owner == candidate.user_id
 
+    async def authorize_stream(candidate: EventPrincipal) -> bool:
+        return candidate.user_id == principal.user_id
+
     one_frame = OneFrameStream()
     app = FastAPI()
     app.include_router(
@@ -331,6 +338,7 @@ async def test_router_authorizes_objects_and_last_event_id_wins(
             stream_guard_dependency=stream_guard,
             authorize_run=authorize,
             default_page_size=20,
+            authorize_stream=authorize_stream,
         )
     )
     async with httpx.AsyncClient(
@@ -369,3 +377,227 @@ async def test_router_authorizes_objects_and_last_event_id_wins(
         "get_run_event_snapshot",
         "stream_run_events",
     }.issubset(operation_ids)
+
+
+async def test_concurrent_distinct_run_writers_and_rollback_do_not_leave_gaps(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    seeded = [await seed_run(session_factory) for _ in range(3)]
+    repository = EventRepository()
+
+    async def write(index: int) -> NormalizedEvent:
+        async with session_factory.begin() as session:
+            return await repository.append(session, event(seeded[index % 3].run_id, index + 1))
+
+    async with session_factory() as session:
+        discarded = await repository.append(session, event(seeded[0].run_id, 999))
+        await session.rollback()
+    written = await asyncio.wait_for(asyncio.gather(*(write(i) for i in range(18))), 15)
+    positions = sorted(item.global_position for item in written)
+    assert positions == list(range(discarded.global_position, discarded.global_position + 18))
+    for run in seeded:
+        assert sorted(
+            item.run_sequence
+            for item in written
+            if item.scope.run_id == run.run_id and item.run_sequence is not None
+        ) == list(range(1, 7))
+
+
+async def test_database_stream_reconnect_replays_events_without_notifications(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    seeded = await seed_run(session_factory)
+    repository = EventRepository()
+    stream = EventStream(
+        session_factory=session_factory,
+        repository=repository,
+        wakeups=PollingEventWakeups(),
+        page_size=1,
+        poll_seconds=0.01,
+        keepalive_seconds=30,
+    )
+    async with session_factory.begin() as session:
+        first = await repository.append(session, event(seeded.run_id, 1))
+    frames = stream.iter_frames(run_id=seeded.run_id, after=0)
+    assert parse_sse_data(await anext(frames))["event_id"] == str(first.event_id)
+    await cast(AsyncGenerator[str, None], frames).aclose()
+    async with session_factory.begin() as session:
+        second = await repository.append(session, event(seeded.run_id, 2))
+        third = await repository.append(session, event(seeded.run_id, 3))
+        duplicate = await repository.append(session, event(seeded.run_id, 3))
+    assert duplicate.event_id == third.event_id
+    resumed = stream.iter_frames(run_id=seeded.run_id, after=first.global_position)
+    assert parse_sse_data(await anext(resumed))["event_id"] == str(second.event_id)
+    assert parse_sse_data(await anext(resumed))["event_id"] == str(third.event_id)
+    next_frame = asyncio.ensure_future(anext(resumed))
+    async with session_factory.begin() as session:
+        fourth = await repository.append(session, event(seeded.run_id, 4))
+    assert parse_sse_data(await asyncio.wait_for(next_frame, 2))["event_id"] == str(fourth.event_id)
+    await cast(AsyncGenerator[str, None], resumed).aclose()
+
+
+async def test_cross_project_scope_is_rejected_before_event_commit(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    one, two = await seed_run(session_factory), await seed_run(session_factory)
+    repository = EventRepository()
+    invalid = event(one.run_id, 1).model_copy(
+        update={"scope": EventScope(run_id=RunId(one.run_id), job_id=two.job_id)}
+    )
+    async with session_factory.begin() as session:
+        with pytest.raises(ValueError, match="job"):
+            await repository.append(session, invalid)
+
+
+async def test_artifact_role_write_is_append_only_and_download_checks_visibility(
+    session_factory: async_sessionmaker[AsyncSession],
+    tmp_path: Path,
+) -> None:
+    seeded = await seed_run(session_factory)
+    root = tmp_path / "artifacts"
+    writer = EventWriter(
+        repository=EventRepository(),
+        normalizer=EventNormalizer(
+            redactor=RecursiveRedactor(),
+            artifact_sink=LocalEventArtifactStore(root),
+            inline_bytes=1024,
+            max_bytes=65536,
+        ),
+    )
+    results = []
+    for visibility in (EventVisibility.OWNER, EventVisibility.INTERNAL):
+        async with session_factory.begin() as session:
+            await session.execute(text("SET LOCAL ROLE jarvis_v1_api"))
+            written = await writer.append(
+                session,
+                EventIntent(
+                    occurred_at=NOW,
+                    type="command.output_summary",
+                    severity=EventSeverity.INFO,
+                    mode=EventMode.DEMO,
+                    visibility=visibility,
+                    scope=EventScope(run_id=RunId(seeded.run_id)),
+                    source=EventSource(kind="api", name="artifact-test"),
+                    correlation_id="artifact-test",
+                    data={"stdout": visibility.value * 1024},
+                ),
+            )
+            results.append(written.event.artifact_refs[0].artifact_id)
+    for statement in (
+        "UPDATE control.artifacts SET kind = 'changed' WHERE id = :id",
+        "DELETE FROM control.artifacts WHERE id = :id",
+        "UPDATE event_store.events SET message = 'changed' WHERE run_id = :id",
+        "DELETE FROM event_store.events WHERE run_id = :id",
+    ):
+        async with session_factory() as session:
+            await session.execute(text("SET LOCAL ROLE jarvis_v1_api"))
+            with pytest.raises(DBAPIError):
+                await session.execute(
+                    text(statement), {"id": seeded.run_id if "events" in statement else results[0]}
+                )
+            await session.rollback()
+    # The immutable trigger also protects privileged accidental updates.
+    async with session_factory() as session:
+        with pytest.raises(DBAPIError):
+            await session.execute(
+                text("UPDATE control.artifacts SET kind='changed' WHERE id=:id"), {"id": results[0]}
+            )
+        await session.rollback()
+    principal = Principal(seeded.user_id)
+    allowed = True
+
+    async def current() -> EventPrincipal:
+        return principal
+
+    async def guard() -> None:
+        pass
+
+    async def authorize(session: AsyncSession, candidate: EventPrincipal, run: UUID) -> bool:
+        return allowed and run == seeded.run_id and candidate.user_id == seeded.user_id
+
+    async def live(candidate: EventPrincipal) -> bool:
+        return True
+
+    app = FastAPI()
+    app.include_router(
+        build_event_router(
+            session_factory=session_factory,
+            repository=EventRepository(),
+            stream=OneFrameStream(),
+            limiter=SseConnectionLimiter(1),
+            principal_dependency=current,
+            stream_guard_dependency=guard,
+            authorize_run=authorize,
+            default_page_size=20,
+            authorize_stream=live,
+            artifact_root=root,
+        )
+    )
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        response = await client.get(f"/api/v1/artifacts/{results[0]}")
+        assert response.status_code == 200
+        assert response.headers["content-disposition"].startswith("attachment;")
+        assert response.headers["content-type"] == "application/octet-stream"
+        assert (await client.get(f"/api/v1/artifacts/{results[1]}")).status_code == 404
+        allowed = False
+        assert (await client.get(f"/api/v1/artifacts/{results[0]}")).status_code == 404
+
+
+async def test_stream_stops_after_session_revocation_and_releases_connection(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    seeded = await seed_run(session_factory)
+    principal = Principal(seeded.user_id)
+    checks = 0
+
+    class TwoFrames(OneFrameStream):
+        async def iter_frames(
+            self,
+            *,
+            run_id: UUID,
+            after: int,
+            is_disconnected: Callable[[], Awaitable[bool]] | None = None,
+        ) -> AsyncIterator[str]:
+            yield 'data: {"sequence":1}\n\n'
+            yield 'data: {"sequence":2}\n\n'
+
+    async def current() -> EventPrincipal:
+        return principal
+
+    async def guard() -> None:
+        pass
+
+    async def authorize(session: AsyncSession, candidate: EventPrincipal, run_id: UUID) -> bool:
+        return run_id == seeded.run_id
+
+    async def live(candidate: EventPrincipal) -> bool:
+        nonlocal checks
+        checks += 1
+        return checks == 1
+
+    limiter = SseConnectionLimiter(1)
+    app = FastAPI()
+    app.include_router(
+        build_event_router(
+            session_factory=session_factory,
+            repository=EventRepository(),
+            stream=TwoFrames(),
+            limiter=limiter,
+            principal_dependency=current,
+            stream_guard_dependency=guard,
+            authorize_run=authorize,
+            default_page_size=20,
+            authorize_stream=live,
+        )
+    )
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        response = await client.get(f"/api/v1/runs/{seeded.run_id}/events/stream")
+    assert response.status_code == 200
+    assert response.text == 'data: {"sequence":1}\n\n'
+    assert checks == 2
+    assert await limiter.claim(str(principal.user_id))
+    await limiter.release(str(principal.user_id))

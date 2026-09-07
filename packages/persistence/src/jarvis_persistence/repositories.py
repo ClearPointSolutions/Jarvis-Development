@@ -26,14 +26,20 @@ from jarvis_contracts.events import (
 )
 from jarvis_contracts.ids import CommandId, EventId, RunId
 from jarvis_persistence.models import (
+    ArtifactModel,
     EffectModel,
     EventGlobalCounterModel,
     EventModel,
     IdempotencyRecordModel,
+    JobModel,
+    NodeExecutionModel,
+    ProjectModel,
     RunCommandModel,
     RunEventCounterModel,
     RunLeaseModel,
     RunModel,
+    TaskAttemptModel,
+    TaskModel,
 )
 from jarvis_persistence.testing import Clock, IdGenerator, SystemClock
 
@@ -117,6 +123,7 @@ class EventRepository:
         if global_counter is None:
             raise PersistenceInvariantError("event global counter is not initialized")
 
+        await self.validate_scope(session, event.scope, event.artifact_refs)
         idempotency_scope_key = self._idempotency_scope_key(event)
         source_dedupe_key = self._source_dedupe_key(event)
         duplicate = await self._find_duplicate(
@@ -194,6 +201,60 @@ class EventRepository:
             run.last_event_at = row.recorded_at
             await session.flush()
         return self._to_contract(row)
+
+    @staticmethod
+    async def validate_scope(
+        session: AsyncSession, scope: EventScope, references: tuple[ArtifactReference, ...]
+    ) -> None:
+        """Reject cross-resource references before any browser-visible fact is stored."""
+        run = await session.get(RunModel, scope.run_id) if scope.run_id else None
+        if scope.run_id and run is None:
+            raise ValueError("event scope references a missing run")
+        job_id = run.job_id if run else scope.job_id
+        job = await session.get(JobModel, job_id) if job_id else None
+        if job_id and job is None:
+            raise ValueError("event scope references a missing job")
+        if scope.job_id and (job is None or scope.job_id != job.id):
+            raise ValueError("event job does not belong to its run")
+        if scope.project_id:
+            if job and job.project_id != scope.project_id:
+                raise ValueError("event project does not belong to its job")
+            if await session.get(ProjectModel, scope.project_id) is None:
+                raise ValueError("event scope references a missing project")
+        if scope.thread_id and (job is None or job.thread_id != scope.thread_id):
+            raise ValueError("event thread does not belong to its job")
+        task = await session.get(TaskModel, scope.task_id) if scope.task_id else None
+        if scope.task_id and (task is None or task.run_id != scope.run_id):
+            raise ValueError("event task does not belong to its run")
+        if scope.task_attempt_id:
+            attempt = await session.get(TaskAttemptModel, scope.task_attempt_id)
+            attempt_task = await session.get(TaskModel, attempt.task_id) if attempt else None
+            if (
+                attempt_task is None
+                or attempt_task.run_id != scope.run_id
+                or (scope.task_id is not None and attempt_task.id != scope.task_id)
+            ):
+                raise ValueError("event attempt does not belong to its task/run")
+        if scope.node_execution_id:
+            node = await session.get(NodeExecutionModel, scope.node_execution_id)
+            if (
+                node is None
+                or node.run_id != scope.run_id
+                or (scope.task_id is not None and node.task_id != scope.task_id)
+                or (
+                    scope.task_attempt_id is not None
+                    and node.task_attempt_id != scope.task_attempt_id
+                )
+                or (
+                    scope.workflow_node_id is not None
+                    and node.workflow_node_id != scope.workflow_node_id
+                )
+            ):
+                raise ValueError("event node execution does not belong to its scope")
+        for reference in references:
+            artifact = await session.get(ArtifactModel, reference.artifact_id)
+            if artifact is None or artifact.run_id != scope.run_id:
+                raise ValueError("event artifact does not belong to its run")
 
     async def page(
         self,

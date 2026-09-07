@@ -41,8 +41,12 @@ class _PostgresSubscription:
         self._connection = connection
 
     async def wait(self, timeout: float) -> bool:
-        async for _notification in self._connection.notifies(timeout=timeout, stop_after=1):
-            return True
+        try:
+            async for _notification in self._connection.notifies(timeout=timeout, stop_after=1):
+                return True
+        except psycopg.OperationalError:
+            # LISTEN failure must never become a loss of durable event delivery.
+            await asyncio.sleep(timeout)
         return False
 
 
@@ -58,7 +62,11 @@ class PostgresEventWakeups:
 
     @asynccontextmanager
     async def subscribe(self) -> AsyncIterator[WakeupSubscription]:
-        connection = await psycopg.AsyncConnection.connect(self._conninfo, autocommit=True)
+        try:
+            connection = await psycopg.AsyncConnection.connect(self._conninfo, autocommit=True)
+        except psycopg.OperationalError:
+            yield _PollingSubscription()
+            return
         try:
             await connection.execute(sql.SQL("LISTEN {}").format(sql.Identifier(self._channel)))
             yield _PostgresSubscription(connection)
@@ -99,6 +107,8 @@ def resolve_event_cursor(*, after: int, last_event_id: str | None) -> int:
         return after
     if not last_event_id.isascii() or not last_event_id.isdecimal():
         raise ValueError("Last-Event-ID must be a nonnegative integer")
+    if len(last_event_id) > 19 or int(last_event_id) > 9_223_372_036_854_775_807:
+        raise ValueError("event cursor exceeds the PostgreSQL bigint range")
     return int(last_event_id)
 
 

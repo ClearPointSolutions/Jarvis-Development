@@ -123,6 +123,8 @@ async def test_every_registered_event_normalizes_with_a_human_summary(event_type
             "rate_limited": False,
             "retry_after_seconds": 0,
         }
+    elif event_type == "auth.security_denied":
+        data = {"reason": "invalid_origin"}
     elif event_type == "auth.logout":
         data = {
             "user_id": str(new_id(UserId)),
@@ -134,6 +136,8 @@ async def test_every_registered_event_normalizes_with_a_human_summary(event_type
             "session_id": str(new_id(SessionId)),
             "reason": "logout",
         }
+    elif event_type == "auth.owner_password_reset":
+        data = {"user_id": str(new_id(UserId)), "revoked_session_count": 0}
     elif event_type == "auth.owner_bootstrapped":
         data = {"user_id": str(new_id(UserId)), "migrated_project_count": 0}
 
@@ -392,3 +396,53 @@ async def test_sse_frames_cursor_precedence_and_connection_limit() -> None:
                 pass
     async with limiter.acquire("owner"):
         pass
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c3ludGhldGljc2ln",
+        "sk-" + "synthetic" * 5,
+        "ghp_" + "synthetic" * 5,
+        "Cookie: jarvis_session=synthetic-cookie-value; other=anything",
+        "Authorization: Basic c3ludGhldGljOnNlY3JldA==",
+    ],
+)
+def test_bare_credentials_and_headers_are_redacted(value: str) -> None:
+    report = RecursiveRedactor().redact({"nested": [{"output": value}]})
+    assert value not in str(report.value)
+    assert report.count > 0
+
+
+def test_camel_case_secret_fields_and_secret_keys_are_redacted() -> None:
+    report = RecursiveRedactor(("synthetic-key-value",)).redact(
+        {
+            "apiKey": "synthetic-field-value",
+            "synthetic-key-value": "safe",
+            "session_id": "public-identifier",
+        }
+    )
+    assert "synthetic-field-value" not in str(report.value)
+    assert "synthetic-key-value" not in str(report.value)
+    assert "public-identifier" in str(report.value)
+
+
+async def test_producer_cannot_choose_human_summary_or_leak_correlation_secret() -> None:
+    normalizer = EventNormalizer(
+        redactor=RecursiveRedactor(("synthetic-canary",)),
+        artifact_sink=None,
+        inline_bytes=1024,
+        max_bytes=65536,
+    )
+    prepared = await normalizer.prepare(
+        cast(AsyncSession, object()),
+        intent(message="<script>synthetic-canary</script>", correlation_id="synthetic-canary"),
+    )
+    assert prepared.event.message == EVENT_REGISTRY["run.started"].default_message
+    assert "synthetic-canary" not in prepared.event.model_dump_json()
+
+
+@pytest.mark.parametrize("cursor", ["9" * 20, "9223372036854775808"])
+def test_cursor_bigint_overflow_is_rejected(cursor: str) -> None:
+    with pytest.raises(ValueError):
+        resolve_event_cursor(after=0, last_event_id=cursor)

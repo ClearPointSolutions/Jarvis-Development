@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import tempfile
 from pathlib import Path
 from typing import Protocol
 from uuid import UUID
@@ -81,18 +82,20 @@ class LocalEventArtifactStore:
 
     @staticmethod
     def _write_once(path: Path, content: bytes) -> None:
+        # Publish only a fully written file. Concurrent readers never see partial bytes.
+        descriptor, temporary = tempfile.mkstemp(prefix=".event-", dir=path.parent)
         try:
-            descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        except FileExistsError:
-            existing_digest = hashlib.sha256(path.read_bytes()).hexdigest()
-            expected_digest = path.name
-            if existing_digest != expected_digest:
-                raise OSError("immutable artifact content does not match its digest") from None
-            return
-        with os.fdopen(descriptor, "wb") as stream:
-            stream.write(content)
-            stream.flush()
-            os.fsync(stream.fileno())
+            with os.fdopen(descriptor, "wb") as stream:
+                stream.write(content)
+                stream.flush()
+                os.fsync(stream.fileno())
+            try:
+                os.link(temporary, path)
+            except FileExistsError:
+                if hashlib.sha256(path.read_bytes()).hexdigest() != path.name:
+                    raise OSError("immutable artifact content does not match its digest") from None
+        finally:
+            os.unlink(temporary)
 
 
 def artifact_path(root: Path, storage_key: str) -> Path:
