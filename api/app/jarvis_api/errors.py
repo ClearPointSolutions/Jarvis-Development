@@ -129,17 +129,43 @@ def install_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(StarletteHTTPException)
     async def handle_http(request: Request, error: StarletteHTTPException) -> JSONResponse:
+        event_codes = {
+            "event.cursor_expired",
+            "event.unsupported_schema",
+            "event.run_sequence_gap",
+            "event.invalid_cursor",
+            "event.stream_limit",
+        }
+        details: dict[str, Any] = {}
         if error.status_code == 404:
             code, message = "resource.not_found", "The requested resource was not found"
         elif error.status_code == 405:
             code, message = "request.method_not_allowed", "The request method is not allowed"
         else:
             code, message = "request.rejected", "The request could not be completed"
+        if isinstance(error.detail, dict) and error.detail.get("code") in event_codes:
+            code = error.detail["code"]
+            message = (
+                "The event stream must be refreshed"
+                if error.status_code == 409
+                else "The event request could not be completed"
+            )
+            details = {
+                key: value
+                for key, value in error.detail.items()
+                if key
+                in {"earliest_position", "latest_position", "global_position", "expected", "actual"}
+                and isinstance(value, int)
+                and value >= 0
+            }
+        if error.status_code == 404:
+            await audit_denial(request, "not_found")
         return problem_response(
             status_code=error.status_code,
             code=code,
             message=message,
             request_id_value=request_id(request),
+            details=details,
         )
 
     @app.exception_handler(Exception)

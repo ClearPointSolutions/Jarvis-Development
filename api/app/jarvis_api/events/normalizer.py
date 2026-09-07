@@ -134,21 +134,30 @@ class EventNormalizer:
         if len(message) > 1_024:
             message = f"{message[:1021]}..."
 
+        metadata_counts: dict[str, int] = {}
+
+        def safe_metadata(value: str) -> str:
+            redacted, rule_counts = self._redactor.redact_text(value)
+            self._merge_counts(metadata_counts, rule_counts)
+            return redacted
+
         artifact_refs = [
             ArtifactReference(
                 artifact_id=reference.artifact_id,
-                relation=self._redactor.redact_text(reference.relation)[0],
+                relation=safe_metadata(reference.relation),
             )
             for reference in intent.artifact_refs
         ]
-        safe_scope = intent.scope.model_copy(
-            update={
-                "workflow_node_id": (
-                    self._redactor.redact_text(intent.scope.workflow_node_id)[0]
-                    if intent.scope.workflow_node_id is not None
-                    else None
-                )
-            }
+        workflow_node_id = intent.scope.workflow_node_id
+        if workflow_node_id is not None:
+            redacted_node_id = safe_metadata(workflow_node_id)
+            # Scope identity is verified against the producer's original value by
+            # EventWriter. Omit a sensitive label instead of inventing an identity
+            # that no longer matches the referenced node execution.
+            if redacted_node_id != workflow_node_id:
+                workflow_node_id = None
+        safe_scope = EventScope.model_validate(
+            intent.scope.model_dump(mode="json") | {"workflow_node_id": workflow_node_id}
         )
         extracted = False
         encoded_data = canonical_json(redacted_data)
@@ -185,10 +194,10 @@ class EventNormalizer:
             visibility=intent.visibility,
             scope=safe_scope,
             source=source,
-            correlation_id=self._redactor.redact_text(intent.correlation_id)[0],
+            correlation_id=safe_metadata(intent.correlation_id),
             causation_event_id=intent.causation_event_id,
             idempotency_key=(
-                self._redactor.redact_text(intent.idempotency_key)[0]
+                safe_metadata(intent.idempotency_key)
                 if intent.idempotency_key is not None
                 else None
             ),
@@ -196,6 +205,7 @@ class EventNormalizer:
             data=redacted_data,
             artifact_refs=tuple(artifact_refs),
         )
+        self._merge_counts(counts, metadata_counts)
         # Reserve ordering/timestamp/UUID overhead added by persistence.
         if len(canonical_json(event)) + 256 > self._max_bytes:
             raise ValueError("normalized event exceeds the configured persistence limit")

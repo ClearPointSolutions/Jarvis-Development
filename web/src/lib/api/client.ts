@@ -1,4 +1,5 @@
 import createClient from "openapi-fetch";
+import type { paths } from "@jarvis/api";
 
 import type {
   ApiErrorResponse,
@@ -6,41 +7,6 @@ import type {
   LogoutResponse,
   SessionResponse,
 } from "@jarvis/contracts";
-
-type JsonResponse<T> = { content: { "application/json": T } };
-
-// This narrow compatibility surface is replaced with the integration-owned
-// generated OpenAPI `paths` type after the M2 backend branches merge.
-interface BrowserApiPaths {
-  "/api/v1/auth/login": {
-    post: {
-      requestBody: { content: { "application/json": LoginRequest } };
-      responses: {
-        200: JsonResponse<SessionResponse>;
-        400: JsonResponse<ApiErrorResponse>;
-        401: JsonResponse<ApiErrorResponse>;
-        429: JsonResponse<ApiErrorResponse>;
-      };
-    };
-  };
-  "/api/v1/auth/logout": {
-    post: {
-      responses: {
-        200: JsonResponse<LogoutResponse>;
-        401: JsonResponse<ApiErrorResponse>;
-        403: JsonResponse<ApiErrorResponse>;
-      };
-    };
-  };
-  "/api/v1/session": {
-    get: {
-      responses: {
-        200: JsonResponse<SessionResponse>;
-        401: JsonResponse<ApiErrorResponse>;
-      };
-    };
-  };
-}
 
 export class ApiRequestError extends Error {
   constructor(
@@ -74,7 +40,7 @@ function requestError(error: ApiErrorResponse | undefined, response: Response) {
 export function createBrowserApiClient(
   fetchImplementation?: ApiFetch,
 ): BrowserApiClient {
-  const client = createClient<BrowserApiPaths>({
+  const client = createClient<paths>({
     baseUrl: globalThis.location?.origin ?? "http://localhost",
     credentials: "same-origin",
     fetch: fetchImplementation,

@@ -45,3 +45,14 @@ def test_orchestrator_entrypoint_uses_asyncio_runner() -> None:
         run()
     asyncio_run.assert_called_once()
     asyncio_run.call_args.args[0].close()
+
+
+def test_windows_api_uses_psycopg_compatible_uvicorn_loop_factory() -> None:
+    from jarvis_api.main import run as run_api
+
+    with (
+        patch("jarvis_api.main.sys.platform", "win32"),
+        patch("jarvis_api.main.uvicorn.run") as server,
+    ):
+        run_api()
+    assert server.call_args.kwargs["loop"] == "asyncio:SelectorEventLoop"

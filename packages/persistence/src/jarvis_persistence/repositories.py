@@ -68,13 +68,13 @@ class UnsupportedEventSchemaError(ValueError):
 
 
 class EventCursorExpiredError(ValueError):
-    """A replay cursor precedes the retained global event range."""
+    """A replay cursor is outside the retained committed global event range."""
 
     def __init__(self, *, requested: int, earliest: int, latest: int) -> None:
         self.requested = requested
         self.earliest = earliest
         self.latest = latest
-        super().__init__(f"event cursor {requested} precedes retained position {earliest}")
+        super().__init__(f"event cursor {requested} is outside retained range {earliest}..{latest}")
 
 
 class RunSequenceGapError(ValueError):
@@ -278,8 +278,8 @@ class EventRepository:
     ) -> EventPage:
         """Read an owner-visible run page at one committed high-water boundary."""
 
-        if after < 0:
-            raise ValueError("event cursor cannot be negative")
+        if not 0 <= after <= 9_223_372_036_854_775_807:
+            raise ValueError("event cursor must fit a nonnegative PostgreSQL bigint")
         if limit < 1 or limit > 1_000:
             raise ValueError("event page limit must be between 1 and 1000")
 
@@ -290,6 +290,8 @@ class EventRepository:
             raise PersistenceInvariantError("event global counter is not initialized")
 
         earliest = await session.scalar(select(func.min(EventModel.global_position)))
+        if after > counter:
+            raise EventCursorExpiredError(requested=after, earliest=earliest or 0, latest=counter)
         if after > 0 and earliest is not None and after < earliest - 1:
             raise EventCursorExpiredError(requested=after, earliest=earliest, latest=counter)
 

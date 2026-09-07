@@ -90,6 +90,7 @@ files = [
   "packages/contracts/src",
   "packages/persistence/src",
   "tests",
+  "scripts",
 ]
 plugins = ["pydantic.mypy"]
 warn_unused_configs = true

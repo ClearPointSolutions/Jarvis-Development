@@ -64,7 +64,7 @@ def build_event_router(
     async def list_events(
         run_id: UUID,
         principal: EventPrincipal = principal_marker,
-        after: int = Query(default=0, ge=0),
+        after: int = Query(default=0, ge=0, le=9_223_372_036_854_775_807),
         limit: int = Query(default=default_page_size, ge=1, le=1_000),
     ) -> EventPage:
         async with session_factory() as session:
@@ -133,7 +133,7 @@ def build_event_router(
         run_id: UUID,
         principal: EventPrincipal = principal_marker,
         _stream_guard: None = stream_guard_marker,
-        after: int = Query(default=0, ge=0),
+        after: int = Query(default=0, ge=0, le=9_223_372_036_854_775_807),
         last_event_id: str | None = Header(default=None, alias="Last-Event-ID"),
     ) -> StreamingResponse:
         del _stream_guard

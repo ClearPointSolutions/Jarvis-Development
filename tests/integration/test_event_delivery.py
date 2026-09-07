@@ -40,12 +40,14 @@ from jarvis_persistence.models import (
     ArtifactModel,
     EventModel,
     JobModel,
+    NodeExecutionModel,
     ProjectModel,
     RunEventCounterModel,
     RunModel,
 )
 from jarvis_persistence.repositories import (
     CommandRepository,
+    EventCursorExpiredError,
     EventRepository,
     RunSequenceGapError,
     UnsupportedEventSchemaError,
@@ -350,6 +352,12 @@ async def test_router_authorizes_objects_and_last_event_id_wins(
     ) as client:
         page_response = await client.get(f"/api/v1/runs/{seeded.run_id}/events")
         snapshot_response = await client.get(f"/api/v1/runs/{seeded.run_id}/event-snapshot")
+        for suffix in ("events", "events/stream"):
+            overflow = await client.get(
+                f"/api/v1/runs/{seeded.run_id}/{suffix}?after=9223372036854775808",
+                headers={"Origin": "http://testserver"},
+            )
+            assert overflow.status_code == 422
         inaccessible = await client.get(f"/api/v1/runs/{uuid7()}/events")
         rejected_stream = await client.get(
             f"/api/v1/runs/{seeded.run_id}/events/stream?after=1",
@@ -370,7 +378,7 @@ async def test_router_authorizes_objects_and_last_event_id_wins(
     assert stream_response.status_code == 200
     assert stream_response.headers["x-accel-buffering"] == "no"
     assert one_frame.cursor == 17
-    assert guard_calls == 2
+    assert guard_calls == 3
     operation_ids = {
         operation["operationId"]
         for path in app.openapi()["paths"].values()
@@ -709,3 +717,81 @@ async def test_no_run_artifacts_authorize_project_or_job_and_do_not_share_namesp
         assert (
             await client.get(f"/api/v1/artifacts/{references[1].artifact_id}")
         ).status_code == 404
+
+
+async def test_future_cursor_resets_to_committed_watermark(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    seeded = await seed_run(session_factory)
+    repository = EventRepository()
+    async with session_factory.begin() as session:
+        written = await repository.append(session, event(seeded.run_id, 1))
+    future = written.global_position + 1000
+    async with session_factory() as session:
+        with pytest.raises(EventCursorExpiredError) as caught:
+            await repository.page(session, run_id=seeded.run_id, after=future, limit=20)
+        assert caught.value.latest == written.global_position
+        with pytest.raises(ValueError, match="bigint"):
+            await repository.page(session, run_id=seeded.run_id, after=2**63, limit=20)
+    stream = EventStream(
+        session_factory=session_factory,
+        repository=repository,
+        wakeups=PollingEventWakeups(),
+        page_size=20,
+        poll_seconds=0.01,
+        keepalive_seconds=1,
+    )
+    frames = stream.iter_frames(run_id=seeded.run_id, after=future)
+    reset = parse_sse_data(await anext(frames))
+    assert reset["reason"] == "cursor_expired"
+    assert reset["latest_position"] == written.global_position
+    with pytest.raises(StopAsyncIteration):
+        await anext(frames)
+
+
+async def test_redacted_node_label_preserves_valid_scope_identity(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    seeded = await seed_run(session_factory)
+    secret = "synthetic-node-label-canary"
+    node_id = uuid7()
+    async with session_factory.begin() as session:
+        session.add(
+            NodeExecutionModel(
+                id=node_id,
+                run_id=seeded.run_id,
+                workflow_node_id=secret,
+                execution_number=1,
+                status="queued",
+            )
+        )
+    writer = EventWriter(
+        repository=EventRepository(),
+        normalizer=EventNormalizer(
+            redactor=RecursiveRedactor((secret,)),
+            artifact_sink=None,
+            inline_bytes=1024,
+            max_bytes=65536,
+        ),
+    )
+    async with session_factory.begin() as session:
+        written = await writer.append(
+            session,
+            EventIntent(
+                occurred_at=NOW,
+                type="node.started",
+                severity=EventSeverity.INFO,
+                mode=EventMode.DEMO,
+                visibility=EventVisibility.OWNER,
+                scope=EventScope(
+                    run_id=RunId(seeded.run_id), node_execution_id=node_id, workflow_node_id=secret
+                ),
+                source=EventSource(kind="api", name="scope-test"),
+                correlation_id="scope-test",
+                data={},
+            ),
+        )
+    assert secret not in written.event.model_dump_json()
+    assert written.event.scope.node_execution_id == node_id
+    assert written.event.scope.workflow_node_id is None
+    assert written.redaction_rule_counts["known_secret"] == 1

@@ -61,7 +61,7 @@ class LocalEventArtifactStore:
         if not target.is_relative_to(self._root):
             raise ValueError("artifact storage key escaped the configured root")
         target.parent.mkdir(parents=True, exist_ok=True)
-        self._write_once(target, content)
+        self._write_once(Path(_native_link_path(str(target))), content)
 
         artifact_id = uuid7()
         inserted_id = await session.scalar(
@@ -98,12 +98,22 @@ class LocalEventArtifactStore:
                 stream.flush()
                 os.fsync(stream.fileno())
             try:
-                os.link(temporary, path)
+                os.link(_native_link_path(temporary), _native_link_path(str(path)))
             except FileExistsError:
                 if hashlib.sha256(path.read_bytes()).hexdigest() != path.name:
                     raise OSError("immutable artifact content does not match its digest") from None
         finally:
             os.unlink(temporary)
+
+
+def _native_link_path(value: str) -> str:
+    # CreateHardLinkW retains MAX_PATH unless paths use the extended namespace.
+    # Artifact scopes/digests can exceed it under a deep Windows checkout.
+    if os.name != "nt" or value.startswith("\\\\?\\"):
+        return value
+    if value.startswith("\\\\"):
+        return "\\\\?\\UNC\\" + value[2:]
+    return "\\\\?\\" + value
 
 
 def artifact_path(root: Path, storage_key: str) -> Path:
@@ -113,7 +123,7 @@ def artifact_path(root: Path, storage_key: str) -> Path:
     target = (resolved_root / storage_key).resolve()
     if not target.is_relative_to(resolved_root):
         raise ValueError("artifact key escaped the configured root")
-    return target
+    return Path(_native_link_path(str(target)))
 
 
 def artifact_scope_key(scope: EventScope) -> UUID | None:

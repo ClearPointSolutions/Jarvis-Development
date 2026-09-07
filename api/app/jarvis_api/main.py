@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
 import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, cast
 
 import uvicorn
 from fastapi import FastAPI
@@ -18,8 +16,9 @@ from jarvis_api.auth.routes import router as auth_router
 from jarvis_api.auth.service import AuthService
 from jarvis_api.config import Settings, get_settings
 from jarvis_api.errors import install_error_handlers
+from jarvis_api.event_delivery import install_event_delivery
 from jarvis_api.security import install_security_middleware
-from jarvis_contracts.api import LivenessResponse
+from jarvis_contracts.api import ApiErrorResponse, LivenessResponse
 from jarvis_persistence.database import (
     create_async_database_engine,
     create_async_session_factory,
@@ -61,6 +60,10 @@ def create_app(
         redoc_url=None,
         openapi_url=None,
         lifespan=lifespan,
+        responses={
+            code: {"model": ApiErrorResponse}
+            for code in (400, 401, 403, 404, 409, 413, 415, 422, 429, 500, 503)
+        },
     )
     app.state.settings = config
     app.state.session_factory = session_factory
@@ -74,6 +77,7 @@ def create_app(
     install_error_handlers(app)
     install_security_middleware(app, config)
     app.include_router(auth_router)
+    install_event_delivery(app, config, session_factory, app.state.auth_service)
 
     @app.get(
         "/health",
@@ -92,10 +96,14 @@ app = create_app()
 
 def run() -> None:
     settings = get_settings()
-    if sys.platform == "win32":
-        policy_type = cast(Any, asyncio).WindowsSelectorEventLoopPolicy
-        asyncio.set_event_loop_policy(policy_type())
-    uvicorn.run("jarvis_api.main:app", host=settings.api_host, port=settings.api_port)
+    # Uvicorn 0.52 supplies its own loop factory, overriding asyncio's policy.
+    # Psycopg requires SelectorEventLoop on Windows for real server connections.
+    uvicorn.run(
+        "jarvis_api.main:app",
+        host=settings.api_host,
+        port=settings.api_port,
+        loop="asyncio:SelectorEventLoop" if sys.platform == "win32" else "auto",
+    )
 
 
 if __name__ == "__main__":

@@ -6,10 +6,12 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from jarvis_api.events.normalizer import EventIntent, EventNormalizer, EventWriter
+from jarvis_api.events.redaction import RecursiveRedactor
 from jarvis_contracts.base import ContractModel
 from jarvis_contracts.enums import EventCategory, EventMode, EventSeverity, EventVisibility
 from jarvis_contracts.event_registry import event_definition
-from jarvis_contracts.events import EventSource, NewEvent
+from jarvis_contracts.events import EventSource
 from jarvis_persistence.repositories import EventRepository
 
 
@@ -17,6 +19,15 @@ class AuthAuditWriter:
     def __init__(self, *, instance_id: str, repository: EventRepository | None = None) -> None:
         self._instance_id = instance_id
         self._repository = repository or EventRepository()
+        self._writer = EventWriter(
+            normalizer=EventNormalizer(
+                redactor=RecursiveRedactor(),
+                artifact_sink=None,
+                inline_bytes=32_768,
+                max_bytes=65_536,
+            ),
+            repository=self._repository,
+        )
 
     async def append(
         self,
@@ -37,9 +48,9 @@ class AuthAuditWriter:
             payload, definition.payload_model
         ):
             raise TypeError(f"invalid payload for authentication event: {event_type}")
-        await self._repository.append(
+        await self._writer.append(
             session,
-            NewEvent(
+            EventIntent(
                 occurred_at=occurred_at,
                 category=EventCategory.AUTH,
                 type=event_type,
