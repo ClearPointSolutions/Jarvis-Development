@@ -20,7 +20,8 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@jarvis/contracts": ["../packages/contracts/generated/jarvis-contracts"]
+      "@jarvis/contracts": ["../packages/contracts/generated/jarvis-contracts"],
+      "@jarvis/api": ["../packages/contracts/generated/jarvis-api"]
     }
   },
   "include": [

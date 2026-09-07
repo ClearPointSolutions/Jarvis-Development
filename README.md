@@ -1,8 +1,9 @@
 # Jarvis V1 / Mission Control
 
 Jarvis V1 is the durable human control plane for a LangGraph-based development
-system. The current implementation scope is the repository foundation and durable
-contracts; the legacy prototype remains untouched under `docs/reference/legacy/`.
+system. M2 adds durable owner authentication, redacted event replay/SSE and the
+accessible Mission Control shell. Runtime execution and provider configuration
+remain later milestones; the legacy prototype is unchanged.
 
 ## Supported toolchain
 
@@ -42,3 +43,38 @@ local testing only. Production credentials and roles are supplied outside Git.
 
 Architecture and milestone authority lives in `docs/`. Never put secrets in the
 repository or browser-visible environment variables.
+
+## Local M2 operation
+
+After migrations, initialize the owner explicitly on the API host:
+
+```sh
+python -m jarvis_api.auth.bootstrap --username owner
+```
+
+The command prompts twice without echoing the password. There is no public signup.
+For local recovery, add `--reset-password`; this changes the existing owner's
+password and durably revokes all sessions. It never creates another owner.
+
+Set `JARVIS_PUBLIC_ORIGIN` to the exact browser origin including its port and set
+the web server's `JARVIS_API_URL` to the internal API origin. For local development
+these are `http://127.0.0.1:3000` and `http://127.0.0.1:8000` respectively. Start
+the API with `python -m jarvis_api.main` and the web application with `npm run dev`
+from `web`. Use the production build for CSP/browser acceptance checks.
+
+Production configuration requires an HTTPS public origin, Secure cookies and a
+private persistent `JARVIS_CSRF_HMAC_KEY_FILE` containing 32–4096 bytes. API database
+credentials should assume the least-privilege `jarvis_v1_api` role; migrations and
+owner bootstrap use the separate local administrative identity. No infrastructure
+credential belongs in web configuration.
+
+The `/runs` screen accepts an existing run ID and displays its authorized event
+projection and replayable feed. M2 deliberately provides no run-creation or
+execution endpoint. Other route shells explain their upcoming milestone.
+
+With `TEST_DATABASE_URL` configured, `scripts/verify.sh` creates a fresh disposable
+browser-test database, starts the actual API, exercises Chromium through the same-
+origin web proxy, and drops that database afterward. It never contacts the homelab.
+The proxy treats all browsers as one network source for conservative network login
+limiting; account limiting remains independent. Session polling counts as request
+activity, while SSE never extends session lifetime or mutates authentication state.

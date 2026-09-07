@@ -2078,6 +2078,59 @@
       "title": "RunConfigurationSnapshot",
       "type": "object"
     },
+    "RunEventSnapshotResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "last_event_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Last Event At"
+        },
+        "last_event_position": {
+          "minimum": 0,
+          "title": "Last Event Position",
+          "type": "integer"
+        },
+        "last_run_sequence": {
+          "minimum": 0,
+          "title": "Last Run Sequence",
+          "type": "integer"
+        },
+        "read_cursor": {
+          "minimum": 0,
+          "title": "Read Cursor",
+          "type": "integer"
+        },
+        "run_id": {
+          "format": "uuid",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "status": {
+          "maxLength": 30,
+          "minLength": 1,
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "status",
+        "last_event_position",
+        "last_run_sequence",
+        "last_event_at",
+        "read_cursor"
+      ],
+      "title": "RunEventSnapshotResponse",
+      "type": "object"
+    },
     "RunStatus": {
       "enum": [
         "queued",
@@ -2918,6 +2971,17 @@
       "anyOf": [
         {
           "$ref": "#/$defs/RunConfigurationSnapshot"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "run_event_snapshot": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RunEventSnapshotResponse"
         },
         {
           "type": "null"

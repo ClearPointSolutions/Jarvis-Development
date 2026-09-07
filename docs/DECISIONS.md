@@ -227,6 +227,33 @@ These behaviors are evidence and compatibility constraints, not code to transpla
 
 **Consequences:** Restart recovery and version binding remain stable without colliding with LangGraph's subgraph protocol. The workflow compiler must preserve LangGraph-generated namespaces and correlate checkpoints through `runs.langgraph_thread_id` plus immutable snapshot metadata.
 
+### ADR-024 — M2 browser transport and artifact authorization
+
+**Decision:** The Next server forwards the original browser authority and the narrow
+authentication/CSRF/SSE headers to FastAPI through a streaming same-origin transport.
+FastAPI remains the authorization authority. Incoming forwarding headers are not
+trusted. The API sees the Next process as the network source, so network login
+limiting is conservative across all browsers; account limits remain independent.
+
+**Why:** Browser cookies must remain same-origin and HttpOnly, and SSE must retain
+its durable reconnect cursor across the actual web/API boundary. Generic proxy
+defaults can replace Host with the internal upstream authority and break the
+normative exact-origin check.
+
+**Consequences:** The integrated Chromium/PostgreSQL gate verifies the real transport.
+The API and web both bound mutation bodies. CSP uses per-request script nonces;
+inline styles remain allowed for React Flow/xterm presentation, while scripts do
+not permit unsafe-inline or unsafe-eval. Session polling is authenticated request
+activity; SSE authentication/revalidation is read-only, including denials.
+
+Event artifact metadata is immutable from migration 0003. Content namespaces include
+run/job/project scope, and downloads require an authorized visible originating
+event plus size/digest verification. Global-counter locking precedes run, command,
+and artifact mutations. LISTEN/NOTIFY is only a latency optimization; polling and
+replay are authoritative. Unsupported schema majors, expired/future cursors and
+sequence gaps yield explicit reset semantics. No retention worker or runtime job
+loop is introduced in M2.
+
 ## Unresolved rework risks and required spikes
 
 These do not block architecture, but they are explicit gates:

@@ -16,11 +16,11 @@ from sqlalchemy.orm import Session, sessionmaker
 
 
 def create_sync_engine(database_url: str, *, echo: bool = False) -> Engine:
-    return create_engine(database_url, echo=echo, pool_pre_ping=True)
+    return create_engine(database_url, echo=echo, pool_pre_ping=True, hide_parameters=True)
 
 
 def create_async_database_engine(database_url: str, *, echo: bool = False) -> AsyncEngine:
-    return create_async_engine(database_url, echo=echo, pool_pre_ping=True)
+    return create_async_engine(database_url, echo=echo, pool_pre_ping=True, hide_parameters=True)
 
 
 def create_sync_session_factory(engine: Engine) -> sessionmaker[Session]:

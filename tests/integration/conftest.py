@@ -25,7 +25,7 @@ def database_url() -> str:
     return value
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture
 async def session_factory(
     database_url: str,
 ) -> AsyncIterator[async_sessionmaker[AsyncSession]]:

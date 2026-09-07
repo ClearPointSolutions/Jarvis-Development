@@ -19,6 +19,7 @@ echo "== secret scan =="
 "$PYTHON_BIN" scripts/secret_scan.py
 
 echo "== Python format, lint, and types =="
+"$PYTHON_BIN" -m pip check
 "$PYTHON_BIN" -m ruff format --check .
 "$PYTHON_BIN" -m ruff check .
 "$PYTHON_BIN" -m mypy
@@ -40,6 +41,7 @@ fi
 if [ -f packages/contracts/generated/jarvis-contracts.schema.json ]; then
   echo "== generated shared contract drift =="
   "$PYTHON_BIN" -m jarvis_contracts.generate --check
+  "$PYTHON_BIN" -m scripts.generate_openapi --check
   (cd web && npm run contracts:check)
 fi
 
@@ -49,12 +51,17 @@ echo "== frontend format, lint, types, unit tests, and build =="
 (cd web && npm run typecheck)
 (cd web && npm run test)
 (cd web && npm run build)
+(cd web && npm audit --audit-level=high)
 
 if [ "${JARVIS_SKIP_E2E:-0}" = "1" ]; then
   echo "== Playwright skipped by explicit JARVIS_SKIP_E2E=1 =="
 else
   echo "== Playwright =="
-  (cd web && npm run test:e2e)
+  if [ -n "${TEST_DATABASE_URL:-}" ]; then
+    "$PYTHON_BIN" -m scripts.verify_m2_browser
+  else
+    (cd web && npm run test:e2e)
+  fi
 fi
 
 echo "All enabled verification gates passed."
