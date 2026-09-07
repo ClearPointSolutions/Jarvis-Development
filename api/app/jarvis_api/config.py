@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     login_base_delay_seconds: int = Field(default=1, ge=0, le=60)
     login_max_delay_seconds: int = Field(default=300, ge=1, le=3_600)
     api_instance_id: str = Field(default="api-local", min_length=1, max_length=160)
+    max_request_body_bytes: int = Field(default=65_536, ge=4_096, le=1_048_576)
     artifact_root: Path = Path("var/artifacts")
     event_inline_bytes: int = Field(default=32_768, ge=1_024, le=65_536)
     event_max_bytes: int = Field(default=65_536, ge=4_096, le=65_536)
