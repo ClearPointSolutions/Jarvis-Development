@@ -133,10 +133,13 @@ ownership. Artifact publication and reading now support extended Windows paths.
 No test, lint, type, CSP or grant requirement was relaxed.
 
 GitHub CI: pending push. Automatic approval review initially rejected a four-branch
-push on the basis of public source/history egress authorization; no remote mutation
-occurred. The exact integration scope has been reviewed and scanned for a narrowly
-scoped push under the user's explicit repository/push instructions. M2 is not marked
-fully complete until the remote CI gate passes.
+push on the basis of public source/history egress authorization. After reviewing
+the exact destination, authorization and scanned outgoing scope, the narrower
+integration-branch push was approved. GitHub then rejected the local Git credentials
+with "Invalid username or token." No push occurred. The connected GitHub API can
+create new commits but cannot preserve the existing author/committer metadata;
+the reviewed local history is retained pending refreshed Git credentials. M2 is not
+marked fully complete until the branch is pushed and the remote CI gate passes.
 
 Known nonblocking warnings: upstream Starlette/AnyIO BlockingPortal deprecation,
 Node NO_COLOR/FORCE_COLOR diagnostic, and package-manager notices for pinned
