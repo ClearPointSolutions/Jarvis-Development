@@ -1,0 +1,2350 @@
+JARVIS MISSION CONTROL
+Base Idea / Product Concept Sheet
+=================================
+
+Document purpose
+----------------
+This document is the base design reference for a custom web application that acts as the visual control center for the Jarvis LangGraph AI stack.
+
+The goal is to give Jarvis a clean, real-time, "mission control" interface where a user can:
+
+- Talk directly to the Organizer.
+- Start and manage jobs.
+- Watch the active LangGraph execution in real time.
+- See which agent is working, waiting, finished, blocked, or failed.
+- See tools being called and what they are doing.
+- See readable progress updates instead of raw logs.
+- Inspect files changed, commands run, tests executed, and results returned.
+- View system health and infrastructure metrics.
+- Review completed runs and understand how a job progressed.
+- Interrupt, pause, approve, retry, or cancel work when appropriate.
+
+This should become the primary operator interface for Jarvis.
+
+LangSmith Studio can remain available as a developer/debugging interface, but Jarvis Mission Control should be the polished application used day-to-day.
+
+
+======================================================================
+1. PRODUCT VISION
+======================================================================
+
+Jarvis should feel like an autonomous computing system rather than a chatbot.
+
+A normal AI interface looks like:
+
+    User -> Chat -> AI response
+
+Jarvis Mission Control should look and behave more like:
+
+    User
+      |
+      v
+    Organizer
+      |
+      +---- Planner
+      |
+      +---- Researcher
+      |
+      +---- Developer
+      |       |
+      |       +---- Files
+      |       +---- Shell
+      |       +---- Git
+      |       +---- Tests
+      |
+      +---- Reviewer
+      |
+      +---- Other specialized agents
+              |
+              +---- Tools / services / infrastructure
+
+While this happens, the web UI should visually update as work moves through the system.
+
+The user should be able to answer questions such as:
+
+- What is Jarvis doing right now?
+- Which agent currently has control?
+- What task is that agent working on?
+- What did the Organizer delegate?
+- Which tools are active?
+- What command is currently running?
+- Which files have been read or modified?
+- What has already completed?
+- What failed?
+- Why is the job waiting?
+- Does Jarvis need my approval?
+- How long has this job been running?
+- What resources are being used?
+- What did the completed job produce?
+
+The interface should communicate all of this without requiring the user to read large raw logs.
+
+
+======================================================================
+2. CORE EXPERIENCE
+======================================================================
+
+The main application should have four primary functions:
+
+1. CONVERSATION
+   Talk to the Organizer just like a normal AI assistant.
+
+2. LIVE VISUALIZATION
+   Watch the agent graph execute in real time.
+
+3. JOB MANAGEMENT
+   See current objectives, subtasks, progress, artifacts, failures, and approvals.
+
+4. OBSERVABILITY
+   Inspect the underlying events, tool calls, commands, metrics, and history.
+
+
+======================================================================
+3. PROPOSED MAIN DASHBOARD
+======================================================================
+
+Conceptual layout:
+
++--------------------------------------------------------------------------------+
+| JARVIS                         SYSTEM ONLINE                  CPU | GPU | RAM      |
++----------------------+--------------------------------------+-------------------+
+|                      |                                      |                   |
+| CHAT                 |          LIVE AGENT GRAPH            | CURRENT JOB       |
+|                      |                                      |                   |
+| You:                 |          +-------------+             | Build API         |
+| Build me...          |          | ORGANIZER   |             |                   |
+|                      |          | RUNNING     |             | 63%               |
+| Jarvis:              |          +------+------+\            | [######----]      |
+| Working...           |                 |                    |                   |
+|                      |        +--------+--------+           | Tasks             |
+|                      |        |        |        |           | [x] Plan          |
+|                      |        v        v        v           | [x] Research      |
+|                      |     Planner   Coder   Research       | [>] Coding        |
+|                      |      DONE    RUNNING    DONE         | [ ] Test          |
+|                      |                 |                    | [ ] Review        |
+|                      |                 v                    |                   |
+|                      |              Terminal               |                   |
+|                      |              RUNNING                |                   |
++----------------------+--------------------------------------+-------------------+
+| LIVE ACTIVITY                                                                  |
+| 00:34:07 Organizer -> delegated API implementation to Coder                    |
+| 00:34:08 Coder -> reading /opt/jarvis/app/main.py                              |
+| 00:34:10 Coder -> modifying API endpoint                                       |
+| 00:34:12 Shell -> pytest                                                       |
+| 00:34:15 Shell -> 18 passed, 1 failed                                          |
+| 00:34:16 Coder -> investigating failed test                                    |
++--------------------------------------------------------------------------------+
+
+The exact visual design can evolve, but this should remain the core mental model.
+
+
+======================================================================
+4. MAIN UI AREAS
+======================================================================
+
+A. ORGANIZER CHAT
+-----------------
+
+Purpose:
+- Main conversation with Jarvis.
+- New jobs can originate here.
+- The Organizer can ask clarification questions.
+- User can approve or reject actions.
+- User can interrupt or add instructions while a job is running.
+
+Possible features:
+- Streaming responses.
+- Thread history.
+- Attach files.
+- Drag-and-drop artifacts.
+- Job status embedded inside messages.
+- Buttons for:
+  - Pause
+  - Resume
+  - Cancel
+  - Approve
+  - Retry
+  - Open run
+  - View output
+- Switch between conversation threads.
+- Start a new objective without losing old run history.
+
+Important design principle:
+Chat should not be the only source of truth. It is one interface into the system. The live graph and job state should exist independently from chat.
+
+
+B. LIVE AGENT GRAPH
+-------------------
+
+Purpose:
+Show LangGraph execution as a real-time visual graph.
+
+Possible node types:
+- Organizer
+- Planner
+- Researcher
+- Developer
+- Reviewer
+- Security Reviewer
+- Deployment Agent
+- Browser Agent
+- Data Agent
+- Shell
+- Filesystem
+- Git
+- Database
+- HTTP/API
+- Ollama/model server
+- Human approval node
+
+Node states:
+- IDLE
+- QUEUED
+- RUNNING
+- WAITING
+- BLOCKED
+- NEEDS APPROVAL
+- SUCCEEDED
+- FAILED
+- CANCELLED
+- RETRYING
+
+Suggested visualization:
+- Idle: subdued.
+- Running: highlighted with animated pulse.
+- Completed: check mark.
+- Failed: error icon.
+- Waiting: clock icon.
+- Approval: attention badge.
+- Selected node: inspector panel opens.
+
+Edges should also communicate execution:
+- Organizer -> Coder activates when work is delegated.
+- Coder -> Shell activates when a command runs.
+- Shell -> Coder activates when output returns.
+- Coder -> Reviewer activates when implementation is submitted for review.
+
+The animation should be driven by actual backend events, not fake timers.
+
+Graph controls:
+- Fit graph to screen.
+- Zoom.
+- Pan.
+- Pause visual auto-follow.
+- Center on currently active agent.
+- Show/hide tools.
+- Show/hide completed branches.
+- Expand/collapse subgraphs.
+- Filter by agent type.
+- Filter by event severity.
+
+Clicking a node should show:
+- Agent name.
+- Current state.
+- Current task.
+- Started time.
+- Elapsed time.
+- Current model.
+- Current tool.
+- Recent events.
+- Input summary.
+- Output summary.
+- Files touched.
+- Errors.
+- Child tasks.
+- Parent task.
+
+
+C. CURRENT JOB PANEL
+--------------------
+
+Purpose:
+Give a clean high-level representation of the current objective.
+
+Example:
+
+    Objective
+    ---------
+    Add user authentication to Jarvis API.
+
+    Progress
+    --------
+    63%
+
+    Plan
+    ----
+    [x] Inspect existing API
+    [x] Design auth flow
+    [x] Add database schema
+    [>] Implement endpoints
+    [ ] Add tests
+    [ ] Run security review
+    [ ] Final verification
+
+    Current owner
+    -------------
+    Developer Agent
+
+    Current action
+    --------------
+    Implementing token refresh endpoint.
+
+    Blockers
+    --------
+    None
+
+Progress should preferably be task-based rather than a fake arbitrary percentage.
+
+Possible progress calculation:
+- Each planned task has a weight.
+- Complete tasks contribute their weight.
+- Running tasks can optionally contribute partial progress only when meaningful.
+- Unknown/unplanned work can show "indeterminate" rather than inventing a percentage.
+
+
+D. LIVE ACTIVITY FEED
+---------------------
+
+Purpose:
+Provide a chronological, human-readable stream of observable work.
+
+Good activity events:
+
+    00:34:07 Organizer -> delegated backend implementation to Developer
+    00:34:08 Developer -> reading app/main.py
+    00:34:10 Developer -> editing app/main.py
+    00:34:12 Shell -> running pytest
+    00:34:15 Shell -> tests completed: 18 passed, 1 failed
+    00:34:16 Developer -> investigating test_auth_refresh
+    00:34:21 Developer -> modified tests/test_auth.py
+    00:34:24 Shell -> tests completed: 19 passed
+    00:34:25 Developer -> implementation ready for review
+    00:34:26 Organizer -> delegated validation to Reviewer
+
+Avoid dumping hidden chain-of-thought.
+
+The feed should display observable events:
+- Agent started.
+- Agent stopped.
+- Task delegated.
+- Task completed.
+- Tool started.
+- Tool completed.
+- File read.
+- File changed.
+- Command started.
+- Command output summary.
+- Test run.
+- HTTP request.
+- Artifact created.
+- Error.
+- Retry.
+- Approval requested.
+- User intervention.
+- Job completed.
+
+Filters:
+- All activity.
+- Agents.
+- Tools.
+- Files.
+- Shell.
+- Errors.
+- Approvals.
+- System.
+
+Optional:
+Click an event to reveal raw structured event details.
+
+
+E. INSPECTOR PANEL
+------------------
+
+Purpose:
+Deep inspection without leaving the main dashboard.
+
+When an agent is selected:
+
+    Developer Agent
+    ---------------------------------
+    Status: RUNNING
+    Started: 00:34:08
+    Elapsed: 00:00:19
+    Model: qwen / local model
+    Parent: Organizer
+
+    Assigned task
+    ---------------------------------
+    Implement token refresh endpoint.
+
+    Current action
+    ---------------------------------
+    Running tests.
+
+    Current tool
+    ---------------------------------
+    shell.exec
+
+    Command
+    ---------------------------------
+    pytest tests/test_auth.py
+
+    Latest result
+    ---------------------------------
+    19 passed
+
+    Files
+    ---------------------------------
+    ~ app/main.py
+    + app/auth.py
+    + tests/test_auth.py
+
+    Recent events
+    ---------------------------------
+    ...
+
+The inspector may also expose:
+- LangGraph node name.
+- Run ID.
+- Thread ID.
+- Parent run ID.
+- Graph namespace.
+- Retry count.
+- Token usage.
+- Model latency.
+- Tool latency.
+- Checkpoint ID.
+
+
+======================================================================
+5. REAL-TIME EVENT MODEL
+======================================================================
+
+The application should be event driven.
+
+The frontend should not continuously poll every panel.
+
+Preferred architecture:
+
+    LangGraph / Jarvis backend
+             |
+             | events
+             v
+       Event normalization layer
+             |
+             +---- SSE or WebSocket ----> Browser
+             |
+             +---- PostgreSQL event store
+             |
+             +---- Metrics pipeline
+
+The event normalization layer is important.
+
+LangGraph, tools, and infrastructure may produce different event formats. Mission Control should convert them into one common Jarvis event schema.
+
+
+Example event schema:
+
+{
+  "event_id": "evt_123",
+  "run_id": "run_456",
+  "thread_id": "thread_789",
+  "timestamp": "2026-09-07T00:34:10-04:00",
+
+  "category": "tool",
+  "type": "file_write",
+
+  "source": {
+    "agent": "developer",
+    "node": "developer_node"
+  },
+
+  "target": "/opt/jarvis/app/main.py",
+
+  "status": "running",
+
+  "message": "Developer is modifying app/main.py",
+
+  "metadata": {
+    "tool": "write_file"
+  }
+}
+
+Possible categories:
+- job
+- graph
+- agent
+- task
+- tool
+- shell
+- file
+- git
+- model
+- approval
+- system
+- artifact
+- error
+
+Possible event types:
+- job_created
+- job_started
+- job_completed
+- job_failed
+- task_created
+- task_delegated
+- task_started
+- task_completed
+- agent_started
+- agent_waiting
+- agent_completed
+- tool_started
+- tool_completed
+- tool_failed
+- file_read
+- file_write
+- file_created
+- file_deleted
+- command_started
+- command_output
+- command_completed
+- test_started
+- test_completed
+- approval_requested
+- approval_granted
+- approval_rejected
+- artifact_created
+- retry_started
+- error
+- warning
+- system_metric
+
+
+======================================================================
+6. LANGGRAPH INTEGRATION
+======================================================================
+
+The dashboard should consume real LangGraph runtime information.
+
+Relevant concepts:
+- Threads
+- Runs
+- Nodes
+- Subgraphs
+- State updates
+- Tool calls
+- Model streaming
+- Checkpoints
+- Interrupts
+- Human approvals
+- Custom events
+
+The Jarvis backend should emit events whenever execution changes.
+
+Example conceptual flow:
+
+    User submits objective
+
+        -> Organizer starts
+
+        -> Organizer creates plan
+
+        -> Organizer delegates research
+
+        -> Researcher starts
+
+        -> Search/API tool starts
+
+        -> Tool completes
+
+        -> Researcher completes
+
+        -> Organizer delegates implementation
+
+        -> Developer starts
+
+        -> Developer reads files
+
+        -> Developer edits code
+
+        -> Developer runs tests
+
+        -> Test fails
+
+        -> Developer retries
+
+        -> Test succeeds
+
+        -> Reviewer starts
+
+        -> Reviewer approves
+
+        -> Organizer completes job
+
+
+Each transition should immediately update the browser.
+
+
+======================================================================
+7. STREAMING TRANSPORT
+======================================================================
+
+Two likely options:
+
+OPTION A: SERVER-SENT EVENTS (SSE)
+----------------------------------
+
+Best when:
+- Server primarily pushes events to browser.
+- Browser sends commands using normal HTTP endpoints.
+- Simplicity is preferred.
+
+Advantages:
+- Simple.
+- Built into browsers.
+- Easy reconnection.
+- Good fit for one-way LangGraph event streaming.
+
+Potential design:
+
+    POST /api/jobs
+    GET  /api/jobs/{id}
+    GET  /api/jobs/{id}/events     <- SSE
+    POST /api/jobs/{id}/pause
+    POST /api/jobs/{id}/resume
+    POST /api/jobs/{id}/cancel
+    POST /api/jobs/{id}/approve
+
+
+OPTION B: WEBSOCKETS
+--------------------
+
+Best when:
+- Heavy two-way interaction is needed.
+- Lots of interactive runtime commands are expected.
+- Multiple realtime dashboards may subscribe.
+
+Advantages:
+- Fully bidirectional.
+- Good for command/control.
+
+Disadvantages:
+- Slightly more complex.
+
+Initial recommendation:
+Start with SSE unless Jarvis develops requirements that make WebSockets clearly better.
+
+
+======================================================================
+8. FRONTEND TECHNOLOGY
+======================================================================
+
+Recommended starting stack:
+
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- React Flow for the agent graph
+- TanStack Query for API state
+- Zustand or similar lightweight local UI state if needed
+- EventSource for SSE
+- Recharts or another chart library for system metrics if desired
+
+Why React Flow:
+It is well suited to:
+- Node graphs.
+- Interactive edges.
+- Custom nodes.
+- Zoom/pan.
+- Clickable nodes.
+- Dynamic graph updates.
+- Animated execution paths.
+- Nested/subgraph visualization.
+
+Possible custom React Flow nodes:
+- AgentNode
+- ToolNode
+- HumanApprovalNode
+- SystemNode
+- ModelNode
+
+
+======================================================================
+9. BACKEND TECHNOLOGY
+======================================================================
+
+Jarvis already has a Python/LangGraph-oriented stack, so keep the backend in Python.
+
+Recommended:
+- FastAPI
+- LangGraph
+- PostgreSQL
+- Existing LangGraph Postgres checkpointing
+- asyncio
+- SSE endpoint
+- Pydantic event models
+
+Potential backend components:
+
+    jarvis/
+      app/
+        api/
+          jobs.py
+          threads.py
+          events.py
+          agents.py
+          metrics.py
+
+        graph/
+          organizer.py
+          planner.py
+          developer.py
+          researcher.py
+          reviewer.py
+
+        events/
+          bus.py
+          models.py
+          normalizer.py
+          store.py
+
+        tools/
+          shell.py
+          files.py
+          git.py
+          http.py
+
+        telemetry/
+          system.py
+          gpu.py
+          ollama.py
+
+        main.py
+
+
+======================================================================
+10. EVENT BUS
+======================================================================
+
+Jarvis should eventually have a central internal event bus.
+
+Conceptually:
+
+    LangGraph nodes ----+
+                       |
+    Tool wrappers ------+
+                       |
+    Shell executor -----+----> Jarvis Event Bus
+                       |
+    File manager -------+
+                       |
+    Infrastructure -----+
+
+The event bus then fans out events to:
+
+    -> Web UI
+    -> PostgreSQL
+    -> Metrics
+    -> Logs
+    -> Alerts
+    -> Future mobile app
+    -> Future voice UI
+
+This prevents the frontend from being tightly coupled to individual agents.
+
+
+======================================================================
+11. TOOL WRAPPERS
+======================================================================
+
+Every important Jarvis tool should emit lifecycle events.
+
+Example shell tool:
+
+Before command:
+
+    command_started
+    agent: developer
+    command: pytest
+
+After command:
+
+    command_completed
+    exit_code: 0
+    duration_ms: 4210
+    summary: 19 tests passed
+
+Example file tool:
+
+Before read:
+
+    file_read
+    path: /opt/jarvis/app/main.py
+
+Before write:
+
+    file_write_started
+
+After write:
+
+    file_write_completed
+    lines_added: 38
+    lines_removed: 7
+
+Example Git tool:
+
+    git_status
+    git_diff_created
+    git_commit_started
+    git_commit_completed
+
+This is how Mission Control knows what is happening.
+
+
+======================================================================
+12. HUMAN-READABLE EVENT SUMMARIES
+======================================================================
+
+Raw system events should be retained, but the default activity feed should translate them into readable text.
+
+Raw:
+
+    {
+      "type": "tool_start",
+      "tool": "shell",
+      "args": {
+        "command": "pytest"
+      }
+    }
+
+Displayed:
+
+    Developer -> running test suite
+
+Raw:
+
+    {
+      "type": "tool_end",
+      "exit_code": 1,
+      ...
+    }
+
+Displayed:
+
+    Tests finished: 18 passed, 1 failed
+
+The system should never fabricate progress.
+
+If a tool provides no useful progress signal, display:
+
+    Developer -> running integration test suite...
+
+rather than inventing "72%" completion.
+
+
+======================================================================
+13. JOB MODEL
+======================================================================
+
+Jarvis should treat substantial Organizer objectives as jobs.
+
+Example job record:
+
+Job:
+- ID
+- Thread ID
+- Objective
+- Title
+- Created at
+- Started at
+- Completed at
+- Status
+- Priority
+- Progress
+- Current agent
+- Current task
+- Parent job
+- User
+- Result
+- Error
+
+Status:
+- queued
+- planning
+- running
+- waiting
+- approval_required
+- paused
+- completed
+- failed
+- cancelled
+
+
+======================================================================
+14. TASK MODEL
+======================================================================
+
+A job contains tasks.
+
+Task:
+- Task ID
+- Job ID
+- Parent task ID
+- Title
+- Description
+- Assigned agent
+- Status
+- Dependencies
+- Weight
+- Started at
+- Completed at
+- Result
+- Error
+
+Task example:
+
+Job:
+    "Add authentication"
+
+Tasks:
+    1. Inspect current backend
+    2. Design authentication flow
+    3. Add database models
+    4. Add login endpoint
+    5. Add refresh endpoint
+    6. Add tests
+    7. Security review
+    8. Final validation
+
+This task model gives Mission Control a real basis for job progress.
+
+
+======================================================================
+15. RUN HISTORY
+======================================================================
+
+Mission Control should make old work replayable.
+
+Runs page:
+
+    Today
+    ---------------------------------------------------
+    COMPLETED   Add authentication             8m 42s
+    COMPLETED   Fix media API                  2m 09s
+    FAILED      Deploy service                 1m 21s
+    COMPLETED   Analyze server logs            4m 56s
+
+Clicking a run should show:
+- Objective.
+- Final output.
+- Agent timeline.
+- Task tree.
+- Graph execution.
+- Tools used.
+- Files changed.
+- Commands run.
+- Errors.
+- Artifacts.
+- Metrics.
+- Event timeline.
+
+Potential future feature:
+Replay a historical run through the graph visualization.
+
+
+======================================================================
+16. ARTIFACTS
+======================================================================
+
+Jobs may produce:
+- Source files.
+- Patches.
+- Git commits.
+- Reports.
+- Images.
+- Logs.
+- Test reports.
+- JSON.
+- CSV.
+- PDFs.
+- Deployment URLs.
+
+Mission Control should have an artifact drawer.
+
+Example:
+
+Artifacts
+---------
+[CODE] app/auth.py
+[CODE] tests/test_auth.py
+[DIFF] authentication.patch
+[LOG] pytest.log
+[REPORT] security_review.md
+
+The user should be able to click an artifact to inspect or download it.
+
+
+======================================================================
+17. FILE CHANGE VIEW
+======================================================================
+
+For development jobs, one of the most useful panels would be:
+
+Files changed
+-------------
+
+    M app/main.py
+    A app/auth.py
+    A tests/test_auth.py
+
+Clicking a file should show:
+- Before/after diff.
+- Which agent made the change.
+- When it changed.
+- Which task required it.
+- Whether it has been tested.
+- Whether it has been reviewed.
+
+Eventually this could resemble a simplified GitHub diff view.
+
+
+======================================================================
+18. SHELL / TERMINAL VIEW
+======================================================================
+
+The system should expose command execution in a safe, readable way.
+
+Default view:
+- Command.
+- Working directory.
+- Start time.
+- Duration.
+- Exit code.
+- Last few output lines.
+- Result summary.
+
+Expandable view:
+- Full stdout.
+- Full stderr.
+
+Example:
+
+Terminal
+--------
+developer@Jarvis-Core:/opt/jarvis
+
+$ pytest tests/
+
+====================
+19 passed in 4.21s
+====================
+
+Exit code: 0
+
+The terminal panel should be read-only by default.
+
+A future operator terminal can be added separately with appropriate security.
+
+
+======================================================================
+19. APPROVAL WORKFLOWS
+======================================================================
+
+Some actions should require human approval.
+
+Examples:
+- Delete files.
+- Restart production services.
+- Modify firewall rules.
+- Push to remote Git.
+- Deploy to production.
+- Delete database records.
+- Execute privileged commands.
+- Spend money.
+- Send external communications.
+
+Mission Control should display:
+
+    APPROVAL REQUIRED
+
+    Developer wants to run:
+
+        sudo systemctl restart jarvis-api
+
+    Reason:
+        Apply updated backend service.
+
+    Risk:
+        Service will be unavailable briefly.
+
+    [Approve] [Reject]
+
+Approval should be implemented with real LangGraph interrupts/checkpoints where appropriate.
+
+
+======================================================================
+20. SYSTEM METRICS
+======================================================================
+
+Header should show basic health:
+
+    JARVIS       ONLINE
+    CPU 24%
+    RAM 42%
+    GPU 61%
+    VRAM 11.3 / 16 GB
+
+Expandable system panel:
+
+Jarvis Core:
+- CPU usage.
+- RAM.
+- Disk.
+- Load.
+- Temperature.
+- Network.
+- Docker containers.
+
+AI Server:
+- GPU utilization.
+- VRAM.
+- GPU temperature.
+- Ollama health.
+- Active model.
+- Model queue.
+- Tokens/sec.
+
+Services:
+- Jarvis API.
+- PostgreSQL.
+- Ollama.
+- Open WebUI.
+- SearXNG.
+- Other nodes.
+
+Potential sources:
+- psutil
+- NVIDIA NVML / nvidia-smi
+- Docker API
+- Prometheus
+- existing infrastructure metrics
+
+
+======================================================================
+21. MULTI-NODE / DISTRIBUTED JARVIS
+======================================================================
+
+Mission Control should eventually represent multiple machines.
+
+Example:
+
+    JARVIS CLUSTER
+
+    Jarvis-Core
+    - Organizer
+    - Postgres
+    - API
+
+    Ai-Server
+    - Ollama
+    - RTX 3060
+    - RTX 5060 Ti
+    - ComfyUI
+
+    Raspberry-Pi-1
+    - Voice node
+    - Sensors
+
+    Raspberry-Pi-2
+    - Automation node
+
+The graph may indicate where an agent/tool is executing.
+
+Example:
+
+    Developer
+       |
+       v
+    Ollama
+    @ Ai-Server
+
+or:
+
+    Voice Agent
+    @ Bedroom-Pi
+
+
+======================================================================
+22. MODEL OBSERVABILITY
+======================================================================
+
+Mission Control can show useful model metadata without exposing private chain-of-thought.
+
+Safe/useful information:
+- Model name.
+- Provider.
+- Local/remote.
+- Start time.
+- Response duration.
+- Token count.
+- Tokens/sec.
+- Context usage.
+- Retry count.
+- Tool-call count.
+- Structured output validation errors.
+
+Do NOT rely on hidden reasoning text as a user-facing feature.
+
+The purpose is to observe what the system is doing, not reveal internal chain-of-thought.
+
+
+======================================================================
+23. NOTIFICATIONS
+======================================================================
+
+Future notification types:
+- Job completed.
+- Job failed.
+- Approval required.
+- Agent blocked.
+- AI server offline.
+- GPU out of memory.
+- Security-sensitive action requested.
+
+Delivery possibilities:
+- In-app.
+- Browser.
+- Mobile app.
+- Email.
+- Discord.
+- Telegram.
+- Home assistant voice announcement.
+
+Notifications should not flood the user with every low-level event.
+
+
+======================================================================
+24. SEARCH
+======================================================================
+
+Global search could search:
+- Jobs.
+- Threads.
+- Tasks.
+- Agents.
+- Files.
+- Events.
+- Commands.
+- Errors.
+- Artifacts.
+
+Example:
+
+    Search: "pytest"
+
+Results:
+- Job 128 -> pytest tests/
+- Job 126 -> test failure
+- Job 119 -> pytest integration/
+
+
+======================================================================
+25. SECURITY
+======================================================================
+
+Mission Control is powerful and should be treated as an administrative interface.
+
+Requirements:
+- Authentication.
+- HTTPS.
+- Secure session cookies or proper token handling.
+- CSRF protection where applicable.
+- Rate limiting.
+- Audit log.
+- Role-based permissions if multiple users are ever supported.
+- Never expose arbitrary shell execution publicly.
+- Avoid sending secrets to the frontend.
+- Redact secrets from logs/events.
+- Mask API keys.
+- Mask passwords.
+- Mask private tokens.
+- Restrict privileged operations.
+- Require approval for destructive actions.
+
+Recommended deployment:
+Mission Control should initially be accessible only:
+- On local network,
+- Via VPN,
+- Via an authenticated private tunnel,
+or another secure method.
+
+Do not expose an unrestricted Jarvis administrative interface directly to the public internet.
+
+
+======================================================================
+26. SECRET REDACTION
+======================================================================
+
+The event normalization layer should automatically redact:
+
+- API keys.
+- Bearer tokens.
+- Passwords.
+- JWTs.
+- Database connection strings.
+- SSH private keys.
+- Session cookies.
+- .env values.
+
+Example:
+
+Raw command:
+    curl -H "Authorization: Bearer abc123secret..."
+
+Displayed:
+    curl -H "Authorization: Bearer [REDACTED]"
+
+
+======================================================================
+27. DATABASE / STORAGE CONCEPT
+======================================================================
+
+PostgreSQL can store:
+
+tables:
+- threads
+- jobs
+- tasks
+- runs
+- agents
+- events
+- artifacts
+- approvals
+- file_changes
+- command_runs
+
+LangGraph checkpoints can remain in the existing checkpoint store.
+
+Mission Control does not have to duplicate every LangGraph state field.
+
+It should store the information needed for:
+- UI history.
+- Search.
+- Audit.
+- Run replay.
+- Analytics.
+
+
+======================================================================
+28. PROPOSED API
+======================================================================
+
+Example endpoints:
+
+Threads:
+    GET    /api/threads
+    POST   /api/threads
+    GET    /api/threads/{thread_id}
+
+Jobs:
+    GET    /api/jobs
+    POST   /api/jobs
+    GET    /api/jobs/{job_id}
+    POST   /api/jobs/{job_id}/pause
+    POST   /api/jobs/{job_id}/resume
+    POST   /api/jobs/{job_id}/cancel
+    POST   /api/jobs/{job_id}/retry
+
+Events:
+    GET    /api/jobs/{job_id}/events
+    GET    /api/jobs/{job_id}/stream
+
+Approvals:
+    GET    /api/approvals
+    POST   /api/approvals/{approval_id}/approve
+    POST   /api/approvals/{approval_id}/reject
+
+Agents:
+    GET    /api/agents
+    GET    /api/agents/{agent_id}
+
+Artifacts:
+    GET    /api/jobs/{job_id}/artifacts
+    GET    /api/artifacts/{artifact_id}
+
+System:
+    GET    /api/system/status
+    GET    /api/system/metrics
+
+
+======================================================================
+29. UI ROUTES
+======================================================================
+
+Potential routes:
+
+    /
+        Main Mission Control dashboard.
+
+    /jobs
+        Current and historical jobs.
+
+    /jobs/{job_id}
+        Full job view.
+
+    /threads
+        Organizer conversations.
+
+    /agents
+        Agent registry and statuses.
+
+    /system
+        Infrastructure health.
+
+    /settings
+        Jarvis configuration.
+
+    /debug
+        Developer-oriented event/state inspection.
+
+
+======================================================================
+30. AGENT REGISTRY
+======================================================================
+
+Mission Control should understand available agents.
+
+Example:
+
+Agent:
+    id: developer
+    name: Developer
+    description: Writes and modifies software.
+    icon: code
+    graph_node: developer_node
+    capabilities:
+        - filesystem
+        - shell
+        - git
+        - tests
+
+Potential agent registry:
+
+- Organizer
+- Planner
+- Researcher
+- Developer
+- Reviewer
+- Security
+- Deployment
+- Data
+- Browser
+- Home Automation
+- Voice
+
+This registry can drive both the graph UI and the system settings UI.
+
+
+======================================================================
+31. VISUAL DESIGN DIRECTION
+======================================================================
+
+The interface should feel:
+- Modern.
+- Technical.
+- Dense but readable.
+- Dark-mode-first.
+- High contrast.
+- Minimal clutter.
+- Serious rather than gimmicky.
+- Inspired by mission-control / observability tools.
+
+Avoid:
+- Excessive neon.
+- Fake sci-fi elements.
+- Pointless animations.
+- Too many charts.
+- Giant glowing buttons.
+- Information overload.
+
+Use animation only when it communicates something.
+
+Examples:
+- Active graph edge animates.
+- Running node gently pulses.
+- New event appears.
+- Progress transitions.
+- Approval card draws attention.
+
+The UI should still be usable for hours at a time.
+
+
+======================================================================
+32. MOBILE EXPERIENCE
+======================================================================
+
+Desktop should be the primary Mission Control experience.
+
+Mobile should still support:
+- Chat.
+- Job status.
+- Approval requests.
+- Current agent.
+- Activity feed.
+- Pause/cancel.
+- Alerts.
+
+The complex graph can become a simplified vertically stacked view on phones.
+
+Example:
+
+    ORGANIZER
+       |
+       v
+    DEVELOPER [RUNNING]
+       |
+       v
+    SHELL [pytest]
+
+
+======================================================================
+33. OPTIONAL "COMMAND CENTER" DISPLAY MODE
+======================================================================
+
+A special read-only large-screen mode would be useful for a wall monitor or secondary display.
+
+Display:
+- Current job.
+- Current graph.
+- Active agent.
+- Recent events.
+- Cluster health.
+- GPU metrics.
+
+No configuration controls.
+
+Possible route:
+
+    /display
+
+Designed to stay open continuously.
+
+
+======================================================================
+34. FUTURE VOICE INTEGRATION
+======================================================================
+
+The web UI could later show live voice activity from Raspberry Pi voice nodes.
+
+Example:
+
+    Bedroom Voice Node
+    ------------------
+    LISTENING
+
+    Heard:
+    "Jarvis, restart the media service."
+
+    Organizer:
+    Approval required.
+
+The same Mission Control backend can support:
+- Web.
+- Mobile.
+- Smart display.
+- Raspberry Pi interfaces.
+
+
+======================================================================
+35. FUTURE AUTOMATION / HOME CONTROL
+======================================================================
+
+Once Jarvis grows beyond software development, Mission Control could display:
+
+- Smart-home tasks.
+- Scheduled automations.
+- Device states.
+- Cameras/sensors where appropriate.
+- Lighting actions.
+- Media control.
+- Network automation.
+- Server maintenance.
+- Backups.
+- Personal workflows.
+
+The underlying concept remains the same:
+
+    Objective
+        ->
+    Organizer
+        ->
+    Specialized agents
+        ->
+    Tools/devices
+        ->
+    Observable event stream
+
+
+======================================================================
+36. FUTURE MULTI-JOB SUPPORT
+======================================================================
+
+Jarvis may eventually run multiple jobs at once.
+
+Dashboard could show:
+
+Active Jobs
+-----------
+
+RUNNING     Refactor API             Developer
+RUNNING     Research GPU upgrade     Researcher
+WAITING     Backup server            Approval
+QUEUED      Update documentation     Organizer
+
+Clicking one changes the graph and activity feed to that job.
+
+System-wide mode could display all currently active agents across all jobs.
+
+
+======================================================================
+37. FAILURE HANDLING
+======================================================================
+
+Failure should be clearly represented.
+
+Example:
+
+    Developer
+    FAILED
+
+    Error
+    -----
+    pytest returned exit code 1
+
+    Failing test
+    ------------
+    test_refresh_token_expiration
+
+    Actions
+    -------
+    [Retry]
+    [Ask Organizer]
+    [Inspect logs]
+    [Cancel job]
+
+The UI should distinguish:
+- Recoverable failure.
+- Retrying.
+- Fatal failure.
+- User cancellation.
+- Infrastructure failure.
+- Model failure.
+- Tool failure.
+
+
+======================================================================
+38. RETRIES
+======================================================================
+
+Retries should be visible.
+
+Example:
+
+    Developer
+    RETRYING (2/3)
+
+History:
+
+    Attempt 1
+    Failed: database migration error
+
+    Attempt 2
+    Running
+
+This prevents the system from appearing frozen.
+
+
+======================================================================
+39. HEARTBEATS / STUCK JOB DETECTION
+======================================================================
+
+Mission Control should know whether an apparently running agent is actually alive.
+
+Agents/tools can periodically update:
+- Last activity time.
+- Current operation.
+- Heartbeat.
+
+If there has been no observable activity for a threshold:
+
+    Developer
+    POSSIBLY STALLED
+    No event for 3m 12s
+
+The system can then:
+- Alert the Organizer.
+- Retry.
+- Ask the user.
+- Kill a hung process.
+
+
+======================================================================
+40. TIME / PERFORMANCE METRICS
+======================================================================
+
+Per job:
+- Total duration.
+- Planning time.
+- Research time.
+- Coding time.
+- Tool time.
+- Model time.
+- Waiting time.
+- Approval time.
+
+Per agent:
+- Calls.
+- Success rate.
+- Average duration.
+- Failure rate.
+- Retry rate.
+
+This can eventually help optimize the Jarvis architecture.
+
+
+======================================================================
+41. COST / TOKEN METRICS
+======================================================================
+
+Even with local models, usage metrics are useful.
+
+Possible metrics:
+- Prompt tokens.
+- Completion tokens.
+- Context length.
+- Tokens/sec.
+- Remote API cost when external models are used.
+- Cost per job.
+- Cost per agent.
+- Cost per tool.
+
+This becomes more important if Jarvis uses both Ollama and paid APIs.
+
+
+======================================================================
+42. MODEL ROUTING VIEW
+======================================================================
+
+Future feature:
+
+Show which model is serving which agent.
+
+Example:
+
+    Organizer
+       |
+       +----> qwen3.5:35b-a3b @ Ai-Server
+
+    Researcher
+       |
+       +----> external search model
+
+    Developer
+       |
+       +----> coding model @ Ai-Server
+
+This would be especially useful as the homelab gains more GPUs and model routes.
+
+
+======================================================================
+43. LOG LEVELS
+======================================================================
+
+Events should support severity:
+
+- DEBUG
+- INFO
+- SUCCESS
+- WARNING
+- ERROR
+- CRITICAL
+
+The default UI should hide DEBUG noise.
+
+Developer/debug mode can expose everything.
+
+
+======================================================================
+44. RAW DEBUG VIEW
+======================================================================
+
+Mission Control should include an advanced mode for the owner.
+
+Possible panels:
+- Raw LangGraph state.
+- Raw event JSON.
+- Checkpoints.
+- Node input.
+- Node output.
+- Tool payloads.
+- Exceptions.
+- Stack traces.
+
+This allows the custom UI to be useful for development without replacing LangSmith Studio entirely.
+
+
+======================================================================
+45. RELATIONSHIP WITH LANGSMITH STUDIO
+======================================================================
+
+Mission Control:
+- Day-to-day operator interface.
+- Clean.
+- Jarvis-specific.
+- Job-oriented.
+- Human-readable.
+- System-wide.
+- Includes infrastructure.
+
+LangSmith Studio:
+- Developer debugging.
+- Graph inspection.
+- LangGraph-specific internals.
+- State exploration.
+- Development workflow.
+
+Both can coexist.
+
+Potential Mission Control button:
+
+    Open this run in Studio
+
+
+======================================================================
+46. RELATIONSHIP WITH OPEN WEBUI
+======================================================================
+
+Open WebUI can remain useful for:
+- Talking directly to Ollama models.
+- Testing prompts.
+- Comparing models.
+- General-purpose AI chat.
+
+Mission Control should be used for:
+- Jarvis Organizer.
+- Multi-agent jobs.
+- Agent execution.
+- Tools.
+- Task progress.
+- Approvals.
+- System health.
+
+Mission Control should not attempt to replace every Open WebUI feature.
+
+
+======================================================================
+47. MVP
+======================================================================
+
+The first version should stay focused.
+
+MVP GOAL:
+
+From a browser, submit an objective to the Organizer and watch the real LangGraph job execute live.
+
+MVP components:
+
+1. Main dashboard.
+2. Organizer chat.
+3. One active job.
+4. Live agent graph.
+5. Live activity feed.
+6. Current task list.
+7. Agent states.
+8. Tool events.
+9. File events.
+10. Shell events.
+11. Job completion/failure.
+12. Basic run history.
+13. Basic CPU/RAM/GPU status.
+
+Do NOT initially build:
+- Mobile app.
+- Complex analytics.
+- Replay.
+- Multi-user permissions.
+- Home automation.
+- Voice system.
+- Advanced cost analytics.
+- Drag-and-drop graph editing.
+
+Build the core experience first.
+
+
+======================================================================
+48. MVP AGENT SET
+======================================================================
+
+Start with agents already relevant to the current Jarvis design:
+
+    Organizer
+        |
+        +---- Planner
+        |
+        +---- Researcher
+        |
+        +---- Developer
+        |
+        +---- Reviewer
+
+Tools:
+
+    Files
+    Shell
+    Git
+    Tests
+    HTTP/Search if required
+
+This is enough to prove the Mission Control concept.
+
+
+======================================================================
+49. MVP DATA FLOW
+======================================================================
+
+Example:
+
+1. User types:
+   "Build an API endpoint that reports system health."
+
+2. Browser POSTs objective.
+
+3. Backend creates:
+   - thread
+   - job
+   - run
+
+4. Organizer starts.
+
+5. Backend emits:
+
+   job_started
+   agent_started: organizer
+
+6. Organizer delegates to Planner.
+
+7. Browser graph updates.
+
+8. Planner emits plan/tasks.
+
+9. Task list appears.
+
+10. Organizer delegates to Developer.
+
+11. Developer starts reading files.
+
+12. File events appear.
+
+13. Developer runs tests.
+
+14. Shell events appear.
+
+15. Reviewer verifies change.
+
+16. Job completes.
+
+17. Final artifacts are shown.
+
+18. Run remains available in history.
+
+
+======================================================================
+50. PHASED BUILD ROADMAP
+======================================================================
+
+PHASE 0 - Instrument existing Jarvis
+------------------------------------
+Goal:
+Make the current LangGraph stack emit useful structured events.
+
+Build:
+- Event model.
+- Event bus.
+- Tool wrappers.
+- Agent lifecycle events.
+- File/shell events.
+- Job/task IDs.
+
+Success condition:
+A terminal can print a clean real-time event stream for a full Jarvis run.
+
+
+PHASE 1 - Basic Mission Control
+--------------------------------
+Build:
+- FastAPI Mission Control endpoints.
+- SSE stream.
+- Next.js frontend.
+- Organizer chat.
+- Live activity feed.
+- Basic current job panel.
+
+Success condition:
+User can start a Jarvis job and watch readable events appear in browser in real time.
+
+
+PHASE 2 - Live Graph
+--------------------
+Build:
+- React Flow graph.
+- Agent nodes.
+- Tool nodes.
+- Dynamic status updates.
+- Active edge animation.
+- Node inspector.
+
+Success condition:
+User can visually follow execution from Organizer through agents and tools.
+
+
+PHASE 3 - Job Management
+------------------------
+Build:
+- Job history.
+- Task tree.
+- Pause.
+- Resume.
+- Cancel.
+- Retry.
+- Failure view.
+
+Success condition:
+Mission Control becomes useful for managing real autonomous tasks.
+
+
+PHASE 4 - Human Approval
+------------------------
+Build:
+- LangGraph interrupt integration.
+- Approval UI.
+- Permission policy.
+- Audit log.
+
+Success condition:
+Jarvis can safely stop before sensitive actions and wait for the user.
+
+
+PHASE 5 - Infrastructure
+------------------------
+Build:
+- CPU/RAM.
+- GPU/VRAM.
+- Ollama status.
+- Docker/service health.
+- Multi-machine health.
+
+Success condition:
+Mission Control becomes a combined AI + homelab operations interface.
+
+
+PHASE 6 - Advanced Observability
+--------------------------------
+Build:
+- Run replay.
+- Performance charts.
+- Agent statistics.
+- Token/cost reporting.
+- Search.
+- Event filters.
+- Full raw debug view.
+
+
+PHASE 7 - Distributed Jarvis
+----------------------------
+Build:
+- Raspberry Pi nodes.
+- Voice nodes.
+- Automation agents.
+- Node placement.
+- Cluster view.
+
+
+======================================================================
+51. SUGGESTED REPOSITORY STRUCTURE
+======================================================================
+
+One option:
+
+/opt/jarvis/
+|
++-- app/
+|   +-- jarvis/
+|       +-- graph/
+|       +-- agents/
+|       +-- tools/
+|       +-- events/
+|       +-- telemetry/
+|       +-- api/
+|
++-- mission-control/
+|   +-- frontend/
+|   |   +-- Next.js app
+|   |
+|   +-- backend/
+|       +-- optional UI-specific API layer
+|
++-- docker/
+|
++-- tests/
+|
++-- docs/
+|   +-- JARVIS_MISSION_CONTROL_BASE_IDEA.txt
+|
++-- docker-compose.yml
+
+
+Alternative:
+Keep all API logic inside the existing Jarvis backend and make mission-control a frontend-only repository.
+
+The final choice depends on how the existing codebase evolves.
+
+
+======================================================================
+52. POSSIBLE DOCKER SERVICES
+======================================================================
+
+Conceptual:
+
+services:
+
+    jarvis-api
+        LangGraph + FastAPI
+
+    mission-control
+        Next.js
+
+    postgres
+        Jarvis state/events/checkpoints
+
+    ollama
+        AI server, potentially on separate machine
+
+    prometheus
+        optional
+
+    grafana
+        optional internal infrastructure debugging
+
+Mission Control should consume metrics directly or through the Jarvis API rather than embedding Grafana everywhere.
+
+
+======================================================================
+53. DESIGN PRINCIPLES
+======================================================================
+
+1. REAL EVENTS ONLY
+Never fake activity.
+
+2. HUMAN READABILITY FIRST
+Translate low-level events into understandable status.
+
+3. RAW DETAIL AVAILABLE
+Allow expansion into technical details.
+
+4. EVENT-DRIVEN ARCHITECTURE
+The frontend subscribes to what Jarvis is doing.
+
+5. SEPARATE OBSERVABILITY FROM REASONING
+Show actions, state, tools, results, and summaries rather than hidden chain-of-thought.
+
+6. SAFE AUTONOMY
+Sensitive actions should be interruptible and approvable.
+
+7. DISTRIBUTED FROM THE START
+Even if the first build runs on one machine, event formats should include host/node information.
+
+8. DO NOT OVERBUILD THE MVP
+Prove the live experience first.
+
+9. KEEP LANGGRAPH AS THE ORCHESTRATION SOURCE OF TRUTH
+Mission Control visualizes and controls it; it should not become a second conflicting workflow engine.
+
+10. KEEP THE EVENT SCHEMA STABLE
+Agents and tools can evolve behind a consistent UI contract.
+
+
+======================================================================
+54. KEY TECHNICAL DECISIONS
+======================================================================
+
+Recommended initial decisions:
+
+Frontend:
+    Next.js + React + TypeScript + Tailwind + React Flow
+
+Backend:
+    Existing Python Jarvis stack + FastAPI
+
+Realtime:
+    SSE initially
+
+Database:
+    PostgreSQL
+
+Checkpointing:
+    LangGraph Postgres saver
+
+Event persistence:
+    PostgreSQL
+
+System telemetry:
+    psutil + NVIDIA metrics + Docker/service health
+
+Local AI:
+    Existing Ollama server
+
+Developer debugging:
+    LangSmith Studio
+
+General model testing:
+    Open WebUI
+
+
+======================================================================
+55. DEFINITION OF SUCCESS
+======================================================================
+
+Mission Control is successful when the following experience works:
+
+The user opens Jarvis in a browser.
+
+They type:
+
+    "Build a new endpoint that reports the health of every Jarvis service."
+
+Immediately:
+
+- A new job appears.
+- Organizer changes to RUNNING.
+- Planner becomes active.
+- Tasks populate.
+- Planner completes.
+- Developer activates.
+- File reads appear in the activity feed.
+- Code changes appear in the file panel.
+- Shell activates.
+- Test output appears.
+- A failed test visibly sends the workflow back to Developer.
+- Developer fixes it.
+- Tests pass.
+- Reviewer activates.
+- Reviewer completes.
+- Organizer marks the job complete.
+- Final files/artifacts are shown.
+- The full run remains available in history.
+
+At no point should the user wonder whether the system is frozen or what Jarvis is doing.
+
+
+======================================================================
+56. END-STATE VISION
+======================================================================
+
+The long-term goal is for Mission Control to become the interface for the entire Jarvis ecosystem.
+
+Eventually it could provide one place to observe and control:
+
+- AI agents.
+- Software development tasks.
+- Research tasks.
+- Homelab servers.
+- Ollama models.
+- GPUs.
+- Raspberry Pi nodes.
+- Smart-home systems.
+- Voice interfaces.
+- Automated workflows.
+- Personal services.
+- Scheduled agents.
+- Infrastructure maintenance.
+
+Jarvis would not simply be an AI assistant.
+
+It would be an observable, distributed agentic operating layer across the user's infrastructure.
+
+Mission Control would be the window into that system.
+
+
+======================================================================
+57. SHORT PROJECT SUMMARY
+======================================================================
+
+Project name:
+    Jarvis Mission Control
+
+Purpose:
+    A custom real-time web interface for interacting with and observing the Jarvis LangGraph multi-agent system.
+
+Primary features:
+    - Organizer chat.
+    - Live agent graph.
+    - Current job/task view.
+    - Real-time activity feed.
+    - Agent/tool inspector.
+    - File and shell visibility.
+    - Run history.
+    - Human approvals.
+    - System metrics.
+    - Distributed node visibility.
+
+Recommended stack:
+    - Next.js
+    - React
+    - TypeScript
+    - Tailwind
+    - React Flow
+    - FastAPI
+    - LangGraph
+    - PostgreSQL
+    - SSE
+    - Ollama
+    - LangSmith Studio for development/debugging
+
+First milestone:
+    Start a real Jarvis job from the browser and visually watch its LangGraph agents and tools execute in real time.
+
+
+======================================================================
+58. WORKING ONE-SENTENCE DESCRIPTION
+======================================================================
+
+Jarvis Mission Control is a real-time web dashboard that lets the user talk to the Jarvis Organizer, watch LangGraph agents and tools execute live, inspect what work is being performed, manage jobs and approvals, and monitor the underlying AI infrastructure from one clean visual interface.
+
+
+======================================================================
+59. WORKING TAGLINE IDEAS
+======================================================================
+
+- "See Jarvis Work."
+- "Your AI, Observable."
+- "Mission Control for Jarvis."
+- "One Interface for Every Agent."
+- "Watch. Control. Understand."
+- "The Control Plane for Jarvis."
+
+
+======================================================================
+END OF BASE IDEA SHEET
+======================================================================
+
+This file is intended to remain the base conceptual reference.
+
+As the project develops, create separate documents for:
+- Technical architecture.
+- Event schema specification.
+- API specification.
+- UI wireframes.
+- Database schema.
+- Security model.
+- Deployment guide.
+- Implementation roadmap.
