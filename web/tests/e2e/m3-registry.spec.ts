@@ -121,7 +121,17 @@ test("M3 real registry forms, immutable revisions, route preview and accessibili
   ).toContainText("must not exceed");
   await page.getByLabel("Output token limit").fill("4096");
   await save("Browser utility model");
-  await expect(page.getByText("Unknown", { exact: true })).toBeVisible();
+  await expect(
+    page
+      .getByRole("article")
+      .filter({
+        has: page.getByRole("heading", {
+          name: "Browser utility model",
+          exact: true,
+        }),
+      })
+      .getByText("Unknown", { exact: true }),
+  ).toBeVisible();
 
   await create("/workers", "worker", "Browser worker");
   await page.getByLabel("Capabilities (comma separated)").fill("code, review");
@@ -150,17 +160,27 @@ test("M3 real registry forms, immutable revisions, route preview and accessibili
   await page.getByLabel("Required capabilities (comma separated)").fill("chat");
   await page.getByLabel("Allow unknown health").check();
   await save("Browser utility route");
-  await page
+  const browserRoute = page
+    .getByRole("article")
+    .filter({
+      has: page.getByRole("heading", {
+        name: "Browser utility route",
+        exact: true,
+      }),
+    });
+  await browserRoute
     .getByText("Deterministic resolution preview", { exact: true })
     .click();
-  await page.getByRole("button", { name: "Resolve route" }).click();
+  await browserRoute.getByRole("button", { name: "Resolve route" }).click();
   await expect(
-    page.getByRole("heading", { name: /Decision: allow/ }),
+    browserRoute.getByRole("heading", { name: /Decision: allow/ }),
   ).toBeVisible();
-  await page.getByLabel("Data classification").selectOption("restricted");
-  await page.getByRole("button", { name: "Resolve route" }).click();
+  await browserRoute
+    .getByLabel("Data classification")
+    .selectOption("restricted");
+  await browserRoute.getByRole("button", { name: "Resolve route" }).click();
   await expect(
-    page.getByRole("heading", { name: /Decision: deny/ }),
+    browserRoute.getByRole("heading", { name: /Decision: deny/ }),
   ).toBeVisible();
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations).toEqual([]);

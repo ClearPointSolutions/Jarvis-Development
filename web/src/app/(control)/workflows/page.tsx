@@ -1,4 +1,4 @@
-import { FoundationRoute } from "@/components/foundation-route";
+import { WorkflowStudio } from "@/components/workflow-studio";
 export default function Page() {
-  return <FoundationRoute route="workflows" />;
+  return <WorkflowStudio />;
 }
