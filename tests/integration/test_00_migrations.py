@@ -65,6 +65,18 @@ def test_postgresql_16_migration_round_trip_and_metadata_drift(database_url: str
             text("SELECT has_table_privilege('jarvis_v1_orchestrator','control.users','SELECT')")
         )
         assert not connection.scalar(
+            text("SELECT has_table_privilege('jarvis_v1_api','control.users','UPDATE')")
+        )
+        assert connection.scalar(
+            text(
+                "SELECT has_column_privilege("
+                "'jarvis_v1_api','control.users','password_hash','UPDATE')"
+            )
+        )
+        assert not connection.scalar(
+            text("SELECT has_column_privilege('jarvis_v1_api','control.users','enabled','UPDATE')")
+        )
+        assert not connection.scalar(
             text("SELECT has_table_privilege('jarvis_v1_readonly','control.sessions','SELECT')")
         )
         assert connection.scalar(
