@@ -19,7 +19,10 @@ const navigation = [
   { href: "/workflows", label: "Workflows" },
   { href: "/registry", label: "Registry" },
   { href: "/workers", label: "Workers" },
-  { href: "/providers", label: "Providers / models" },
+  { href: "/providers", label: "Providers" },
+  { href: "/models", label: "Models" },
+  { href: "/routing", label: "Routing" },
+  { href: "/policies", label: "Policies" },
   { href: "/approvals", label: "Approvals" },
   { href: "/artifacts", label: "Artifacts" },
   { href: "/health", label: "Health" },
@@ -164,7 +167,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </ul>
         </nav>
         <div className="sidebar-note">
-          <p className="eyebrow">M2 foundation</p>
+          <p className="eyebrow">M3 configuration</p>
           <p>
             Runtime execution remains server-authoritative and is not simulated
             here.

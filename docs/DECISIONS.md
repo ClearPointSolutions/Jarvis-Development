@@ -254,6 +254,36 @@ replay are authoritative. Unsupported schema majors, expired/future cursors and
 sequence gaps yield explicit reset semantics. No retention worker or runtime job
 loop is introduced in M2.
 
+### ADR-025 — M3 typed registries and safe provider boundaries
+
+**Decision:** Extend the M1 identity/immutable revision tables for all six M3
+registries. Keep opaque private locators in separate immutable rows. Browser
+configuration validation never resolves files or calls providers; live probes use
+the orchestrator adapter interface. Future SSH paths live in a server-only typed
+deployment manifest referenced by an opaque locator.
+
+**Why:** The existing persistence/hash contracts already provide snapshot isolation.
+Separating private metadata prevents accidental reference/path round-trip and keeps
+the API outside the provider/worker credential and network execution boundary.
+
+**Consequences:** Configured reference status is not a claim that a live credential
+was tested. Pre-M3 untyped placeholder revisions remain untouched and require an
+explicit typed revision before appearing in the M3 editor. Exact model/provider
+revisions remain pinned; a current disable/archive is a safety veto for new route
+previews, not a rewrite of historical specifications. Route audit retains request
+constraints and observed eligibility state to reproduce its snapshot hash.
+
+Provider-native streaming is bounded and buffered through schema validation and
+redaction before normalized emission. Split-delta synthetic credentials demonstrated
+that forwarding raw deltas would leak before a later redaction pass. A future
+incremental sanitizer requires separate security tests; M3 does not claim live
+token-by-token UI output. JSON schemas cannot resolve external references.
+
+Half-open circuit recovery uses a version-fenced single probe lease. Accounting
+checks the exact profile pricing/route binding and stores immutable usage/cost
+records. Unknown costs remain null. Approval-needed spend decisions persist as
+typed audit outcomes; no M9 approval workflow is implemented early.
+
 ## Unresolved rework risks and required spikes
 
 These do not block architecture, but they are explicit gates:

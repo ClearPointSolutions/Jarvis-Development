@@ -10,6 +10,7 @@ from pydantic import Field
 from jarvis_contracts.base import ContractModel
 from jarvis_contracts.enums import EventCategory
 from jarvis_contracts.ids import SessionId, UserId
+from jarvis_contracts.registry import ProviderHealthData, RegistryAuditData, RouteEvaluationData
 
 
 class LoginSucceededData(ContractModel):
@@ -143,6 +144,21 @@ EVENT_REGISTRY: dict[str, EventDefinition] = {
 }
 EVENT_REGISTRY.update(
     {
+        "config.created": EventDefinition(
+            EventCategory.CONFIG, "Configuration created", RegistryAuditData
+        ),
+        "config.revised": EventDefinition(
+            EventCategory.CONFIG, "Configuration revised", RegistryAuditData
+        ),
+        "config.validated": EventDefinition(
+            EventCategory.CONFIG, "Configuration validated", RegistryAuditData
+        ),
+        "model.health_changed": EventDefinition(
+            EventCategory.MODEL, "Provider health changed", ProviderHealthData
+        ),
+        "model.route_selected": EventDefinition(
+            EventCategory.MODEL, "Model route evaluated", RouteEvaluationData
+        ),
         "auth.security_denied": EventDefinition(
             EventCategory.AUTH, "Security boundary denied request", SecurityDeniedData
         ),

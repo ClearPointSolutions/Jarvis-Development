@@ -1,9 +1,9 @@
 # Jarvis V1 / Mission Control
 
 Jarvis V1 is the durable human control plane for a LangGraph-based development
-system. M2 adds durable owner authentication, redacted event replay/SSE and the
-accessible Mission Control shell. Runtime execution and provider configuration
-remain later milestones; the legacy prototype is unchanged.
+system. M3 adds versioned worker/provider/model/policy registries, deterministic
+routing and provider/accounting foundations to the durable M2 auth/event shell.
+Workflow execution remains a later milestone; the legacy prototype is unchanged.
 
 ## Supported toolchain
 
@@ -70,7 +70,8 @@ credential belongs in web configuration.
 
 The `/runs` screen accepts an existing run ID and displays its authorized event
 projection and replayable feed. M2 deliberately provides no run-creation or
-execution endpoint. Other route shells explain their upcoming milestone.
+execution endpoint. Worker, provider, model, routing and policy screens provide
+real configuration management. Other route shells explain their upcoming milestone.
 
 With `TEST_DATABASE_URL` configured, `scripts/verify.sh` creates a fresh disposable
 browser-test database, starts the actual API, exercises Chromium through the same-
@@ -78,3 +79,34 @@ origin web proxy, and drops that database afterward. It never contacts the homel
 The proxy treats all browsers as one network source for conservative network login
 limiting; account limiting remains independent. Session polling counts as request
 activity, while SSE never extends session lifetime or mutates authentication state.
+
+## M3 configuration
+
+Use `/workers`, `/providers`, `/models`, `/routing`, and `/policies` to create,
+edit, validate and inspect immutable configuration revisions. The `/registry`
+page links these resources. Create a provider connection, then a model profile
+referencing that connection revision, then a route referencing model revisions.
+No model identifier or endpoint is an architectural default. DEMO is available
+without credentials or network access.
+
+Network-provider endpoints must be explicitly listed in the API's server-side
+`JARVIS_PROVIDER_ALLOWED_ENDPOINTS` JSON array. It defaults to an empty allowlist.
+Provider adapters independently require exact endpoint authorization,
+disable redirects and ambient proxy credentials, and accept injected transports.
+M3 tests only local mock transports; no live validation is performed by GUI/API.
+
+Secret-reference fields accept opaque server-managed locators, never actual API
+keys or file contents. References do not round-trip; the UI reports whether a
+reference is configured, not whether a live provider credential has been verified.
+Server-only worker deployment manifests describe future pinned-host-key SSH
+configuration, while the browser sees an opaque deployment status and host label.
+No SSH worker execution is implemented in M3.
+
+Edits produce new immutable revisions; existing references remain pinned. Explicit
+current disable/archive acts as a safety veto during route previews. Preview
+returns candidate rejection reasons and a reproducible snapshot hash. A spend
+limit can deny or produce a persisted `require_approval` decision; it does not
+execute the M9 approval workflow. Unknown usage/cost is never displayed as zero.
+
+See `docs/M3_COMPLETION.md` for API routes, adapter limitations, migration and
+verification evidence.

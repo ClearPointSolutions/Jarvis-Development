@@ -8,7 +8,7 @@ import {
 import { once } from "node:events";
 import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { GET, POST } from "./route";
+import { GET, POST, PUT } from "./route";
 const servers: Server[] = [];
 async function backend(listener: RequestListener) {
   const server = createServer(listener);
@@ -34,6 +34,40 @@ afterEach(async () => {
   );
 });
 describe("same-origin native HTTP transport", () => {
+  it("forwards versioned registry PUT bodies and CSRF headers", async () => {
+    let method = "";
+    let csrf: string | string[] | undefined;
+    let received = "";
+    await backend((request, response) => {
+      method = request.method ?? "";
+      csrf = request.headers["x-csrf-token"];
+      request.on("data", (chunk) => {
+        received += chunk.toString();
+      });
+      request.on("end", () => {
+        response.setHeader("Content-Type", "application/json");
+        response.end('{"revision":2}');
+      });
+    });
+    const body = JSON.stringify({ expected_version: 1, enabled: false });
+    const response = await PUT(
+      new NextRequest("http://localhost/api/v1/registry/worker/id", {
+        method: "PUT",
+        headers: {
+          host: "localhost",
+          "content-type": "application/json",
+          "x-csrf-token": "synthetic-csrf",
+        },
+        body,
+      }),
+      { params: Promise.resolve({ path: ["v1", "registry", "worker", "id"] }) },
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ revision: 2 });
+    expect(method).toBe("PUT");
+    expect(csrf).toBe("synthetic-csrf");
+    expect(received).toBe(body);
+  });
   it.each([65_536, 65_537])(
     "bounds streamed mutation bytes at %s without trusting Content-Length",
     async (size) => {

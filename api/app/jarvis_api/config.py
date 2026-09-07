@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     )
 
     env: Literal["development", "test", "production"] = "development"
+    provider_allowed_endpoints: tuple[str, ...] = ()
     api_host: str = "127.0.0.1"
     api_port: int = Field(default=8000, ge=1, le=65535)
     public_origin: str = "http://127.0.0.1:3000"

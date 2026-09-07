@@ -1,6 +1,10 @@
 # M2 integration evidence
 
-Date: 2026-09-07. Scope: M2A, M2B and M2C only. All local gates passed; remote push/CI remains pending. No M3 work, homelab contact or deployment.
+Date: 2026-09-07. Scope: M2A, M2B and M2C only. All local gates passed.
+Subsequent reconciliation: the user reports M2 complete; fetched main contains
+merge `ac6206b3b1bfb8e4adca1f414f81807e0a92ebcc`. The local push/credential
+blocker recorded below is historical. M3 evidence is in `M3_COMPLETION.md`.
+No homelab contact or deployment occurred during M2.
 
 ## Provenance and merge order
 

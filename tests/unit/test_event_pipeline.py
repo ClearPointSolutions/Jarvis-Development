@@ -140,6 +140,32 @@ async def test_every_registered_event_normalizes_with_a_human_summary(event_type
         data = {"user_id": str(new_id(UserId)), "revoked_session_count": 0}
     elif event_type == "auth.owner_bootstrapped":
         data = {"user_id": str(new_id(UserId)), "migrated_project_count": 0}
+    elif event_type in {"config.created", "config.revised", "config.validated"}:
+        data = {
+            "configuration_id": str(UUID(int=1)),
+            "revision_id": str(UUID(int=2)),
+            "kind": "worker",
+            "actor_id": str(UUID(int=3)),
+            "action": "created",
+        }
+    elif event_type == "model.health_changed":
+        data = {
+            "provider_revision_id": str(UUID(int=1)),
+            "status": "unknown",
+            "circuit_state": "closed",
+            "failure_count": 0,
+            "version": 0,
+        }
+    elif event_type == "model.route_selected":
+        data = {
+            "route_revision_id": str(UUID(int=1)),
+            "snapshot_hash": "a" * 64,
+            "request": {
+                "route_revision_id": str(UUID(int=1)),
+                "requirements": {"purpose": "utility"},
+            },
+            "observed_state": [],
+        }
 
     normalizer = EventNormalizer(
         redactor=RecursiveRedactor(),

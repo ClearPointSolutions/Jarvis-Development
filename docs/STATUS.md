@@ -1,8 +1,8 @@
 # Jarvis V1 Status
 
 Last updated: 2026-09-07
-Current phase: M3 — configuration registries and provider routing, in progress
-Overall state: M0–M2 integrated into main at ac6206b; M3 underway; M4 unstarted
+Current phase: M3 — configuration registries and provider routing, local gates complete; publication blocked
+Overall state: M0–M2 integrated into main at ac6206b; M3 implemented locally; remote CI pending; M4 unstarted
 
 ## Active M3 criteria
 
@@ -10,16 +10,22 @@ Base: fetched clean origin/main `ac6206b3b1bfb8e4adca1f414f81807e0a92ebcc`.
 The user reports M2 complete and merged; the prior local push blocker below is historical.
 Branch: `codex/m3-config-routing`. No homelab contact, production keys, or deployment.
 
-- [ ] Persistent, validated worker/provider/model/route/retry/permission registries with immutable revisions and snapshot isolation.
-- [ ] Owner-only real GUI/API, optimistic concurrency, idempotent mutations, normalized audit, and write-only opaque references.
-- [ ] Distinct OpenAI SDK/Ollama/demo adapters with deterministic local transports and normalized results/errors/streams.
-- [ ] Deterministic routing, capability/data/health/circuit filtering and explicit permitted failover.
-- [ ] Durable bounded health/circuit state, usage/pricing snapshots, unknown cost and typed spend decisions.
-- [ ] Security canaries, SSRF denial, missing-provider behavior and least-privilege migration gates.
-- [ ] Full Python/frontend/production/browser/accessibility/secret gates and scripts/verify.sh.
+- [x] Persistent, validated worker/provider/model/route/retry/permission registries with immutable revisions and snapshot isolation.
+- [x] Owner-only real GUI/API, optimistic concurrency, idempotent mutations, normalized audit, and write-only opaque references.
+- [x] Distinct OpenAI SDK/Ollama/demo adapters with deterministic local transports and normalized results/errors/streams.
+- [x] Deterministic routing, capability/data/health/circuit filtering and explicit permitted failover.
+- [x] Durable bounded health/circuit state, usage/pricing snapshots, unknown cost and typed spend decisions.
+- [x] Security canaries, SSRF denial, missing-provider behavior and least-privilege migration gates.
+- [x] Full Python/frontend/production/browser/accessibility/secret gates and scripts/verify.sh.
 - [ ] Push final M3 branch, verify GitHub CI, update evidence and leave clean tree; stop before M4.
 
-## Active M2 parallel-group criteria
+Final local gate: 383 Python tests, 88.05% branch coverage; 32 frontend tests;
+seven Playwright tests; desktop/mobile accessibility and console checks passed.
+Production build, migrations, generated contracts, secret scan and npm audit passed.
+See `docs/M3_COMPLETION.md`. Native Git authentication rejects the saved credential;
+branch publication and GitHub CI remain pending. No main merge or M4 work.
+
+## Historical M2 parallel-group criteria
 
 Integration base: fetched authoritative main `1fc4c8ecdcb46291efc8896c0edcd652b9f70b61`.
 Uncommitted work in all three original worktrees was scanned and committed before
@@ -58,7 +64,7 @@ was used. M2 delivery evidence is recorded in `docs/M2_COMPLETION.md`.
 
 ### Remote completion gate
 
-- [ ] Push the integrated M2 work and verify GitHub CI on final main.
+- [x] M2 integrated into main at ac6206b, confirmed by fetch; the user reports M2 complete. Earlier local push evidence below is historical.
 
 ## M1 completion criteria
 
@@ -83,7 +89,7 @@ was used. M2 delivery evidence is recorded in `docs/M2_COMPLETION.md`.
 - [x] Prove a fresh local install can execute the empty/scaffold quality gates.
 - [x] Review M0; commit is the milestone boundary immediately following this status update.
 
-M3 and all remote staging/deployment work are explicitly out of scope for this turn.
+M4 and all remote staging/deployment work are explicitly out of scope for this turn.
 
 ## Architecture milestone criteria
 
@@ -192,9 +198,17 @@ documentation-only milestone; the M0 application gates are recorded above.
 
 ## Next milestone
 
-M3 remains unstarted. Stop after M2 integration, its verification and documentation;
-provider routing, workflow execution, Worker-01 and deployment require later work.
+M3 is implemented locally. Stop after M3 verification and publication; M4 must not
+start until the final branch passes GitHub CI. Native Git currently rejects the
+saved GitHub credentials, so publication and CI remain external gates. Workflow
+execution, Worker-01 and deployment require later work.
 
 ## Open gates and risks
 
 The unresolved spikes in `docs/DECISIONS.md` remain implementation gates, especially legacy runner idempotency/worktree compatibility, SSE proxy behavior, deployed Ollama capabilities, GitHub credential form, and safe narrow health collection. LangGraph/checkpointer API/schema compatibility is resolved for M1 by ADR-023 and the pinned tests; pending-write crash injection remains an M5 runtime-node concern. Real Worker-01, GitHub, and restart tests remain Prompt 03 gates; side-by-side deployment remains Prompt 04.
+
+Publication review: the final push was rejected before Git executed by automatic
+approval review. It requires explicit approval to export the private M3 source
+and history to `https://github.com/ClearPointSolutions/Jarvis-Development.git`.
+No workaround was attempted. Earlier dry-run authentication also failed; that
+credential issue has not been verified as resolved. GitHub CI remains unrun.

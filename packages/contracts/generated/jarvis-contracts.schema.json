@@ -2515,6 +2515,15 @@
           "maxLength": 262144,
           "title": "Text",
           "type": "string"
+        },
+        "tools": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ProviderTool"
+          },
+          "maxItems": 32,
+          "title": "Tools",
+          "type": "array"
         }
       },
       "required": [
@@ -2550,6 +2559,7 @@
           "enum": [
             "stop",
             "length",
+            "tool_calls",
             "cancelled",
             "failed"
           ],
@@ -2618,6 +2628,14 @@
           "maxLength": 262144,
           "title": "Text",
           "type": "string"
+        },
+        "tool_calls": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ProviderToolCall"
+          },
+          "title": "Tool Calls",
+          "type": "array"
         },
         "usage": {
           "$ref": "#/$defs/Usage"
@@ -2700,6 +2718,65 @@
         "provider_kind"
       ],
       "title": "ProviderSpec",
+      "type": "object"
+    },
+    "ProviderTool": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "default": "",
+          "maxLength": 1024,
+          "title": "Description",
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]{0,63}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        }
+      },
+      "required": [
+        "name",
+        "parameters"
+      ],
+      "title": "ProviderTool",
+      "type": "object"
+    },
+    "ProviderToolCall": {
+      "additionalProperties": false,
+      "properties": {
+        "arguments": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Arguments",
+          "type": "object"
+        },
+        "id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]{0,63}$",
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "arguments"
+      ],
+      "title": "ProviderToolCall",
       "type": "object"
     },
     "ReadinessResponse": {
@@ -3248,7 +3325,7 @@
           "items": {
             "$ref": "#/$defs/RouteCandidate"
           },
-          "maxItems": 100,
+          "maxItems": 32,
           "minItems": 1,
           "title": "Candidates",
           "type": "array"

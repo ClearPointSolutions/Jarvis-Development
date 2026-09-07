@@ -176,9 +176,39 @@ class ModelProfileSpec(ContractModel):
     def limits(self) -> ModelProfileSpec:
         if self.output_limit > self.context_limit:
             raise ValueError("output limit exceeds context limit")
+        for capability, supported in (
+            ("structured_json", self.structured_json),
+            ("streaming", self.streaming),
+            ("tool_calls", self.tool_calls),
+        ):
+            if capability in self.capabilities and not supported:
+                raise ValueError("reserved capabilities must agree with support flags")
         allowed = {"temperature", "top_p", "reasoning_effort", "seed", "keep_alive"}
         if set(self.parameters) - allowed:
             raise ValueError("unsupported model parameter")
+        for key, value in self.parameters.items():
+            if key in {"temperature", "top_p"}:
+                ceiling = 2 if key == "temperature" else 1
+                if (
+                    not isinstance(value, (int, float))
+                    or isinstance(value, bool)
+                    or not 0 <= value <= ceiling
+                ):
+                    raise ValueError("sampling parameters must be bounded numbers")
+            elif key == "reasoning_effort":
+                if not isinstance(value, str) or value not in {
+                    "none",
+                    "minimal",
+                    "low",
+                    "medium",
+                    "high",
+                    "xhigh",
+                }:
+                    raise ValueError("unsupported reasoning effort")
+            elif key in {"seed", "keep_alive"}:
+                ceiling = 2**31 - 1 if key == "seed" else 3600
+                if type(value) is not int or not 0 <= value <= ceiling:
+                    raise ValueError("seed and keep-alive must be bounded integers")
         return self
 
 
@@ -198,7 +228,7 @@ class SpendPolicy(ContractModel):
 
 class RoutePolicySpec(ContractModel):
     kind: Literal["route_policy"] = "route_policy"
-    candidates: tuple[RouteCandidate, ...] = Field(min_length=1, max_length=100)
+    candidates: tuple[RouteCandidate, ...] = Field(min_length=1, max_length=32)
     required_capabilities: tuple[Capability, ...] = ()
     purposes: tuple[Capability, ...] = Field(min_length=1, max_length=32)
     allowed_data: tuple[DataClassification, ...] = ("public",)
@@ -295,6 +325,26 @@ class ValidationReport(ContractModel):
     demo: bool = False
 
 
+class RegistryValidationRequest(ContractModel):
+    idempotency_key: str = Field(min_length=8, max_length=120)
+
+
+class RegistryAuditData(ContractModel):
+    configuration_id: UUID
+    revision_id: UUID
+    kind: RegistryKind
+    actor_id: UUID
+    action: str = Field(max_length=100)
+
+
+class ProviderHealthData(ContractModel):
+    provider_revision_id: UUID
+    status: HealthStatus
+    circuit_state: Literal["closed", "open", "half_open"]
+    failure_count: int = Field(ge=0)
+    version: int = Field(ge=0)
+
+
 class RouteRequirements(ContractModel):
     purpose: Capability
     capabilities: tuple[Capability, ...] = ()
@@ -328,12 +378,43 @@ class RouteResolution(ContractModel):
     demo: bool = False
 
 
+class RouteEligibilityState(ContractModel):
+    revision_id: UUID
+    enabled: bool
+    archived: bool
+    health: HealthStatus
+    circuit_state: Literal["closed", "open", "half_open"]
+    credential_status: Literal["configured", "missing", "not_required"]
+
+
+class RouteEvaluationData(RouteResolution):
+    request: RoutePreviewRequest
+    observed_state: tuple[RouteEligibilityState, ...]
+
+
 class Usage(ContractModel):
     input_tokens: int | None = Field(default=None, ge=0)
     cached_tokens: int | None = Field(default=None, ge=0)
     output_tokens: int | None = Field(default=None, ge=0)
     total_tokens: int | None = Field(default=None, ge=0)
     provenance: Literal["exact", "estimated", "unknown"] = "unknown"
+
+    @model_validator(mode="after")
+    def consistent_usage(self) -> Usage:
+        if (
+            self.cached_tokens is not None
+            and self.input_tokens is not None
+            and self.cached_tokens > self.input_tokens
+        ):
+            raise ValueError("cached token count exceeds input count")
+        if (
+            self.total_tokens is not None
+            and self.input_tokens is not None
+            and self.output_tokens is not None
+            and self.total_tokens != self.input_tokens + self.output_tokens
+        ):
+            raise ValueError("total token count is inconsistent")
+        return self
 
 
 class Cost(ContractModel):
@@ -342,11 +423,24 @@ class Cost(ContractModel):
     status: Literal["exact", "estimated", "unknown", "not_applicable"] = "unknown"
 
 
+class ProviderTool(ContractModel):
+    name: str = Field(pattern=r"^[a-zA-Z_][a-zA-Z0-9_]{0,63}$")
+    description: str = Field(default="", max_length=1024)
+    parameters: dict[str, JsonValue]
+
+
+class ProviderToolCall(ContractModel):
+    id: str = Field(min_length=1, max_length=200)
+    name: str = Field(pattern=r"^[a-zA-Z_][a-zA-Z0-9_]{0,63}$")
+    arguments: dict[str, JsonValue]
+
+
 class ProviderRequest(ContractModel):
     purpose: Capability
     text: str = Field(max_length=262_144, repr=False)
     output_tokens: int = Field(ge=1, le=1_000_000)
     structured_schema: dict[str, JsonValue] | None = None
+    tools: tuple[ProviderTool, ...] = Field(default=(), max_length=32)
     correlation_id: str = Field(min_length=1, max_length=200)
     run_id: UUID | None = None
     project_id: UUID | None = None
@@ -371,11 +465,12 @@ class ProviderResult(ContractModel):
     model_identifier: str
     text: str = Field(default="", max_length=262_144, repr=False)
     structured: dict[str, JsonValue] | None = None
+    tool_calls: tuple[ProviderToolCall, ...] = ()
     request_id: str | None = Field(default=None, max_length=200)
     latency_ms: int = Field(default=0, ge=0)
     usage: Usage = Field(default_factory=Usage)
     failure: ProviderFailure | None = None
-    finish_reason: Literal["stop", "length", "cancelled", "failed"] = "stop"
+    finish_reason: Literal["stop", "length", "tool_calls", "cancelled", "failed"] = "stop"
     demo: bool = False
 
 

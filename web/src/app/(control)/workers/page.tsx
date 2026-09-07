@@ -1,4 +1,5 @@
-import { FoundationRoute } from "@/components/foundation-route";
+import { RegistryPage } from "@/components/registry-page";
+
 export default function Page() {
-  return <FoundationRoute route="workers" />;
+  return <RegistryPage kind="worker" />;
 }

@@ -834,3 +834,147 @@ h1 {
     visibility: hidden;
   }
 }
+
+.registry-toolbar,
+.registry-actions,
+.capability-list {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.registry-toolbar {
+  margin-bottom: 1rem;
+  color: var(--text-muted);
+}
+.registry-cards {
+  display: grid;
+  gap: 1rem;
+}
+.registry-record h2 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+.registry-key {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+.registry-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 1rem;
+}
+.registry-facts dt {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+.registry-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.registry-actions {
+  margin-top: 1.25rem;
+}
+.registry-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.field-group select,
+.field-group textarea,
+.candidate-row input {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 0.55rem;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+.field-group textarea {
+  resize: vertical;
+}
+.check-field {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.75rem;
+}
+.check-field input {
+  width: 1.2rem;
+  height: 1.2rem;
+  accent-color: var(--accent);
+}
+.registry-editor fieldset,
+.registry-record fieldset {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 1rem 0;
+}
+.registry-editor fieldset fieldset {
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+.registry-editor legend {
+  font-weight: 750;
+}
+.registry-editor p,
+.registry-record details p {
+  color: var(--text-muted);
+}
+.registry-notice {
+  padding: 1rem;
+  border: 1px solid var(--good);
+  border-radius: 0.5rem;
+  color: var(--good);
+}
+.candidate-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 8rem auto;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.75rem 0;
+}
+.retry-rule {
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+.registry-page details {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+.registry-page summary {
+  cursor: pointer;
+  color: var(--accent);
+  padding: 0.5rem 0;
+  min-height: 2.75rem;
+}
+.registry-json {
+  overflow: auto;
+  max-height: 24rem;
+  padding: 1rem;
+  background: var(--bg);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.registry-link {
+  text-decoration: none;
+}
+.registry-link span {
+  color: var(--accent);
+}
+@media (max-width: 800px) {
+  .registry-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .candidate-row {
+    grid-template-columns: 1fr;
+  }
+}

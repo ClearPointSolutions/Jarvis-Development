@@ -17,6 +17,9 @@ from jarvis_api.auth.service import AuthService
 from jarvis_api.config import Settings, get_settings
 from jarvis_api.errors import install_error_handlers
 from jarvis_api.event_delivery import install_event_delivery
+from jarvis_api.registry.routes import router as registry_router
+from jarvis_api.registry.service import RegistryService
+from jarvis_api.routing.routes import router as routing_router
 from jarvis_api.security import install_security_middleware
 from jarvis_contracts.api import ApiErrorResponse, LivenessResponse
 from jarvis_persistence.database import (
@@ -74,9 +77,16 @@ def create_app(
         clock=clock,
     )
     app.state.object_authorizer = ObjectAuthorizer(session_factory)
+    app.state.registry_service = RegistryService(
+        session_factory,
+        allowed_endpoints=config.provider_allowed_endpoints,
+        instance_id=config.api_instance_id,
+    )
     install_error_handlers(app)
     install_security_middleware(app, config)
     app.include_router(auth_router)
+    app.include_router(registry_router)
+    app.include_router(routing_router)
     install_event_delivery(app, config, session_factory, app.state.auth_service)
 
     @app.get(

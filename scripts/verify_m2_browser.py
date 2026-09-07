@@ -68,6 +68,11 @@ def main() -> int:
             key.write_bytes(secrets.token_urlsafe(48).encode())
             env = {
                 **os.environ,
+                "DATABASE_URL": parsed.set(database=name)
+                .update_query_dict({"options": "-c role=jarvis_v1_api"})
+                .render_as_string(hide_password=False),
+                "JARVIS_PROVIDER_ALLOWED_ENDPOINTS": '["http://127.0.0.1:11499"]',
+                "JARVIS_BROWSER_PROVIDER_ENDPOINT": "http://127.0.0.1:11499",
                 "JARVIS_ENV": "test",
                 "JARVIS_PUBLIC_ORIGIN": "http://127.0.0.1:3000",
                 "JARVIS_COOKIE_SECURE": "true",
