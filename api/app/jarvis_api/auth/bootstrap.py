@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import getpass
+import sys
 from pathlib import Path
 from typing import Any, cast
 
@@ -223,6 +224,9 @@ def main() -> int:
     )
     args = parser.parse_args()
     try:
+        if sys.platform == "win32":
+            policy_type = cast(Any, asyncio).WindowsSelectorEventLoopPolicy
+            asyncio.set_event_loop_policy(policy_type())
         return asyncio.run(_run(args))
     except (BootstrapAlreadyCompletedError, OSError, ValueError) as error:
         parser.exit(2, f"Owner bootstrap refused: {error}\n")
