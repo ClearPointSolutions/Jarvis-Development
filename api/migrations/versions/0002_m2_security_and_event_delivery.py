@@ -195,7 +195,11 @@ def upgrade() -> None:
         """
     )
 
-    op.execute("GRANT SELECT, UPDATE ON control.users TO jarvis_v1_api")
+    op.execute("GRANT SELECT ON control.users TO jarvis_v1_api")
+    op.execute(
+        "GRANT UPDATE (password_hash, last_login_at, updated_at, version) "
+        "ON control.users TO jarvis_v1_api"
+    )
     op.execute("GRANT SELECT, INSERT, UPDATE ON control.sessions TO jarvis_v1_api")
     op.execute("GRANT SELECT, INSERT, UPDATE ON control.login_rate_limits TO jarvis_v1_api")
 
