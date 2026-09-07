@@ -8,6 +8,16 @@ Workflow templates are validated executable data compiled into LangGraph. React 
 
 ## 2. Workflow specification V1
 
+M4 implements executable spec **1.1** and compiler **1.0.0**. See
+[`M4_CONTRACT.md`](M4_CONTRACT.md) and ADR-026 for the authoritative refinement:
+references are immutable M3 revision UUIDs, typed policy defaults are materialized
+before publication, and layout is separate from executable JSON. The original
+1.0 architecture example below is historical design notation, not an importable
+M4 document. The compiler rejects 1.0; existing stored history is not rewritten.
+The generated Pydantic schema and the Studio's node-type endpoint describe valid
+1.1 input. M4 implements graph semantics with injected deterministic test handlers;
+durable run execution and external side effects remain future milestones.
+
 The canonical stored representation is JSON validated against a version-controlled JSON Schema. YAML may be accepted as an import format but is normalized to canonical JSON before hashing.
 
 ```json

@@ -2,6 +2,15 @@
 
 Status: normative logical model; physical details may be refined by migrations without changing the invariants below.
 
+M4 physical refinement (migration `0005`): workflow templates add owner identity
+and a current draft pointer. Workflow versions add an immutable resolved public
+registry snapshot and snapshot hash. `control.workflow_revision_references`
+retains foreign keys to every resolved M3 revision. Database triggers reject
+cross-template/lifecycle pointer injection, identity changes, and published
+spec/layout/snapshot/binding mutation. Pre-M4 ownerless rows remain historical
+and are not exposed as new executable Studio templates. Migrations `0001`–`0004`
+are unchanged. See [`M4_CONTRACT.md`](M4_CONTRACT.md).
+
 ## 1. Conventions
 
 - PostgreSQL 16+ is the canonical durable store.

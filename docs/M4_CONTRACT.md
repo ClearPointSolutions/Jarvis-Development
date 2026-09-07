@@ -9,7 +9,11 @@ must explicitly reject it. Historical database rows are never rewritten.
 Generated JSON Schema and TypeScript are consumed directly. Configs remain under
 each canonical node's `config` field; static `NODE_DEFINITIONS` supplies the typed
 model, defaults, required capabilities, input/output channels and policy schema.
-Validation normalizes type-specific config defaults before hashing/publication.
+Draft persistence materializes effective policies before serialization can lose
+omitted-versus-explicit overrides. Publication additionally normalizes typed
+config defaults before hashing. Idempotency distinguishes omitted policy fields
+from explicit false overrides. Workflow command JSON is UTF-8 with byte and
+pre-parse depth guards; other encodings are rejected.
 No user executable code is accepted. External node handlers are injected in
 compiler tests; missing real services fail explicitly. M5–M10 effects are deferred.
 
@@ -45,6 +49,7 @@ the executable hash, and immutable on a published version.
 All paths start `/api/v1/workflow-templates`, require owner access, and writes
 require CSRF/origin. `expected_version` is the **template** optimistic version.
 Mutations are actor/action/template scoped idempotent and increment that version.
+Validation only audits an observation and leaves the template version unchanged.
 
 | Method/path | Body | Response |
 | --- | --- | --- |

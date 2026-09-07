@@ -1,8 +1,8 @@
 # Jarvis V1 Status
 
 Last updated: 2026-09-07
-Current phase: M4 — workflow specification, compiler, and executable editor
-Overall state: M3 fully complete on main; READY FOR M4; shared-contract reconciliation underway
+Current phase: M4 — locally complete; GitHub publication gate blocked
+Overall state: M4A/M4B and all local gates pass. GitHub write authentication is unavailable. NOT READY FOR M5; M5 is not started.
 
 ## Active M4 criteria
 
@@ -11,12 +11,31 @@ GitHub verify run [34167362184](https://github.com/ClearPointSolutions/Jarvis-De
 completed successfully for that exact SHA. The prior M3 publication blocker is historical.
 Integration branch: `codex/m4-workflow-system`. M5 is not started.
 
-- [ ] Pin authoritative workflow/config/API contracts and regenerate schema/TypeScript before parallel implementation.
-- [ ] Implement static registry, safe validation/routing, bounded loops, deterministic reducers/join, LangGraph compilation and PostgreSQL reconstruction tests.
-- [ ] Implement durable owner-authorized draft/publication/version API with immutable published versions, snapshots, audit and concurrency controls.
-- [ ] Implement Workflow Studio using the same contract, typed inspectors, real M3 references, validation, layout and version history.
-- [ ] Pass WF-001–005, security, PostgreSQL migrations, complete backend/frontend/browser/accessibility/build and scripts/verify.sh gates.
-- [ ] Review secrets/diff, record M4 completion evidence, push the authorized branch, verify exact-commit GitHub CI and leave a clean tree. Do not merge main or begin M5.
+- [x] Pin authoritative workflow/config/API contracts and regenerate schema/TypeScript before parallel implementation (`20dd880ccb724116a77af4055df2320f887fa215`).
+- [x] Implement static registry, safe validation/routing, bounded loops, deterministic reducers/join, LangGraph compilation and PostgreSQL reconstruction tests.
+- [x] Implement durable owner-authorized draft/publication/version API with immutable published versions, snapshots, audit and concurrency controls.
+- [x] Implement Workflow Studio using the same contract, typed inspectors, real M3 references, validation, layout and version history.
+- [x] Pass WF-001–005, security, PostgreSQL migrations, complete backend/frontend/browser/accessibility/build and scripts/verify.sh gates.
+- [x] Review secrets/diff, fix integration findings, record M4 completion evidence and commit the local milestone coherently.
+- [ ] Push the authorized branch and verify exact-commit GitHub CI. Do not merge main or begin M5.
+
+Final local evidence: **524 Python tests**, **88.68% combined line/branch coverage**
+(branch-only: 78.68% overall, 86.19% workflow API/compiler), **41 frontend tests**,
+**8 Playwright tests**, zero desktop/mobile axe violations or serious console
+errors. Clean npm install/audit (zero vulnerabilities), production build,
+PostgreSQL migration round trip/drift/roles, generated contract checks, secret
+scanner and full `scripts/verify.sh` pass. Compiler: `1e71dcb`; editor: `636869e`;
+code integration: `943a179`. See [`M4_COMPLETION.md`](M4_COMPLETION.md) for exact
+SHAs, merge order, schema/compiler versions, controls, limits and evidence.
+
+External blocker: native GitHub HTTPS credentials return invalid username/token
+(HTTP 401 preflight); connected GitHub repository writes return HTTP 403
+`Resource not accessible by integration`. No M4 branch or CI was published.
+The final native push exited 128 because no usable saved GitHub credential was
+available (`could not read Username ... terminal prompts disabled`).
+Restore write authentication, push `codex/m4-workflow-system`, and require a green
+verify run for the exact HEAD before recording READY FOR M5. No main merge,
+homelab contact, deployment or M5 work occurred.
 
 ## Active M3 criteria
 

@@ -4,13 +4,11 @@ import { createWorkflowClient, WorkflowRequestError } from "./workflows";
 afterEach(() => vi.unstubAllGlobals());
 describe("workflow contract client", () => {
   it("sends same-origin CSRF-protected generated create commands", async () => {
-    const fetch = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify({ template: {}, version: {} }), {
-          status: 201,
-        }),
-      );
+    const fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ template: {}, version: {} }), {
+        status: 201,
+      }),
+    );
     vi.stubGlobal("fetch", fetch);
     const body = {
       key: "workflow",

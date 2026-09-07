@@ -160,14 +160,12 @@ test("M3 real registry forms, immutable revisions, route preview and accessibili
   await page.getByLabel("Required capabilities (comma separated)").fill("chat");
   await page.getByLabel("Allow unknown health").check();
   await save("Browser utility route");
-  const browserRoute = page
-    .getByRole("article")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "Browser utility route",
-        exact: true,
-      }),
-    });
+  const browserRoute = page.getByRole("article").filter({
+    has: page.getByRole("heading", {
+      name: "Browser utility route",
+      exact: true,
+    }),
+  });
   await browserRoute
     .getByText("Deterministic resolution preview", { exact: true })
     .click();

@@ -9,6 +9,13 @@ The event contract decouples LangGraph, adapters, and infrastructure from the UI
 
 Delivery is at least once. Consumers MUST deduplicate. `LISTEN/NOTIFY` may wake stream servers but is never a delivery guarantee.
 
+M4 adds owner-visible configuration observations `workflow.created`,
+`workflow.revised`, `workflow.validated`, `workflow.published`, `workflow.archived`,
+and `workflow.restored`. Their typed payload contains template/version/actor IDs,
+action, optional validity, and content hash. They are transactionally appended
+through the existing event writer and replay/SSE boundary. They do not represent
+runtime execution and contain no workflow text, private references, or credentials.
+
 ## 2. Canonical envelope
 
 ```json
