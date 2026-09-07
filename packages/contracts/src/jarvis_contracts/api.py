@@ -9,7 +9,7 @@ from pydantic import Field, JsonValue
 
 from jarvis_contracts.base import ContractModel
 from jarvis_contracts.events import NormalizedEvent
-from jarvis_contracts.ids import UserId
+from jarvis_contracts.ids import RunId, UserId
 
 
 class ApiErrorDetail(ContractModel):
@@ -67,3 +67,12 @@ class EventStreamReset(ContractModel):
     reason: Literal["cursor_expired", "unsupported_schema", "run_sequence_gap"]
     earliest_position: Annotated[int, Field(ge=0)] | None = None
     latest_position: Annotated[int, Field(ge=0)] | None = None
+
+
+class RunEventSnapshotResponse(ContractModel):
+    run_id: RunId
+    status: str = Field(min_length=1, max_length=30)
+    last_event_position: Annotated[int, Field(ge=0)]
+    last_run_sequence: Annotated[int, Field(ge=0)]
+    last_event_at: datetime | None
+    read_cursor: Annotated[int, Field(ge=0)]

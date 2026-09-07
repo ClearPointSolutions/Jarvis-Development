@@ -14,6 +14,7 @@ from jarvis_contracts.api import (
     LoginRequest,
     LogoutResponse,
     ReadinessResponse,
+    RunEventSnapshotResponse,
     SessionResponse,
 )
 from jarvis_contracts.base import ContractModel
@@ -48,6 +49,7 @@ class JarvisContractBundle(ContractModel):
     readiness_response: ReadinessResponse | None = None
     event_page: EventPage | None = None
     event_stream_reset: EventStreamReset | None = None
+    run_event_snapshot: RunEventSnapshotResponse | None = None
     workflow_spec: WorkflowSpec | None = None
     workflow_version: WorkflowVersionContract | None = None
     new_event: NewEvent | None = None

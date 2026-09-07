@@ -41,6 +41,26 @@ class OwnerBootstrappedData(ContractModel):
     migrated_project_count: int = Field(ge=0)
 
 
+class SecurityDeniedData(ContractModel):
+    reason: Literal[
+        "invalid_host",
+        "invalid_origin",
+        "invalid_csrf",
+        "invalid_content_type",
+        "unauthenticated",
+        "not_found",
+        "request_too_large",
+        "forbidden",
+    ]
+    user_id: UserId | None = None
+    session_id: SessionId | None = None
+
+
+class OwnerPasswordResetData(ContractModel):
+    user_id: UserId
+    revoked_session_count: int = Field(ge=0)
+
+
 @dataclass(frozen=True)
 class EventDefinition:
     category: EventCategory
@@ -123,6 +143,12 @@ EVENT_REGISTRY: dict[str, EventDefinition] = {
 }
 EVENT_REGISTRY.update(
     {
+        "auth.security_denied": EventDefinition(
+            EventCategory.AUTH, "Security boundary denied request", SecurityDeniedData
+        ),
+        "auth.owner_password_reset": EventDefinition(
+            EventCategory.AUTH, "Owner password reset locally", OwnerPasswordResetData
+        ),
         "auth.login_succeeded": EventDefinition(
             EventCategory.AUTH, "Login succeeded", LoginSucceededData
         ),
