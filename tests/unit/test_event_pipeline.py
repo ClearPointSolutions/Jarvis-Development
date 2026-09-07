@@ -446,3 +446,24 @@ async def test_producer_cannot_choose_human_summary_or_leak_correlation_secret()
 def test_cursor_bigint_overflow_is_rejected(cursor: str) -> None:
     with pytest.raises(ValueError):
         resolve_event_cursor(after=0, last_event_id=cursor)
+
+
+async def test_all_freeform_envelope_metadata_redacts_known_secrets() -> None:
+    secret = "synthetic-envelope-canary"
+    normalizer = EventNormalizer(
+        redactor=RecursiveRedactor((secret,)),
+        artifact_sink=None,
+        inline_bytes=1024,
+        max_bytes=65536,
+    )
+    prepared = await normalizer.prepare(
+        cast(AsyncSession, object()),
+        intent(
+            correlation_id=secret,
+            idempotency_key=secret,
+            source=EventSource(kind="api", name=secret, instance_id=secret, host_id=secret),
+            scope=EventScope(workflow_node_id=secret),
+            artifact_refs=(ArtifactReference(artifact_id=new_id(ArtifactId), relation=secret),),
+        ),
+    )
+    assert secret not in prepared.event.model_dump_json()

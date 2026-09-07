@@ -47,7 +47,15 @@ class LocalEventArtifactStore:
         media_type: str,
     ) -> ArtifactReference:
         digest = hashlib.sha256(content).hexdigest()
-        security_scope = f"run-{scope.run_id}" if scope.run_id is not None else "system"
+        security_scope = "system"
+        for label, identifier in (
+            ("run", scope.run_id),
+            ("job", scope.job_id),
+            ("project", scope.project_id),
+        ):
+            if identifier is not None:
+                security_scope = f"{label}-{identifier}"
+                break
         storage_key = f"events/{security_scope}/{digest[:2]}/{digest}"
         target = (self._root / storage_key).resolve()
         if not target.is_relative_to(self._root):

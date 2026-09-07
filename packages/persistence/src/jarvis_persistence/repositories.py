@@ -255,6 +255,18 @@ class EventRepository:
             artifact = await session.get(ArtifactModel, reference.artifact_id)
             if artifact is None or artifact.run_id != scope.run_id:
                 raise ValueError("event artifact does not belong to its run")
+            if artifact.kind == "event_payload":
+                namespace = "system"
+                for label, identifier in (
+                    ("run", scope.run_id),
+                    ("job", scope.job_id),
+                    ("project", scope.project_id),
+                ):
+                    if identifier is not None:
+                        namespace = f"{label}-{identifier}"
+                        break
+                if not artifact.storage_key.startswith(f"events/{namespace}/"):
+                    raise ValueError("event artifact does not belong to its project/job scope")
 
     async def page(
         self,
@@ -455,6 +467,11 @@ class EventRepository:
 
 class CommandRepository:
     async def enqueue(self, session: AsyncSession, request: RunCommandRequest) -> RunCommandReceipt:
+        # A command and its normalized audit event share a transaction. Acquire
+        # the event allocation lock before the aggregate row to avoid inversion.
+        await session.scalar(
+            select(EventGlobalCounterModel).where(EventGlobalCounterModel.id == 1).with_for_update()
+        )
         run = await session.scalar(
             select(RunModel).where(RunModel.id == request.run_id).with_for_update()
         )
