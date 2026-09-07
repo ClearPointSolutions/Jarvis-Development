@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
+import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Any, cast
 
 import uvicorn
 from fastapi import FastAPI
@@ -89,6 +92,9 @@ app = create_app()
 
 def run() -> None:
     settings = get_settings()
+    if sys.platform == "win32":
+        policy_type = cast(Any, asyncio).WindowsSelectorEventLoopPolicy
+        asyncio.set_event_loop_policy(policy_type())
     uvicorn.run("jarvis_api.main:app", host=settings.api_host, port=settings.api_port)
 
 

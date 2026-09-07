@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import hmac
 import math
-import secrets
 import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -31,6 +30,7 @@ from jarvis_contracts.event_registry import (
     LoginFailedData,
     LoginSucceededData,
     LogoutData,
+    SecurityDeniedData,
     SessionRevokedData,
 )
 from jarvis_contracts.ids import SessionId, UserId
@@ -81,7 +81,9 @@ class AuthService:
         self._factory = factory
         self._settings = settings
         self._server_key = server_key
-        self._fingerprint_key = server_key or secrets.token_bytes(32)
+        # Local development still needs durable limits across API restarts. Production
+        # requires a private persistent key through Settings.
+        self._fingerprint_key = server_key or b"jarvis-local-development-fingerprints-v1"
         self._clock = clock or SystemClock()
         self._passwords = password_manager or PasswordManager()
         self._repository = repository or AuthRepository()
@@ -163,6 +165,14 @@ class AuthService:
         # Argon2 is intentionally expensive. Perform it before acquiring the global event lock,
         # then confirm that the credential row is unchanged inside the write transaction.
         async with self._factory() as read_session:
+            observed_limits = await self._repository.rate_limits(read_session, keys)
+            still_in_window = {
+                key: row
+                for key, row in observed_limits.items()
+                if now - row.window_started_at
+                < timedelta(seconds=self._settings.login_window_seconds)
+            }
+            already_blocked = self._blocked_seconds(still_in_window, now) > 0
             candidate_user = (
                 await self._repository.find_user(read_session, normalized)
                 if normalized is not None
@@ -173,7 +183,11 @@ class AuthService:
                 if candidate_user is not None and candidate_user.enabled
                 else self._passwords.dummy_hash
             )
-        preverified = await asyncio.to_thread(self._passwords.verify, candidate_hash, password)
+        preverified = (
+            False
+            if already_blocked
+            else await asyncio.to_thread(self._passwords.verify, candidate_hash, password)
+        )
 
         async with self._factory.begin() as session:
             # Every login writes an audit event. Acquire the global event lock before auth rows.
@@ -203,7 +217,7 @@ class AuthService:
                     else self._passwords.dummy_hash
                 )
                 valid = preverified
-                if current_hash != candidate_hash:
+                if already_blocked or current_hash != candidate_hash:
                     valid = await asyncio.to_thread(self._passwords.verify, current_hash, password)
                 if user is None or not user.enabled or not valid:
                     retry_after = self._record_failure(rows, now)
@@ -347,7 +361,7 @@ class AuthService:
         )
 
     async def authenticate(
-        self, *, session_token: str, correlation_id: str
+        self, *, session_token: str, correlation_id: str, read_only: bool = False
     ) -> AuthPrincipal | None:
         if len(session_token) < 32 or len(session_token) > 256:
             return None
@@ -355,7 +369,9 @@ class AuthService:
         now = self._clock.now()
         revoke_reason: str | None = None
         async with self._factory.begin() as session:
-            pair = await self._repository.get_session_with_user(session, token_hash, lock=True)
+            pair = await self._repository.get_session_with_user(
+                session, token_hash, lock=not read_only
+            )
             if pair is None:
                 return None
             row, user = pair
@@ -371,7 +387,7 @@ class AuthService:
             elif not hmac.compare_digest(row.csrf_secret_hash, sha256_text(csrf)):
                 revoke_reason = "csrf_key_changed"
             else:
-                if now - row.last_seen_at >= timedelta(
+                if not read_only and now - row.last_seen_at >= timedelta(
                     seconds=self._settings.session_touch_interval_seconds
                 ):
                     row.last_seen_at = now
@@ -381,7 +397,7 @@ class AuthService:
                     )
                 return self._principal(row, user, session_token, csrf)
 
-        if revoke_reason is not None:
+        if revoke_reason is not None and not read_only:
             await self._revoke_expired(
                 token_hash=token_hash,
                 reason=revoke_reason,
@@ -406,6 +422,14 @@ class AuthService:
             row, user = pair
             if row.revoked_at is not None:
                 return
+            # The initial authentication transaction intentionally releases session
+            # locks before taking the global event lock. Recheck mutable expiry and
+            # enabled state so a concurrent touch/recovery cannot be revoked by a
+            # stale observation from that earlier transaction.
+            if reason == "idle_expired" and now < row.expires_at:
+                return
+            if reason == "user_disabled" and user.enabled:
+                return
             row.revoked_at = now
             row.revoke_reason = reason
             await self._audit.append(
@@ -420,7 +444,23 @@ class AuthService:
             )
 
     def valid_csrf(self, principal: AuthPrincipal, candidate: str | None) -> bool:
-        return candidate is not None and hmac.compare_digest(principal.csrf_token, candidate)
+        return (
+            candidate is not None
+            and candidate.isascii()
+            and hmac.compare_digest(principal.csrf_token, candidate)
+        )
+
+    async def security_denied(self, payload: SecurityDeniedData, *, correlation_id: str) -> None:
+        async with self._factory.begin() as session:
+            await self._repository.lock_event_counter(session)
+            await self._audit.append(
+                session,
+                event_type="auth.security_denied",
+                payload=payload,
+                occurred_at=self._clock.now(),
+                correlation_id=correlation_id,
+                severity=EventSeverity.WARNING,
+            )
 
     async def logout(self, principal: AuthPrincipal, *, correlation_id: str) -> bool:
         now = self._clock.now()

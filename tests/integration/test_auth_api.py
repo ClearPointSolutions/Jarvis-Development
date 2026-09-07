@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import timedelta
@@ -13,8 +14,13 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from uuid6 import uuid7
 
 from jarvis_api.auth.authorization import ObjectAuthorizer
-from jarvis_api.auth.bootstrap import BootstrapAlreadyCompletedError, bootstrap_owner
+from jarvis_api.auth.bootstrap import (
+    BootstrapAlreadyCompletedError,
+    bootstrap_owner,
+    reset_owner_password,
+)
 from jarvis_api.auth.crypto import PasswordManager, sha256_text
+from jarvis_api.auth.service import AuthService, ClientMetadata
 from jarvis_api.config import Settings
 from jarvis_api.errors import ApiProblemError
 from jarvis_api.main import create_app
@@ -57,7 +63,7 @@ async def auth_environment(
         if owner is None:
             owner = UserModel(
                 id=uuid7(),
-                username=f"test-owner-{uuid7().hex[:8]}",
+                username=f"test-owner-{uuid7().hex[-12:]}",
                 password_hash=passwords.hash(TEST_CREDENTIAL),
                 role="owner",
                 enabled=True,
@@ -212,11 +218,11 @@ async def test_auth_002_rate_limit_is_durable_generic_and_recovers(
     ) as network_client:
         network_first = await network_client.post(
             "/api/v1/auth/login",
-            json={"username": f"missing-{uuid7().hex[:8]}", "password": "invalid-fixture"},
+            json={"username": f"missing-{uuid7().hex[-12:]}", "password": "invalid-fixture"},
         )
         network_second = await network_client.post(
             "/api/v1/auth/login",
-            json={"username": f"missing-{uuid7().hex[:8]}", "password": "invalid-fixture"},
+            json={"username": f"missing-{uuid7().hex[-12:]}", "password": "invalid-fixture"},
         )
     assert network_first.status_code == 401
     assert network_second.status_code == 429
@@ -286,7 +292,7 @@ async def test_auth_004_owner_scoping_hides_unowned_and_missing_resources(
         owned = ProjectModel(
             id=uuid7(),
             owner_user_id=auth_environment.user_id,
-            slug=f"owned-{uuid7().hex[:8]}",
+            slug=f"owned-{uuid7().hex[-12:]}",
             name="Owned fixture",
             status="active",
         )
@@ -380,13 +386,13 @@ async def test_readiness_is_authenticated_and_bootstrap_is_one_time(
         claimed_project = ProjectModel(
             id=uuid7(),
             owner_user_id=migration_owner.id,
-            slug=f"bootstrap-project-{uuid7().hex[:8]}",
+            slug=f"bootstrap-project-{uuid7().hex[-12:]}",
             name="Bootstrap fixture",
             status="active",
         )
         session.add(claimed_project)
 
-    bootstrap_name = f"bootstrap-{uuid7().hex[:12]}"
+    bootstrap_name = f"bootstrap-{uuid7().hex[-12:]}"
     owner_id, claimed = await bootstrap_owner(
         session_factory,
         username=bootstrap_name,
@@ -404,7 +410,150 @@ async def test_readiness_is_authenticated_and_bootstrap_is_one_time(
     with pytest.raises(BootstrapAlreadyCompletedError):
         await bootstrap_owner(
             session_factory,
-            username=f"other-{uuid7().hex[:12]}",
+            username=f"other-{uuid7().hex[-12:]}",
             password=TEST_CREDENTIAL,
             clock=auth_environment.clock,
         )
+    async with session_factory.begin() as session:
+        await session.execute(
+            update(UserModel).where(UserModel.id == owner_id).values(enabled=False)
+        )
+    with pytest.raises(BootstrapAlreadyCompletedError):
+        await bootstrap_owner(
+            session_factory,
+            username=f"disabled-retry-{uuid7().hex[-12:]}",
+            password=TEST_CREDENTIAL,
+            clock=auth_environment.clock,
+        )
+
+
+async def test_stream_authentication_is_read_only_and_expiry_still_denies(
+    auth_environment: AuthEnvironment,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    assert (await _login(auth_environment)).status_code == 200
+    token = auth_environment.client.cookies.get(auth_environment.settings.session_cookie_name)
+    assert token is not None
+    service = AuthService(
+        session_factory,
+        auth_environment.settings,
+        server_key=SERVER_KEY,
+        clock=auth_environment.clock,
+    )
+    auth_environment.clock.advance(timedelta(seconds=30))
+    assert await service.authenticate(
+        session_token=token, correlation_id="read-only", read_only=True
+    )
+    async with session_factory() as session:
+        row = await session.scalar(
+            select(SessionModel).where(SessionModel.token_hash == sha256_text(token))
+        )
+        assert row is not None
+        assert row.last_seen_at == NOW
+        assert row.expires_at == NOW + timedelta(seconds=60)
+    auth_environment.clock.advance(timedelta(seconds=31))
+    assert (
+        await service.authenticate(session_token=token, correlation_id="read-only", read_only=True)
+        is None
+    )
+    async with session_factory() as session:
+        row = await session.scalar(
+            select(SessionModel).where(SessionModel.token_hash == sha256_text(token))
+        )
+        assert row is not None and row.revoked_at is None
+
+
+async def test_concurrent_login_limits_are_atomic_and_survive_local_api_restart(
+    auth_environment: AuthEnvironment,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    service = AuthService(
+        session_factory, auth_environment.settings, server_key=None, clock=auth_environment.clock
+    )
+    attempts = await asyncio.gather(
+        *(
+            service.login(
+                username=auth_environment.username,
+                password="invalid-concurrent-fixture",
+                metadata=ClientMetadata("192.0.2.1", None),
+                correlation_id=f"concurrent-{index}",
+            )
+            for index in range(4)
+        )
+    )
+    assert all(result.principal is None for result in attempts)
+    assert sum(result.retry_after_seconds > 0 for result in attempts) == 3
+    replacement = AuthService(
+        session_factory, auth_environment.settings, server_key=None, clock=auth_environment.clock
+    )
+    retry = await replacement.login(
+        username=auth_environment.username,
+        password=TEST_CREDENTIAL,
+        metadata=ClientMetadata("192.0.2.1", None),
+        correlation_id="after-restart",
+    )
+    assert retry.principal is None and retry.retry_after_seconds > 0
+
+
+async def test_local_password_reset_revokes_sessions_and_denials_are_redacted(
+    auth_environment: AuthEnvironment,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    login = await _login(auth_environment)
+    assert login.status_code == 200
+    denial = await auth_environment.client.post(
+        "/api/v1/auth/logout", json={}, headers={"X-CSRF-Token": "synthetic-untrusted-header"}
+    )
+    assert denial.status_code == 403
+    user_id, count = await reset_owner_password(
+        session_factory,
+        username=auth_environment.username,
+        password="new-local-fixture-credential",
+        clock=auth_environment.clock,
+    )
+    assert user_id == auth_environment.user_id and count == 1
+    assert (await auth_environment.client.get("/api/v1/session")).status_code == 401
+    assert (await _login(auth_environment, "new-local-fixture-credential")).status_code == 200
+    async with session_factory() as session:
+        denials = list(
+            await session.scalars(
+                select(EventModel).where(EventModel.type == "auth.security_denied")
+            )
+        )
+        assert any(row.data_json["reason"] == "invalid_csrf" for row in denials)
+        assert "synthetic-untrusted-header" not in str([row.data_json for row in denials])
+        reset = await session.scalar(
+            select(EventModel).where(EventModel.type == "auth.owner_password_reset")
+        )
+        assert reset is not None and reset.data_json["revoked_session_count"] == 1
+
+
+async def test_oversized_json_is_rejected_before_parse_with_or_without_length(
+    auth_environment: AuthEnvironment,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    canary = "oversize-synthetic-private-input"
+    body = ('{"password":"' + canary * 3000 + '"}').encode()
+
+    async def chunks() -> AsyncIterator[bytes]:
+        for offset in range(0, len(body), 4096):
+            yield body[offset : offset + 4096]
+
+    for content in (body, chunks()):
+        response = await auth_environment.client.post(
+            "/api/v1/auth/login",
+            content=content,
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status_code == 413
+        assert response.headers["cache-control"] == "no-store"
+        assert response.json()["error"]["code"] == "request.too_large"
+        assert canary not in response.text
+    async with session_factory() as session:
+        audits = list(
+            await session.scalars(
+                select(EventModel).where(EventModel.type == "auth.security_denied")
+            )
+        )
+        assert sum(row.data_json["reason"] == "request_too_large" for row in audits) == 2
+        assert canary not in str([row.data_json for row in audits])

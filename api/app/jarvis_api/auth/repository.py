@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, tuple_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,6 +22,16 @@ from jarvis_persistence.models import (
 
 
 class AuthRepository:
+    async def rate_limits(
+        self, session: AsyncSession, keys: tuple[tuple[str, str], ...]
+    ) -> dict[tuple[str, str], LoginRateLimitModel]:
+        rows = await session.scalars(
+            select(LoginRateLimitModel).where(
+                tuple_(LoginRateLimitModel.scope, LoginRateLimitModel.subject_hash).in_(keys)
+            )
+        )
+        return {(row.scope, row.subject_hash): row for row in rows}
+
     async def lock_event_counter(self, session: AsyncSession) -> None:
         counter = await session.scalar(
             select(EventGlobalCounterModel).where(EventGlobalCounterModel.id == 1).with_for_update()
@@ -92,7 +102,7 @@ class AuthRepository:
             .where(SessionModel.token_hash == token_hash)
         )
         if lock:
-            statement = statement.with_for_update()
+            statement = statement.with_for_update(of=SessionModel)
         row = (await session.execute(statement)).one_or_none()
         if row is None:
             return None

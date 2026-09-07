@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 from jarvis_api.auth.crypto import (
@@ -10,8 +11,20 @@ from jarvis_api.auth.crypto import (
     normalize_username,
     sha256_text,
 )
+from jarvis_api.auth.service import AuthService
 from jarvis_api.config import Settings
 from jarvis_api.main import create_app
+from jarvis_contracts.event_registry import SecurityDeniedData
+
+
+@pytest.fixture(autouse=True)
+def isolate_audit_database(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def discard_audit(
+        self: AuthService, payload: SecurityDeniedData, *, correlation_id: str
+    ) -> None:
+        pass
+
+    monkeypatch.setattr(AuthService, "security_denied", discard_audit)
 
 
 def test_argon2id_and_opaque_token_primitives() -> None:
@@ -100,3 +113,22 @@ def test_origin_host_json_and_validation_errors_do_not_echo_credentials() -> Non
     assert invalid.status_code == 422
     assert credential not in invalid.text
     assert "input" not in invalid.json()["error"]["details"]
+
+
+def test_unexpected_exception_is_redacted_in_body_logs_and_has_security_headers(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    app = create_app(settings=Settings(_env_file=None, env="test"))
+    canary = "synthetic-private-exception-value"
+
+    @app.get("/failure-fixture")
+    async def fail() -> None:
+        raise RuntimeError(canary)
+
+    response = TestClient(app).get("/failure-fixture")
+    assert response.status_code == 500
+    assert canary not in response.text
+    assert canary not in caplog.text
+    assert response.headers["cache-control"] == "no-store"
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-request-id"] == response.json()["error"]["request_id"]

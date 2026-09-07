@@ -27,7 +27,11 @@ async def current_principal(
     token = request.cookies.get(config.session_cookie_name)
     if not token:
         raise ApiProblemError(401, "auth.required", "Authentication is required")
-    principal = await service.authenticate(session_token=token, correlation_id=request_id(request))
+    principal = await service.authenticate(
+        session_token=token,
+        correlation_id=request_id(request),
+        read_only=request.method == "GET" and request.url.path.endswith("/events/stream"),
+    )
     if principal is None:
         raise ApiProblemError(401, "auth.required", "Authentication is required")
     return principal
