@@ -54,14 +54,90 @@ class MutableRow:
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
 
 
-class ProjectModel(MutableRow, Base):
-    __tablename__ = "projects"
+class UserModel(MutableRow, Base):
+    __tablename__ = "users"
     __table_args__ = (
-        CheckConstraint("status IN ('active', 'archived')", name="status"),
+        CheckConstraint("role IN ('owner')", name="role"),
+        CheckConstraint("username = lower(username)", name="username_normalized"),
+        CheckConstraint("username ~ '^[a-z0-9][a-z0-9_.-]{2,63}$'", name="username_format"),
+        Index(
+            "uq_users_enabled_owner",
+            "role",
+            unique=True,
+            postgresql_where=text("enabled"),
+        ),
         {"schema": CONTROL_SCHEMA},
     )
 
     id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid7)
+    username: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    password_hash: Mapped[str] = mapped_column(String(512), nullable=False)
+    role: Mapped[str] = mapped_column(String(30), nullable=False, default="owner")
+    enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class SessionModel(Base):
+    __tablename__ = "sessions"
+    __table_args__ = (
+        CheckConstraint("expires_at <= absolute_expires_at", name="expiry_order"),
+        Index(
+            "ix_sessions_user_active",
+            "user_id",
+            "expires_at",
+            postgresql_where=text("revoked_at IS NULL"),
+        ),
+        Index("ix_sessions_expires_at", "expires_at"),
+        {"schema": CONTROL_SCHEMA},
+    )
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid7)
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.users.id", ondelete="RESTRICT"), nullable=False
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    csrf_secret_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    absolute_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoke_reason: Mapped[str | None] = mapped_column(String(64))
+    ip_prefix: Mapped[str | None] = mapped_column(String(96))
+    user_agent_hash: Mapped[str | None] = mapped_column(String(64))
+
+
+class LoginRateLimitModel(Base):
+    __tablename__ = "login_rate_limits"
+    __table_args__ = (
+        CheckConstraint("scope IN ('account','network')", name="scope"),
+        CheckConstraint("failed_count >= 0", name="failed_count_nonnegative"),
+        Index("ix_login_rate_limits_locked_until", "locked_until"),
+        {"schema": CONTROL_SCHEMA},
+    )
+
+    scope: Mapped[str] = mapped_column(String(20), primary_key=True)
+    subject_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    failed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    window_started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class ProjectModel(MutableRow, Base):
+    __tablename__ = "projects"
+    __table_args__ = (
+        CheckConstraint("status IN ('active', 'archived')", name="status"),
+        Index("ix_projects_owner_user_id", "owner_user_id"),
+        {"schema": CONTROL_SCHEMA},
+    )
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid7)
+    owner_user_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.users.id", ondelete="RESTRICT"), nullable=False
+    )
     slug: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
@@ -207,6 +283,8 @@ class RunModel(MutableRow, Base):
         UniqueConstraint("langgraph_thread_id", name="uq_runs_langgraph_thread"),
         CheckConstraint("run_number > 0", name="run_number_positive"),
         CheckConstraint("next_command_sequence >= 0", name="command_sequence_nonnegative"),
+        CheckConstraint("last_event_position >= 0", name="last_event_position_nonnegative"),
+        CheckConstraint("last_run_sequence >= 0", name="last_run_sequence_nonnegative"),
         CheckConstraint(
             "status IN ('queued','claiming','running','pause_requested','paused',"
             "'approval_required','cancel_requested','completed','failed','blocked','cancelled')",
@@ -237,6 +315,13 @@ class RunModel(MutableRow, Base):
     next_command_sequence: Mapped[int] = mapped_column(
         BigInteger, nullable=False, default=0, server_default="0"
     )
+    last_event_position: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=0, server_default="0"
+    )
+    last_run_sequence: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=0, server_default="0"
+    )
+    last_event_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

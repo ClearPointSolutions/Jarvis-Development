@@ -12,6 +12,7 @@ from jarvis_persistence.models import (
     ProjectModel,
     RunConfigSnapshotModel,
     RunModel,
+    UserModel,
     WorkflowTemplateModel,
     WorkflowVersionModel,
 )
@@ -21,6 +22,7 @@ NOW = datetime(2026, 9, 7, 15, 0, tzinfo=UTC)
 
 @dataclass(frozen=True)
 class SeededRun:
+    user_id: UUID
     project_id: UUID
     job_id: UUID
     run_id: UUID
@@ -29,6 +31,7 @@ class SeededRun:
 
 
 async def seed_run(factory: async_sessionmaker[AsyncSession]) -> SeededRun:
+    user_id = uuid7()
     project_id = uuid7()
     workflow_template_id = uuid7()
     workflow_version_id = uuid7()
@@ -37,8 +40,19 @@ async def seed_run(factory: async_sessionmaker[AsyncSession]) -> SeededRun:
     run_id = uuid7()
     async with factory.begin() as session:
         session.add(
+            UserModel(
+                id=user_id,
+                username=f"owner-{user_id}",
+                password_hash="!test-only-disabled-hash",
+                role="owner",
+                enabled=False,
+            )
+        )
+        await session.flush()
+        session.add(
             ProjectModel(
                 id=project_id,
+                owner_user_id=user_id,
                 slug=f"project-{project_id}",
                 name="Integration project",
                 status="active",
@@ -99,6 +113,7 @@ async def seed_run(factory: async_sessionmaker[AsyncSession]) -> SeededRun:
             )
         )
     return SeededRun(
+        user_id=user_id,
         project_id=project_id,
         job_id=job_id,
         run_id=run_id,

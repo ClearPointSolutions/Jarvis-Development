@@ -8,6 +8,7 @@ from uuid import UUID
 from uuid6 import uuid7
 
 UserId = NewType("UserId", UUID)
+SessionId = NewType("SessionId", UUID)
 ProjectId = NewType("ProjectId", UUID)
 ThreadId = NewType("ThreadId", UUID)
 MessageId = NewType("MessageId", UUID)

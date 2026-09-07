@@ -1,5 +1,9 @@
 /* Generated from authoritative Pydantic contracts. Do not edit. */
 
+export type Code = string;
+export type JsonValue = unknown;
+export type Message = string;
+export type RequestId = string;
 export type CreatedAt = string;
 export type Id = string;
 export type Kind = string;
@@ -26,7 +30,6 @@ export type ConfigurationKind =
   | "project_settings";
 export type Revision = number;
 export type SchemaVersion = "1.0";
-export type JsonValue = unknown;
 export type CreatedAt2 = string;
 export type ExternalId = string | null;
 export type FenceGeneration = number;
@@ -42,57 +45,8 @@ export type EffectStatus =
   "prepared" | "dispatched" | "running" | "succeeded" | "failed" | "cancel_requested" | "cancelled" | "unknown";
 export type TaskAttemptId1 = string | null;
 export type UpdatedAt = string;
-export type BudgetScope = string;
-export type FailureClass =
-  | "code.implementation_failure"
-  | "code.test_failure"
-  | "code.review_failure"
-  | "code.git_conflict"
-  | "infrastructure.worker_unavailable"
-  | "infrastructure.worker_transport"
-  | "infrastructure.service_unavailable"
-  | "provider.rate_limited"
-  | "provider.transient"
-  | "provider.contract_failure"
-  | "configuration.invalid"
-  | "security.policy_denied"
-  | "approval.rejected"
-  | "orchestration.runtime_error"
-  | "user.cancelled";
-export type Code = string;
-export type ConsumesSemanticAttempt = boolean;
-export type Retryable = boolean;
-export type Summary = string;
-export type Code1 = string;
-export type ProviderRateLimited = boolean;
-export type ProviderTransient = boolean;
-export type SecurityPolicyDenied = boolean;
-export type Summary1 = string;
-export type UserCancelled = boolean;
-export type VerifierFailed = boolean;
-export type WorkerTransportFailed = boolean;
-export type DetailArtifactId = string | null;
-export type Id3 = string;
-export type Key1 = string;
-export type RequestDigest1 = string;
-export type ResponseStatus = number | null;
-export type Scope = string;
-export type State = "started" | "completed" | "failed";
-export type CreatedAt3 = string;
-export type Id4 = string;
-export type Objective = string;
-export type ProjectId = string;
-export type JobStatus = "draft" | "queued" | "active" | "waiting" | "completed" | "failed" | "blocked" | "cancelled";
-export type ThreadId = string | null;
-export type UpdatedAt1 = string;
-export type Version = number;
-export type AcquiredAt = string;
-export type ExpiresAt = string;
-export type Generation = number;
-export type Id5 = string;
-export type OwnerInstanceId = string;
-export type ReleasedAt = string | null;
-export type RunId2 = string;
+export type After = number;
+export type HighWatermark = number;
 export type ArtifactId = string;
 export type Relation = string;
 export type ArtifactRefs = ArtifactReference[];
@@ -119,18 +73,22 @@ export type EventCategory =
   | "system";
 export type CausationEventId = string | null;
 export type CorrelationId = string;
+export type EventId = string;
+export type GlobalPosition = number;
 export type IdempotencyKey1 = string | null;
-export type Message = string;
+export type Message1 = string;
 export type EventMode = "real" | "demo";
 export type OccurredAt = string;
+export type RecordedAt = string;
+export type RunSequence = number | null;
 export type SchemaVersion1 = "1.0";
 export type JobId = string | null;
 export type NodeExecutionId = string | null;
-export type ProjectId1 = string | null;
-export type RunId3 = string | null;
+export type ProjectId = string | null;
+export type RunId2 = string | null;
 export type TaskAttemptId2 = string | null;
 export type TaskId = string | null;
-export type ThreadId1 = string | null;
+export type ThreadId = string | null;
 export type WorkflowNodeId = string | null;
 export type EventSeverity = "debug" | "info" | "success" | "warning" | "error" | "critical";
 export type HostId = string | null;
@@ -142,18 +100,78 @@ export type SpanId = string;
 export type TraceId = string;
 export type Type = string;
 export type EventVisibility = "owner" | "operator" | "internal";
+export type Items = NormalizedEvent[];
+export type NextAfter = number | null;
+export type EarliestPosition = number | null;
+export type LatestPosition = number | null;
+export type Reason = "cursor_expired" | "unsupported_schema" | "run_sequence_gap";
+export type BudgetScope = string;
+export type FailureClass =
+  | "code.implementation_failure"
+  | "code.test_failure"
+  | "code.review_failure"
+  | "code.git_conflict"
+  | "infrastructure.worker_unavailable"
+  | "infrastructure.worker_transport"
+  | "infrastructure.service_unavailable"
+  | "provider.rate_limited"
+  | "provider.transient"
+  | "provider.contract_failure"
+  | "configuration.invalid"
+  | "security.policy_denied"
+  | "approval.rejected"
+  | "orchestration.runtime_error"
+  | "user.cancelled";
+export type Code1 = string;
+export type ConsumesSemanticAttempt = boolean;
+export type Retryable = boolean;
+export type Summary = string;
+export type Code2 = string;
+export type ProviderRateLimited = boolean;
+export type ProviderTransient = boolean;
+export type SecurityPolicyDenied = boolean;
+export type Summary1 = string;
+export type UserCancelled = boolean;
+export type VerifierFailed = boolean;
+export type WorkerTransportFailed = boolean;
+export type DetailArtifactId = string | null;
+export type Id3 = string;
+export type Key1 = string;
+export type RequestDigest1 = string;
+export type ResponseStatus = number | null;
+export type Scope = string;
+export type State = "started" | "completed" | "failed";
+export type CreatedAt3 = string;
+export type Id4 = string;
+export type Objective = string;
+export type ProjectId1 = string;
+export type JobStatus = "draft" | "queued" | "active" | "waiting" | "completed" | "failed" | "blocked" | "cancelled";
+export type ThreadId1 = string | null;
+export type UpdatedAt1 = string;
+export type Version = number;
+export type AcquiredAt = string;
+export type ExpiresAt = string;
+export type Generation = number;
+export type Id5 = string;
+export type OwnerInstanceId = string;
+export type ReleasedAt = string | null;
+export type RunId3 = string;
+export type Service = "jarvis-api";
+export type Status = "ok";
+export type Version1 = "0.1.0";
+export type Password = string;
+export type Username = string;
+export type Revoked = boolean;
 export type ArtifactRefs1 = ArtifactReference[];
 export type CausationEventId1 = string | null;
 export type CorrelationId1 = string;
-export type EventId = string;
-export type GlobalPosition = number;
 export type IdempotencyKey2 = string | null;
-export type Message1 = string;
+export type Message2 = string;
 export type OccurredAt1 = string;
-export type RecordedAt = string;
-export type RunSequence = number | null;
 export type SchemaVersion2 = "1.0";
 export type Type1 = string;
+export type Database = "ready" | "unavailable" | "migration_required";
+export type Status1 = "ready" | "not_ready";
 export type ExhaustionAction = "fail" | "block" | "approval";
 export type InitialDelayMs = number;
 export type MaxRetries = number;
@@ -181,7 +199,7 @@ export type RunStatus =
   | "blocked"
   | "cancelled";
 export type UpdatedAt2 = string;
-export type Version1 = number;
+export type Version2 = number;
 export type WorkflowVersionId = string;
 export type CreatedAt5 = string;
 export type Id7 = string;
@@ -211,9 +229,15 @@ export type SchemaVersion6 = "1.0";
 export type SnapshotHash = string;
 export type WorkflowContentHash = string;
 export type WorkflowVersionId1 = string;
+export type AbsoluteExpiresAt = string;
+export type CsrfToken = string;
+export type IdleExpiresAt = string;
+export type Id9 = string;
+export type Role = "owner";
+export type Username1 = string;
 export type AcceptanceCriteria = string[];
 export type CreatedAt7 = string;
-export type Id9 = string;
+export type Id10 = string;
 export type Key3 = string;
 export type RunId7 = string;
 export type TaskStatus =
@@ -229,12 +253,12 @@ export type TaskStatus =
   | "skipped";
 export type Title = string;
 export type UpdatedAt3 = string;
-export type Version2 = number;
+export type Version3 = number;
 export type Weight = number;
 export type AttemptNumber = number;
 export type BaseSha = string | null;
 export type CompletedAt = string | null;
-export type Id10 = string;
+export type Id11 = string;
 export type ResultSha = string | null;
 export type StartedAt = string | null;
 export type AttemptStatus =
@@ -256,7 +280,7 @@ export type WorkerSelector = string | null;
 export type Description = string;
 export type Fallback = boolean;
 export type From = string;
-export type Id11 = string;
+export type Id12 = string;
 export type IterationKey = string | null;
 export type WorkflowEdgeKind = "always" | "on_result" | "retry" | "iterate";
 export type MaxIterations = number | null;
@@ -279,7 +303,7 @@ export type Name1 = string;
  * @maxItems 500
  */
 export type Nodes = [WorkflowNode, ...WorkflowNode[]];
-export type Id12 = string;
+export type Id13 = string;
 export type Label = string;
 export type WorkflowNodeType =
   | "organizer"
@@ -299,34 +323,54 @@ export type ResultPath = string;
 export type SpecVersion = "1.0";
 export type CompilerVersion = string;
 export type ContentHash2 = string;
-export type Id13 = string;
+export type Id14 = string;
 export type Published = boolean;
 export type SpecVersion1 = "1.0";
-export type Version3 = number;
+export type Version4 = number;
 export type WorkflowTemplateId = string;
 
 export interface JarvisContractBundle {
+  api_error?: ApiErrorResponse | null;
   artifact?: ArtifactMetadata | null;
   configuration_revision?: ConfigurationRevision | null;
   effect?: Effect | null;
+  event_page?: EventPage | null;
+  event_stream_reset?: EventStreamReset | null;
   failure_classification?: FailureClassification | null;
   failure_evidence?: FailureEvidence | null;
   failure_record?: FailureRecord | null;
   idempotency?: IdempotencyContract | null;
   job?: Job | null;
   lease?: Lease | null;
+  liveness_response?: LivenessResponse | null;
+  login_request?: LoginRequest | null;
+  logout_response?: LogoutResponse | null;
   new_event?: NewEvent | null;
   normalized_event?: NormalizedEvent | null;
+  readiness_response?: ReadinessResponse | null;
   retry_policy?: RetryPolicySpec | null;
   run?: Run | null;
   run_command?: RunCommand | null;
   run_command_receipt?: RunCommandReceipt | null;
   run_command_request?: RunCommandRequest | null;
   run_configuration_snapshot?: RunConfigurationSnapshot | null;
+  session_response?: SessionResponse | null;
   task?: Task | null;
   task_attempt?: TaskAttempt | null;
   workflow_spec?: WorkflowSpec | null;
   workflow_version?: WorkflowVersionContract | null;
+}
+export interface ApiErrorResponse {
+  error: ApiErrorDetail;
+}
+export interface ApiErrorDetail {
+  code: Code;
+  details?: Details;
+  message: Message;
+  request_id: RequestId;
+}
+export interface Details {
+  [k: string]: JsonValue;
 }
 export interface ArtifactMetadata {
   created_at: CreatedAt;
@@ -368,16 +412,77 @@ export interface Effect {
   task_attempt_id?: TaskAttemptId1;
   updated_at: UpdatedAt;
 }
+export interface EventPage {
+  after: After;
+  high_watermark: HighWatermark;
+  items: Items;
+  next_after?: NextAfter;
+}
+export interface NormalizedEvent {
+  artifact_refs?: ArtifactRefs;
+  category: EventCategory;
+  causation_event_id?: CausationEventId;
+  correlation_id: CorrelationId;
+  data: Data;
+  event_id: EventId;
+  global_position: GlobalPosition;
+  idempotency_key?: IdempotencyKey1;
+  message: Message1;
+  mode: EventMode;
+  occurred_at: OccurredAt;
+  recorded_at: RecordedAt;
+  run_sequence?: RunSequence;
+  schema_version?: SchemaVersion1;
+  scope?: EventScope;
+  severity: EventSeverity;
+  source: EventSource;
+  trace?: EventTrace | null;
+  type: Type;
+  visibility: EventVisibility;
+}
+export interface ArtifactReference {
+  artifact_id: ArtifactId;
+  relation: Relation;
+}
+export interface Data {
+  [k: string]: JsonValue;
+}
+export interface EventScope {
+  job_id?: JobId;
+  node_execution_id?: NodeExecutionId;
+  project_id?: ProjectId;
+  run_id?: RunId2;
+  task_attempt_id?: TaskAttemptId2;
+  task_id?: TaskId;
+  thread_id?: ThreadId;
+  workflow_node_id?: WorkflowNodeId;
+}
+export interface EventSource {
+  host_id?: HostId;
+  instance_id?: InstanceId;
+  kind: Kind2;
+  name: Name;
+  source_sequence?: SourceSequence;
+}
+export interface EventTrace {
+  span_id: SpanId;
+  trace_id: TraceId;
+}
+export interface EventStreamReset {
+  earliest_position?: EarliestPosition;
+  latest_position?: LatestPosition;
+  reason: Reason;
+}
 export interface FailureClassification {
   budget_scope: BudgetScope;
   class: FailureClass;
-  code: Code;
+  code: Code1;
   consumes_semantic_attempt: ConsumesSemanticAttempt;
   retryable: Retryable;
   summary: Summary;
 }
 export interface FailureEvidence {
-  code?: Code1;
+  code?: Code2;
   explicit_class?: FailureClass | null;
   provider_rate_limited?: ProviderRateLimited;
   provider_transient?: ProviderTransient;
@@ -403,9 +508,9 @@ export interface Job {
   created_at: CreatedAt3;
   id: Id4;
   objective: Objective;
-  project_id: ProjectId;
+  project_id: ProjectId1;
   status: JobStatus;
-  thread_id?: ThreadId;
+  thread_id?: ThreadId1;
   updated_at: UpdatedAt1;
   version: Version;
 }
@@ -416,71 +521,33 @@ export interface Lease {
   id: Id5;
   owner_instance_id: OwnerInstanceId;
   released_at?: ReleasedAt;
-  run_id: RunId2;
+  run_id: RunId3;
+}
+export interface LivenessResponse {
+  service?: Service;
+  status?: Status;
+  version?: Version1;
+}
+export interface LoginRequest {
+  password: Password;
+  username: Username;
+}
+export interface LogoutResponse {
+  revoked: Revoked;
 }
 /**
  * Validated event before database ordering fields are allocated.
  */
 export interface NewEvent {
-  artifact_refs?: ArtifactRefs;
-  category: EventCategory;
-  causation_event_id?: CausationEventId;
-  correlation_id: CorrelationId;
-  data: Data;
-  idempotency_key?: IdempotencyKey1;
-  message: Message;
-  mode: EventMode;
-  occurred_at: OccurredAt;
-  schema_version?: SchemaVersion1;
-  scope?: EventScope;
-  severity: EventSeverity;
-  source: EventSource;
-  trace?: EventTrace | null;
-  type: Type;
-  visibility: EventVisibility;
-}
-export interface ArtifactReference {
-  artifact_id: ArtifactId;
-  relation: Relation;
-}
-export interface Data {
-  [k: string]: JsonValue;
-}
-export interface EventScope {
-  job_id?: JobId;
-  node_execution_id?: NodeExecutionId;
-  project_id?: ProjectId1;
-  run_id?: RunId3;
-  task_attempt_id?: TaskAttemptId2;
-  task_id?: TaskId;
-  thread_id?: ThreadId1;
-  workflow_node_id?: WorkflowNodeId;
-}
-export interface EventSource {
-  host_id?: HostId;
-  instance_id?: InstanceId;
-  kind: Kind2;
-  name: Name;
-  source_sequence?: SourceSequence;
-}
-export interface EventTrace {
-  span_id: SpanId;
-  trace_id: TraceId;
-}
-export interface NormalizedEvent {
   artifact_refs?: ArtifactRefs1;
   category: EventCategory;
   causation_event_id?: CausationEventId1;
   correlation_id: CorrelationId1;
   data: Data1;
-  event_id: EventId;
-  global_position: GlobalPosition;
   idempotency_key?: IdempotencyKey2;
-  message: Message1;
+  message: Message2;
   mode: EventMode;
   occurred_at: OccurredAt1;
-  recorded_at: RecordedAt;
-  run_sequence?: RunSequence;
   schema_version?: SchemaVersion2;
   scope?: EventScope;
   severity: EventSeverity;
@@ -491,6 +558,10 @@ export interface NormalizedEvent {
 }
 export interface Data1 {
   [k: string]: JsonValue;
+}
+export interface ReadinessResponse {
+  database: Database;
+  status: Status1;
 }
 export interface RetryPolicySpec {
   rules: Rules;
@@ -514,7 +585,7 @@ export interface Run {
   run_number: RunNumber;
   status: RunStatus;
   updated_at: UpdatedAt2;
-  version: Version1;
+  version: Version2;
   workflow_version_id: WorkflowVersionId;
 }
 export interface RunCommand {
@@ -570,17 +641,28 @@ export interface ResolvedRevision {
   kind: ConfigurationKind;
   revision_id: RevisionId;
 }
+export interface SessionResponse {
+  absolute_expires_at: AbsoluteExpiresAt;
+  csrf_token: CsrfToken;
+  idle_expires_at: IdleExpiresAt;
+  user: SessionUser;
+}
+export interface SessionUser {
+  id: Id9;
+  role?: Role;
+  username: Username1;
+}
 export interface Task {
   acceptance_criteria: AcceptanceCriteria;
   created_at: CreatedAt7;
-  id: Id9;
+  id: Id10;
   key: Key3;
   run_id: RunId7;
   status: TaskStatus;
   title: Title;
   updated_at: UpdatedAt3;
   verification: Verification;
-  version: Version2;
+  version: Version3;
   weight?: Weight;
 }
 export interface Verification {
@@ -590,7 +672,7 @@ export interface TaskAttempt {
   attempt_number: AttemptNumber;
   base_sha?: BaseSha;
   completed_at?: CompletedAt;
-  id: Id10;
+  id: Id11;
   result_sha?: ResultSha;
   started_at?: StartedAt;
   status: AttemptStatus;
@@ -626,7 +708,7 @@ export interface ApprovalPolicy {
 export interface WorkflowEdge {
   fallback?: Fallback;
   from: From;
-  id: Id11;
+  id: Id12;
   iteration_key?: IterationKey;
   kind: WorkflowEdgeKind;
   max_iterations?: MaxIterations;
@@ -644,7 +726,7 @@ export interface Predicate {
 }
 export interface WorkflowNode {
   config: Config;
-  id: Id12;
+  id: Id13;
   label: Label;
   policy?: NodePolicy;
   type: WorkflowNodeType;
@@ -658,12 +740,12 @@ export interface WorkflowOutputs {
 export interface WorkflowVersionContract {
   compiler_version: CompilerVersion;
   content_hash: ContentHash2;
-  id: Id13;
+  id: Id14;
   layout: Layout;
   published: Published;
   spec: WorkflowSpec;
   spec_version?: SpecVersion1;
-  version: Version3;
+  version: Version4;
   workflow_template_id: WorkflowTemplateId;
 }
 export interface Layout {

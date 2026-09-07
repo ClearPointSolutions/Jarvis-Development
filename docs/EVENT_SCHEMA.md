@@ -92,7 +92,7 @@ Unknown envelope fields are rejected for major version 1. Event-type `data` sche
 
 | Category | Event types |
 |---|---|
-| `auth` | `auth.login_succeeded`, `auth.login_failed`, `auth.logout`, `auth.session_revoked` |
+| `auth` | `auth.owner_bootstrapped`, `auth.login_succeeded`, `auth.login_failed`, `auth.logout`, `auth.session_revoked` |
 | `config` | `config.created`, `config.revised`, `config.validated`, `workflow.published` |
 | `thread` | `thread.created`, `message.created`, `instruction.queued`, `instruction.applied` |
 | `job` | `job.created`, `job.status_changed`, `job.completed`, `job.failed`, `job.blocked`, `job.cancelled` |

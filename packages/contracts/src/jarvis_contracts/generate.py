@@ -6,6 +6,16 @@ import argparse
 import json
 from pathlib import Path
 
+from jarvis_contracts.api import (
+    ApiErrorResponse,
+    EventPage,
+    EventStreamReset,
+    LivenessResponse,
+    LoginRequest,
+    LogoutResponse,
+    ReadinessResponse,
+    SessionResponse,
+)
 from jarvis_contracts.base import ContractModel
 from jarvis_contracts.commands import IdempotencyContract, RunCommandReceipt, RunCommandRequest
 from jarvis_contracts.configuration import ConfigurationRevision, RunConfigurationSnapshot
@@ -30,6 +40,14 @@ from jarvis_contracts.workflow import WorkflowSpec, WorkflowVersionContract
 
 
 class JarvisContractBundle(ContractModel):
+    api_error: ApiErrorResponse | None = None
+    login_request: LoginRequest | None = None
+    session_response: SessionResponse | None = None
+    logout_response: LogoutResponse | None = None
+    liveness_response: LivenessResponse | None = None
+    readiness_response: ReadinessResponse | None = None
+    event_page: EventPage | None = None
+    event_stream_reset: EventStreamReset | None = None
     workflow_spec: WorkflowSpec | None = None
     workflow_version: WorkflowVersionContract | None = None
     new_event: NewEvent | None = None

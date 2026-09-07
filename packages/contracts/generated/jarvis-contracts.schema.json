@@ -1,5 +1,56 @@
 {
   "$defs": {
+    "ApiErrorDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "maxLength": 120,
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_.-]*$",
+          "title": "Code",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Details",
+          "type": "object"
+        },
+        "message": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "request_id": {
+          "maxLength": 64,
+          "minLength": 8,
+          "title": "Request Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "request_id"
+      ],
+      "title": "ApiErrorDetail",
+      "type": "object"
+    },
+    "ApiErrorResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "error": {
+          "$ref": "#/$defs/ApiErrorDetail"
+        }
+      },
+      "required": [
+        "error"
+      ],
+      "title": "ApiErrorResponse",
+      "type": "object"
+    },
     "ApprovalPolicy": {
       "additionalProperties": false,
       "properties": {
@@ -423,6 +474,48 @@
       "title": "EventMode",
       "type": "string"
     },
+    "EventPage": {
+      "additionalProperties": false,
+      "properties": {
+        "after": {
+          "minimum": 0,
+          "title": "After",
+          "type": "integer"
+        },
+        "high_watermark": {
+          "minimum": 0,
+          "title": "High Watermark",
+          "type": "integer"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/NormalizedEvent"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "next_after": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next After"
+        }
+      },
+      "required": [
+        "items",
+        "after",
+        "high_watermark"
+      ],
+      "title": "EventPage",
+      "type": "object"
+    },
     "EventScope": {
       "additionalProperties": false,
       "properties": {
@@ -607,6 +700,51 @@
         "name"
       ],
       "title": "EventSource",
+      "type": "object"
+    },
+    "EventStreamReset": {
+      "additionalProperties": false,
+      "properties": {
+        "earliest_position": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Earliest Position"
+        },
+        "latest_position": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latest Position"
+        },
+        "reason": {
+          "enum": [
+            "cursor_expired",
+            "unsupported_schema",
+            "run_sequence_gap"
+          ],
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "title": "EventStreamReset",
       "type": "object"
     },
     "EventTrace": {
@@ -989,6 +1127,68 @@
         "expires_at"
       ],
       "title": "Lease",
+      "type": "object"
+    },
+    "LivenessResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "service": {
+          "const": "jarvis-api",
+          "default": "jarvis-api",
+          "title": "Service",
+          "type": "string"
+        },
+        "status": {
+          "const": "ok",
+          "default": "ok",
+          "title": "Status",
+          "type": "string"
+        },
+        "version": {
+          "const": "0.1.0",
+          "default": "0.1.0",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "title": "LivenessResponse",
+      "type": "object"
+    },
+    "LoginRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "password": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "title": "Password",
+          "type": "string"
+        },
+        "username": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Username",
+          "type": "string"
+        }
+      },
+      "required": [
+        "username",
+        "password"
+      ],
+      "title": "LoginRequest",
+      "type": "object"
+    },
+    "LogoutResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "revoked": {
+          "title": "Revoked",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "revoked"
+      ],
+      "title": "LogoutResponse",
       "type": "object"
     },
     "NewEvent": {
@@ -1439,6 +1639,34 @@
       "title": "PredicateOperator",
       "type": "string"
     },
+    "ReadinessResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "database": {
+          "enum": [
+            "ready",
+            "unavailable",
+            "migration_required"
+          ],
+          "title": "Database",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ready",
+            "not_ready"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "database"
+      ],
+      "title": "ReadinessResponse",
+      "type": "object"
+    },
     "ResolvedRevision": {
       "additionalProperties": false,
       "properties": {
@@ -1866,6 +2094,66 @@
       ],
       "title": "RunStatus",
       "type": "string"
+    },
+    "SessionResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "absolute_expires_at": {
+          "format": "date-time",
+          "title": "Absolute Expires At",
+          "type": "string"
+        },
+        "csrf_token": {
+          "maxLength": 256,
+          "minLength": 32,
+          "title": "Csrf Token",
+          "type": "string"
+        },
+        "idle_expires_at": {
+          "format": "date-time",
+          "title": "Idle Expires At",
+          "type": "string"
+        },
+        "user": {
+          "$ref": "#/$defs/SessionUser"
+        }
+      },
+      "required": [
+        "user",
+        "csrf_token",
+        "idle_expires_at",
+        "absolute_expires_at"
+      ],
+      "title": "SessionResponse",
+      "type": "object"
+    },
+    "SessionUser": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "role": {
+          "const": "owner",
+          "default": "owner",
+          "title": "Role",
+          "type": "string"
+        },
+        "username": {
+          "maxLength": 64,
+          "minLength": 3,
+          "title": "Username",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "username"
+      ],
+      "title": "SessionUser",
+      "type": "object"
     },
     "Task": {
       "additionalProperties": false,
@@ -2373,6 +2661,17 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
+    "api_error": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ApiErrorResponse"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "artifact": {
       "anyOf": [
         {
@@ -2399,6 +2698,28 @@
       "anyOf": [
         {
           "$ref": "#/$defs/Effect"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "event_page": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EventPage"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "event_stream_reset": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EventStreamReset"
         },
         {
           "type": "null"
@@ -2472,6 +2793,39 @@
       ],
       "default": null
     },
+    "liveness_response": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LivenessResponse"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "login_request": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LoginRequest"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "logout_response": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LogoutResponse"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "new_event": {
       "anyOf": [
         {
@@ -2487,6 +2841,17 @@
       "anyOf": [
         {
           "$ref": "#/$defs/NormalizedEvent"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "readiness_response": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ReadinessResponse"
         },
         {
           "type": "null"
@@ -2553,6 +2918,17 @@
       "anyOf": [
         {
           "$ref": "#/$defs/RunConfigurationSnapshot"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "session_response": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SessionResponse"
         },
         {
           "type": "null"
