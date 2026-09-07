@@ -268,6 +268,17 @@ class WorkflowTemplateModel(MutableRow, Base):
     key: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+    owner_user_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.users.id", ondelete="RESTRICT"), index=True
+    )
+    current_draft_version_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey(
+            f"{CONTROL_SCHEMA}.workflow_versions.id",
+            name="fk_workflow_templates_current_draft_version",
+            ondelete="RESTRICT",
+            use_alter=True,
+        )
+    )
     current_published_version_id: Mapped[UUID | None] = mapped_column(
         ForeignKey(
             f"{CONTROL_SCHEMA}.workflow_versions.id",
@@ -298,9 +309,24 @@ class WorkflowVersionModel(Base):
     spec_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     layout_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    resolved_snapshot_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    snapshot_hash: Mapped[str | None] = mapped_column(String(64))
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class WorkflowRevisionReferenceModel(Base):
+    __tablename__ = "workflow_revision_references"
+    __table_args__ = ({"schema": CONTROL_SCHEMA},)
+
+    workflow_version_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.workflow_versions.id", ondelete="RESTRICT"), primary_key=True
+    )
+    revision_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.configuration_revisions.id", ondelete="RESTRICT"),
+        primary_key=True,
     )
 
 

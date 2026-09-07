@@ -11,6 +11,7 @@ from jarvis_contracts.base import ContractModel
 from jarvis_contracts.enums import EventCategory
 from jarvis_contracts.ids import SessionId, UserId
 from jarvis_contracts.registry import ProviderHealthData, RegistryAuditData, RouteEvaluationData
+from jarvis_contracts.workflow_api import WorkflowAuditData
 
 
 class LoginSucceededData(ContractModel):
@@ -182,3 +183,9 @@ EVENT_REGISTRY.update(
 
 def event_definition(event_type: str) -> EventDefinition | None:
     return EVENT_REGISTRY.get(event_type)
+
+
+for _action in ("created", "revised", "validated", "published", "archived", "restored"):
+    EVENT_REGISTRY[f"workflow.{_action}"] = EventDefinition(
+        EventCategory.CONFIG, f"Workflow {_action}", WorkflowAuditData
+    )

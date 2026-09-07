@@ -21,6 +21,8 @@ from jarvis_api.registry.routes import router as registry_router
 from jarvis_api.registry.service import RegistryService
 from jarvis_api.routing.routes import router as routing_router
 from jarvis_api.security import install_security_middleware
+from jarvis_api.workflows.routes import router as workflow_router
+from jarvis_api.workflows.service import WorkflowService
 from jarvis_contracts.api import ApiErrorResponse, LivenessResponse
 from jarvis_persistence.database import (
     create_async_database_engine,
@@ -82,11 +84,13 @@ def create_app(
         allowed_endpoints=config.provider_allowed_endpoints,
         instance_id=config.api_instance_id,
     )
+    app.state.workflow_service = WorkflowService(session_factory, app.state.registry_service)
     install_error_handlers(app)
     install_security_middleware(app, config)
     app.include_router(auth_router)
     app.include_router(registry_router)
     app.include_router(routing_router)
+    app.include_router(workflow_router)
     install_event_delivery(app, config, session_factory, app.state.auth_service)
 
     @app.get(

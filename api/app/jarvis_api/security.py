@@ -11,6 +11,7 @@ from uuid6 import uuid7
 
 from jarvis_api.config import Settings
 from jarvis_api.errors import audit_denial, problem_response, request_id, unexpected_response
+from jarvis_contracts.workflow import MAX_JSON_DEPTH, MAX_WORKFLOW_BYTES
 
 STATE_CHANGING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 
@@ -19,6 +20,33 @@ def _is_json(content_type: str | None) -> bool:
     return content_type is not None and content_type.partition(";")[0].strip().lower() == (
         "application/json"
     )
+
+
+def _workflow_depth_exceeded(body: bytearray) -> bool:
+    """Bound container nesting before Python's recursive JSON parser sees it.
+
+    This is a lexical resource guard only; the JSON/schema parser owns syntax.
+    Brackets and escaped quotes inside strings do not contribute to depth.
+    """
+    depth = 0
+    quoted = escaped = False
+    for character in body:
+        if quoted:
+            if escaped:
+                escaped = False
+            elif character == 92:
+                escaped = True
+            elif character == 34:
+                quoted = False
+        elif character == 34:
+            quoted = True
+        elif character in (91, 123):
+            depth += 1
+            if depth > MAX_JSON_DEPTH + 1:
+                return True
+        elif character in (93, 125):
+            depth -= 1
+    return False
 
 
 def _security_headers(response: Response, *, secure_transport: bool) -> None:
@@ -116,14 +144,19 @@ class BoundedRequestBodyMiddleware:
             )
             await response(scope, receive, send)
             return
-        too_large = content_length is not None and int(content_length) > self._maximum
+        # Workflow documents have an explicit larger, still bounded data envelope.
+        workflow = scope["path"] == "/api/v1/workflow-templates" or scope["path"].startswith(
+            "/api/v1/workflow-templates/"
+        )
+        maximum = MAX_WORKFLOW_BYTES if workflow else self._maximum
+        too_large = content_length is not None and int(content_length) > maximum
         body = bytearray()
         while not too_large:
             message = await receive()
             if message["type"] == "http.disconnect":
                 return
             chunk = message.get("body", b"")
-            if len(body) + len(chunk) > self._maximum:
+            if len(body) + len(chunk) > maximum:
                 too_large = True
                 break
             body.extend(chunk)
@@ -135,6 +168,16 @@ class BoundedRequestBodyMiddleware:
                 status_code=413,
                 code="request.too_large",
                 message="The request body exceeds the allowed size",
+                request_id_value=request_id(request),
+            )
+            await response(scope, receive, send)
+            return
+        if workflow and _workflow_depth_exceeded(body):
+            await audit_denial(request, "request_too_large")
+            response = problem_response(
+                status_code=422,
+                code="workflow.resource_limit",
+                message="Workflow JSON nesting exceeds its limit",
                 request_id_value=request_id(request),
             )
             await response(scope, receive, send)

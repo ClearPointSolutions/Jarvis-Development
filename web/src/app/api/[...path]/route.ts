@@ -9,16 +9,17 @@ class RequestTooLarge extends Error {}
 
 async function boundedBody(
   request: NextRequest,
+  maximum = MAX_REQUEST_BYTES,
 ): Promise<ArrayBuffer | undefined> {
   if (!request.body) return undefined;
   const reader = request.body.getReader();
-  const output = new Uint8Array(MAX_REQUEST_BYTES);
+  const output = new Uint8Array(maximum);
   let length = 0;
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) return output.slice(0, length).buffer;
-      if (value.byteLength > MAX_REQUEST_BYTES - length) {
+      if (value.byteLength > maximum - length) {
         await reader.cancel();
         throw new RequestTooLarge();
       }
@@ -85,7 +86,12 @@ async function forward(
     const body =
       request.method === "GET" || request.method === "HEAD"
         ? undefined
-        : await boundedBody(request);
+        : await boundedBody(
+            request,
+            path[0] === "v1" && path[1] === "workflow-templates"
+              ? 1_048_576
+              : MAX_REQUEST_BYTES,
+          );
     if (body) headers.set("content-length", String(body.byteLength));
     const upstream = await new Promise<IncomingMessage>((resolve, reject) => {
       // Native HTTP preserves the explicit Host. Node fetch may replace it with

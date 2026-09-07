@@ -148,6 +148,12 @@ async def test_every_registered_event_normalizes_with_a_human_summary(event_type
             "actor_id": str(UUID(int=3)),
             "action": "created",
         }
+    elif event_type.startswith("workflow."):
+        data = {
+            "template_id": str(UUID(int=1)),
+            "actor_id": str(UUID(int=2)),
+            "action": event_type.split(".")[1],
+        }
     elif event_type == "model.health_changed":
         data = {
             "provider_revision_id": str(UUID(int=1)),
