@@ -268,6 +268,7 @@ async def test_mixed_command_and_event_writers_finish_without_deadlock(
         )
         async with session_factory.begin() as session:
             await command_repository.enqueue(session, request)
+            await event_repository.append(session, event(seeded.run_id, index + 100))
 
     work = [append(index) for index in range(1, 9)] + [command(index) for index in range(1, 9)]
     await asyncio.wait_for(asyncio.gather(*work), timeout=10)
@@ -339,6 +340,9 @@ async def test_router_authorizes_objects_and_last_event_id_wins(
             authorize_run=authorize,
             default_page_size=20,
             authorize_stream=authorize_stream,
+            authorize_event_scope=lambda session, candidate, scope: authorize(
+                session, candidate, scope.run_id or UUID(int=0)
+            ),
         )
     )
     async with httpx.AsyncClient(
@@ -530,6 +534,9 @@ async def test_artifact_role_write_is_append_only_and_download_checks_visibility
             authorize_run=authorize,
             default_page_size=20,
             authorize_stream=live,
+            authorize_event_scope=lambda session, candidate, scope: authorize(
+                session, candidate, scope.run_id or UUID(int=0)
+            ),
             artifact_root=root,
         )
     )
@@ -541,6 +548,11 @@ async def test_artifact_role_write_is_append_only_and_download_checks_visibility
         assert response.headers["content-disposition"].startswith("attachment;")
         assert response.headers["content-type"] == "application/octet-stream"
         assert (await client.get(f"/api/v1/artifacts/{results[1]}")).status_code == 404
+        async with session_factory() as session:
+            metadata = await session.get(ArtifactModel, results[0])
+            assert metadata is not None
+            artifact_path(root, metadata.storage_key).write_bytes(b"x" * metadata.size_bytes)
+        assert (await client.get(f"/api/v1/artifacts/{results[0]}")).status_code == 409
         allowed = False
         assert (await client.get(f"/api/v1/artifacts/{results[0]}")).status_code == 404
 
@@ -590,6 +602,9 @@ async def test_stream_stops_after_session_revocation_and_releases_connection(
             authorize_run=authorize,
             default_page_size=20,
             authorize_stream=live,
+            authorize_event_scope=lambda session, candidate, scope: authorize(
+                session, candidate, scope.run_id or UUID(int=0)
+            ),
         )
     )
     async with httpx.AsyncClient(
@@ -601,3 +616,96 @@ async def test_stream_stops_after_session_revocation_and_releases_connection(
     assert checks == 2
     assert await limiter.claim(str(principal.user_id))
     await limiter.release(str(principal.user_id))
+
+
+async def test_no_run_artifacts_authorize_project_or_job_and_do_not_share_namespaces(
+    session_factory: async_sessionmaker[AsyncSession],
+    tmp_path: Path,
+) -> None:
+    first, other = await seed_run(session_factory), await seed_run(session_factory)
+    root = tmp_path / "artifacts"
+    repository = EventRepository()
+    writer = EventWriter(
+        repository=repository,
+        normalizer=EventNormalizer(
+            redactor=RecursiveRedactor(),
+            artifact_sink=LocalEventArtifactStore(root),
+            inline_bytes=1024,
+            max_bytes=65536,
+        ),
+    )
+    scopes = [EventScope(project_id=first.project_id), EventScope(job_id=other.job_id)]
+    references = []
+    for scope in scopes:
+        async with session_factory.begin() as session:
+            written = await writer.append(
+                session,
+                EventIntent(
+                    occurred_at=NOW,
+                    type="command.output_summary",
+                    severity=EventSeverity.INFO,
+                    mode=EventMode.DEMO,
+                    visibility=EventVisibility.OWNER,
+                    scope=scope,
+                    source=EventSource(kind="api", name="artifact-test"),
+                    correlation_id="artifact-test",
+                    data={"stdout": "safe identical payload" * 1024},
+                ),
+            )
+            references.append(written.event.artifact_refs[0])
+    assert references[0].artifact_id != references[1].artifact_id
+    async with session_factory() as session:
+        with pytest.raises(ValueError, match="project/job"):
+            await repository.validate_scope(session, scopes[0], (references[1],))
+    principal = Principal(first.user_id)
+
+    async def current() -> EventPrincipal:
+        return principal
+
+    async def guard() -> None:
+        pass
+
+    async def run_auth(session: AsyncSession, candidate: EventPrincipal, run_id: UUID) -> bool:
+        return False
+
+    async def live(candidate: EventPrincipal) -> bool:
+        return True
+
+    async def scope_auth(
+        session: AsyncSession, candidate: EventPrincipal, scope: EventScope
+    ) -> bool:
+        project_id = scope.project_id
+        if scope.job_id:
+            project_id = await session.scalar(
+                select(JobModel.project_id).where(JobModel.id == scope.job_id)
+            )
+        owner = await session.scalar(
+            select(ProjectModel.owner_user_id).where(ProjectModel.id == project_id)
+        )
+        return owner == candidate.user_id
+
+    app = FastAPI()
+    app.include_router(
+        build_event_router(
+            session_factory=session_factory,
+            repository=repository,
+            stream=OneFrameStream(),
+            limiter=SseConnectionLimiter(1),
+            principal_dependency=current,
+            stream_guard_dependency=guard,
+            authorize_run=run_auth,
+            default_page_size=20,
+            authorize_stream=live,
+            authorize_event_scope=scope_auth,
+            artifact_root=root,
+        )
+    )
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        assert (
+            await client.get(f"/api/v1/artifacts/{references[0].artifact_id}")
+        ).status_code == 200
+        assert (
+            await client.get(f"/api/v1/artifacts/{references[1].artifact_id}")
+        ).status_code == 404

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import AsyncIterator, Awaitable, Callable
 from pathlib import Path
 from typing import Protocol
@@ -15,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from jarvis_api.events.artifacts import artifact_path
 from jarvis_api.events.sse import EventStream, SseConnectionLimiter, resolve_event_cursor
 from jarvis_contracts.api import EventPage, RunEventSnapshotResponse
+from jarvis_contracts.events import EventScope
 from jarvis_persistence.models import ArtifactModel, EventModel
 from jarvis_persistence.repositories import (
     EventCursorExpiredError,
@@ -45,6 +47,7 @@ def build_event_router(
     authorize_run: RunAuthorizer,
     default_page_size: int,
     authorize_stream: Callable[[EventPrincipal], Awaitable[bool]],
+    authorize_event_scope: Callable[[AsyncSession, EventPrincipal, EventScope], Awaitable[bool]],
     artifact_root: Path | None = None,
 ) -> APIRouter:
     """Build routes without coupling event delivery to an auth implementation."""
@@ -188,19 +191,30 @@ def build_event_router(
         async with session_factory() as session:
             artifact = await session.get(ArtifactModel, artifact_id)
             # Only artifacts referenced by a visible persisted event are downloadable.
-            visible = await session.scalar(
-                select(EventModel.global_position)
-                .where(
+            if artifact is None:
+                raise HTTPException(status_code=404, detail="not found")
+            origins = await session.scalars(
+                select(EventModel).where(
                     EventModel.artifact_refs_json.contains([{"artifact_id": str(artifact_id)}]),
                     EventModel.visibility.in_(("owner", "operator")),
                 )
-                .limit(1)
             )
-            if artifact is None or visible is None:
-                raise HTTPException(status_code=404, detail="not found")
-            if artifact.run_id is not None and not await authorize_run(
-                session, principal, artifact.run_id
-            ):
+            authorized = False
+            for origin in origins:
+                scope = EventScope(
+                    run_id=origin.run_id,
+                    job_id=origin.job_id,
+                    project_id=origin.project_id,
+                    thread_id=origin.thread_id,
+                    task_id=origin.task_id,
+                    task_attempt_id=origin.task_attempt_id,
+                    workflow_node_id=origin.workflow_node_id,
+                    node_execution_id=origin.node_execution_id,
+                )
+                if await authorize_event_scope(session, principal, scope):
+                    authorized = True
+                    break
+            if not authorized:
                 raise HTTPException(status_code=404, detail="not found")
             try:
                 path = artifact_path(artifact_root, artifact.storage_key)
@@ -208,6 +222,12 @@ def build_event_router(
                 raise HTTPException(status_code=404, detail="not found") from None
             if not path.is_file():
                 raise HTTPException(status_code=404, detail="not found")
+            if path.stat().st_size != artifact.size_bytes:
+                raise HTTPException(status_code=409, detail={"code": "artifact.integrity_failed"})
+            with path.open("rb") as content:
+                digest = hashlib.file_digest(content, "sha256").hexdigest()
+            if digest != artifact.sha256:
+                raise HTTPException(status_code=409, detail={"code": "artifact.integrity_failed"})
         return FileResponse(
             path,
             media_type="application/octet-stream",
