@@ -140,6 +140,9 @@ class EventCategory(StrEnum):
 
 
 class FailureClass(StrEnum):
+    CODE_BUILD_FAILURE = "code.build_failure"
+    INFRASTRUCTURE_TIMEOUT = "infrastructure.timeout"
+    UNKNOWN = "unknown"
     CODE_IMPLEMENTATION_FAILURE = "code.implementation_failure"
     CODE_TEST_FAILURE = "code.test_failure"
     CODE_REVIEW_FAILURE = "code.review_failure"

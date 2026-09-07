@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from jarvis_contracts.base import ContractModel
 from jarvis_contracts.enums import FailureClass
@@ -77,11 +77,26 @@ class RetryRule(ContractModel):
     initial_delay_ms: Annotated[int, Field(ge=0, le=86_400_000)] = 0
     multiplier: Annotated[float, Field(ge=1, le=100)] = 1
     exhaustion_action: Literal["fail", "block", "approval"]
+    max_delay_ms: Annotated[int, Field(ge=0, le=86_400_000)] = 60_000
+    jitter: Literal["none", "deterministic"] = "none"
+    allow_failover: bool = False
+
+    @model_validator(mode="after")
+    def delay_bounds(self) -> RetryRule:
+        if self.initial_delay_ms > self.max_delay_ms:
+            raise ValueError("initial retry delay exceeds maximum")
+        return self
 
 
 class RetryPolicySpec(ContractModel):
     schema_version: Literal["1.0"] = "1.0"
     rules: tuple[RetryRule, ...]
+
+    @model_validator(mode="after")
+    def unique_classes(self) -> RetryPolicySpec:
+        if len({rule.failure_class for rule in self.rules}) != len(self.rules):
+            raise ValueError("retry rules must have distinct failure classes")
+        return self
 
 
 class FailureRecord(ContractModel):

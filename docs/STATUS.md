@@ -1,8 +1,23 @@
 # Jarvis V1 Status
 
 Last updated: 2026-09-07
-Current phase: M2 — local acceptance complete; remote push/CI pending
-Overall state: M0 and M1 complete; M2A/M2B/M2C integrated; M3 not started
+Current phase: M3 — configuration registries and provider routing, in progress
+Overall state: M0–M2 integrated into main at ac6206b; M3 underway; M4 unstarted
+
+## Active M3 criteria
+
+Base: fetched clean origin/main `ac6206b3b1bfb8e4adca1f414f81807e0a92ebcc`.
+The user reports M2 complete and merged; the prior local push blocker below is historical.
+Branch: `codex/m3-config-routing`. No homelab contact, production keys, or deployment.
+
+- [ ] Persistent, validated worker/provider/model/route/retry/permission registries with immutable revisions and snapshot isolation.
+- [ ] Owner-only real GUI/API, optimistic concurrency, idempotent mutations, normalized audit, and write-only opaque references.
+- [ ] Distinct OpenAI SDK/Ollama/demo adapters with deterministic local transports and normalized results/errors/streams.
+- [ ] Deterministic routing, capability/data/health/circuit filtering and explicit permitted failover.
+- [ ] Durable bounded health/circuit state, usage/pricing snapshots, unknown cost and typed spend decisions.
+- [ ] Security canaries, SSRF denial, missing-provider behavior and least-privilege migration gates.
+- [ ] Full Python/frontend/production/browser/accessibility/secret gates and scripts/verify.sh.
+- [ ] Push final M3 branch, verify GitHub CI, update evidence and leave clean tree; stop before M4.
 
 ## Active M2 parallel-group criteria
 

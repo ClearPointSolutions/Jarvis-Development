@@ -155,6 +155,7 @@ class ConfigurationModel(MutableRow, Base):
     kind: Mapped[str] = mapped_column(String(40), nullable=False)
     key: Mapped[str] = mapped_column(String(120), nullable=False)
     display_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
     enabled: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="true"
     )
@@ -187,6 +188,73 @@ class ConfigurationRevisionModel(Base):
     spec_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     created_by: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class ConfigurationPrivateRefModel(Base):
+    """Opaque locators only, separated from immutable public configuration payloads."""
+
+    __tablename__ = "configuration_private_refs"
+    __table_args__ = ({"schema": CONTROL_SCHEMA},)
+    revision_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.configuration_revisions.id", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+    secret_ref: Mapped[str | None] = mapped_column(String(220))
+    deployment_ref: Mapped[str | None] = mapped_column(String(220))
+
+
+class ProviderHealthModel(MutableRow, Base):
+    __tablename__ = "provider_health"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('healthy','degraded','unavailable','misconfigured','unknown')",
+            name="status",
+        ),
+        CheckConstraint("circuit_state IN ('closed','open','half_open')", name="circuit_state"),
+        CheckConstraint("failure_count >= 0", name="failure_count"),
+        {"schema": CONTROL_SCHEMA},
+    )
+    revision_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.configuration_revisions.id", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="unknown")
+    circuit_state: Mapped[str] = mapped_column(String(24), nullable=False, default="closed")
+    failure_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    window_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    next_probe_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    probe_lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    observed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ModelCallModel(Base):
+    __tablename__ = "model_calls"
+    __table_args__ = (
+        UniqueConstraint("correlation_id", "idempotency_key", name="uq_model_calls_request"),
+        Index("ix_model_calls_run_created", "run_id", "created_at"),
+        {"schema": CONTROL_SCHEMA},
+    )
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid7)
+    profile_revision_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.configuration_revisions.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    provider_revision_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.configuration_revisions.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    route_revision_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.configuration_revisions.id", ondelete="RESTRICT"),
+    )
+    run_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.runs.id", ondelete="RESTRICT"),
+    )
+    correlation_id: Mapped[str] = mapped_column(String(200), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(200), nullable=False)
+    record_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

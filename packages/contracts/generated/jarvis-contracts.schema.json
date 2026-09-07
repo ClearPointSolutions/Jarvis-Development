@@ -1,5 +1,183 @@
 {
   "$defs": {
+    "AccountingPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/AccountingRecord"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "next_after": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next After"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "AccountingPage",
+      "type": "object"
+    },
+    "AccountingRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "correlation_id": {
+          "title": "Correlation Id",
+          "type": "string"
+        },
+        "cost": {
+          "$ref": "#/$defs/Cost"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "demo": {
+          "default": false,
+          "title": "Demo",
+          "type": "boolean"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "latency_ms": {
+          "title": "Latency Ms",
+          "type": "integer"
+        },
+        "node_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Node Id"
+        },
+        "outcome": {
+          "enum": [
+            "completed",
+            "failed",
+            "unknown",
+            "denied",
+            "require_approval"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "pricing": {
+          "$ref": "#/$defs/Pricing"
+        },
+        "profile_revision_id": {
+          "format": "uuid",
+          "title": "Profile Revision Id",
+          "type": "string"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Project Id"
+        },
+        "provider_revision_id": {
+          "format": "uuid",
+          "title": "Provider Revision Id",
+          "type": "string"
+        },
+        "request_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Request Id"
+        },
+        "route_revision_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Route Revision Id"
+        },
+        "run_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Run Id"
+        },
+        "task_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Task Id"
+        },
+        "usage": {
+          "$ref": "#/$defs/Usage"
+        }
+      },
+      "required": [
+        "id",
+        "profile_revision_id",
+        "provider_revision_id",
+        "correlation_id",
+        "latency_ms",
+        "usage",
+        "pricing",
+        "cost",
+        "outcome",
+        "created_at"
+      ],
+      "title": "AccountingRecord",
+      "type": "object"
+    },
     "ApiErrorDetail": {
       "additionalProperties": false,
       "properties": {
@@ -222,6 +400,62 @@
       "title": "AttemptStatus",
       "type": "string"
     },
+    "CandidateDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "eligible": {
+          "title": "Eligible",
+          "type": "boolean"
+        },
+        "profile_revision_id": {
+          "format": "uuid",
+          "title": "Profile Revision Id",
+          "type": "string"
+        },
+        "reasons": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        }
+      },
+      "required": [
+        "profile_revision_id",
+        "eligible"
+      ],
+      "title": "CandidateDecision",
+      "type": "object"
+    },
+    "CircuitPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "cooldown_seconds": {
+          "default": 30,
+          "maximum": 3600,
+          "minimum": 1,
+          "title": "Cooldown Seconds",
+          "type": "integer"
+        },
+        "failure_threshold": {
+          "default": 3,
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Failure Threshold",
+          "type": "integer"
+        },
+        "failure_window_seconds": {
+          "default": 60,
+          "maximum": 3600,
+          "minimum": 1,
+          "title": "Failure Window Seconds",
+          "type": "integer"
+        }
+      },
+      "title": "CircuitPolicy",
+      "type": "object"
+    },
     "CommandStatus": {
       "enum": [
         "pending",
@@ -310,6 +544,46 @@
         "created_at"
       ],
       "title": "ConfigurationRevision",
+      "type": "object"
+    },
+    "Cost": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Amount"
+        },
+        "currency": {
+          "default": "USD",
+          "title": "Currency",
+          "type": "string"
+        },
+        "status": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "estimated",
+            "unknown",
+            "not_applicable"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "title": "Cost",
       "type": "object"
     },
     "DesiredRunState": {
@@ -439,6 +713,39 @@
       ],
       "title": "EffectStatus",
       "type": "string"
+    },
+    "EgressPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_data": {
+          "default": [
+            "public"
+          ],
+          "items": {
+            "enum": [
+              "public",
+              "internal",
+              "confidential",
+              "restricted"
+            ],
+            "type": "string"
+          },
+          "title": "Allowed Data",
+          "type": "array"
+        },
+        "paid": {
+          "default": false,
+          "title": "Paid",
+          "type": "boolean"
+        },
+        "remote_allowed": {
+          "default": false,
+          "title": "Remote Allowed",
+          "type": "boolean"
+        }
+      },
+      "title": "EgressPolicy",
+      "type": "object"
     },
     "EventCategory": {
       "enum": [
@@ -783,6 +1090,9 @@
     },
     "FailureClass": {
       "enum": [
+        "code.build_failure",
+        "infrastructure.timeout",
+        "unknown",
         "code.implementation_failure",
         "code.test_failure",
         "code.review_failure",
@@ -1191,6 +1501,144 @@
       "title": "LogoutResponse",
       "type": "object"
     },
+    "ModelBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_profile_revision_ids": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Allowed Profile Revision Ids",
+          "type": "array"
+        },
+        "mode": {
+          "default": "none",
+          "enum": [
+            "none",
+            "control_plane",
+            "worker_managed"
+          ],
+          "title": "Mode",
+          "type": "string"
+        }
+      },
+      "title": "ModelBinding",
+      "type": "object"
+    },
+    "ModelProfileSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "capabilities": {
+          "default": [
+            "chat"
+          ],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Capabilities",
+          "type": "array"
+        },
+        "context_limit": {
+          "maximum": 10000000,
+          "minimum": 1,
+          "title": "Context Limit",
+          "type": "integer"
+        },
+        "kind": {
+          "const": "model_profile",
+          "default": "model_profile",
+          "title": "Kind",
+          "type": "string"
+        },
+        "locality": {
+          "default": "local",
+          "enum": [
+            "local",
+            "local_lan",
+            "remote"
+          ],
+          "title": "Locality",
+          "type": "string"
+        },
+        "model_identifier": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Model Identifier",
+          "type": "string"
+        },
+        "output_limit": {
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Output Limit",
+          "type": "integer"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "maxProperties": 32,
+          "title": "Parameters",
+          "type": "object"
+        },
+        "pricing": {
+          "$ref": "#/$defs/Pricing"
+        },
+        "provider_revision_id": {
+          "format": "uuid",
+          "title": "Provider Revision Id",
+          "type": "string"
+        },
+        "purposes": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "title": "Purposes",
+          "type": "array"
+        },
+        "streaming": {
+          "default": false,
+          "title": "Streaming",
+          "type": "boolean"
+        },
+        "structured_json": {
+          "default": false,
+          "title": "Structured Json",
+          "type": "boolean"
+        },
+        "tool_calls": {
+          "default": false,
+          "title": "Tool Calls",
+          "type": "boolean"
+        },
+        "usage_reporting": {
+          "default": "none",
+          "enum": [
+            "exact",
+            "partial",
+            "none"
+          ],
+          "title": "Usage Reporting",
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider_revision_id",
+        "model_identifier",
+        "purposes",
+        "context_limit",
+        "output_limit"
+      ],
+      "title": "ModelProfileSpec",
+      "type": "object"
+    },
     "NewEvent": {
       "additionalProperties": false,
       "description": "Validated event before database ordering fields are allocated.",
@@ -1577,6 +2025,142 @@
       "title": "NormalizedEvent",
       "type": "object"
     },
+    "PermissionPolicySpec": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_capabilities": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+            "type": "string"
+          },
+          "title": "Allowed Capabilities",
+          "type": "array"
+        },
+        "approval_required_actions": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+            "type": "string"
+          },
+          "title": "Approval Required Actions",
+          "type": "array"
+        },
+        "browser": {
+          "default": "deny",
+          "enum": [
+            "allow",
+            "deny",
+            "require_approval"
+          ],
+          "title": "Browser",
+          "type": "string"
+        },
+        "denied_capabilities": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+            "type": "string"
+          },
+          "title": "Denied Capabilities",
+          "type": "array"
+        },
+        "destructive_action": {
+          "default": "deny",
+          "enum": [
+            "deny",
+            "require_approval"
+          ],
+          "title": "Destructive Action",
+          "type": "string"
+        },
+        "docker": {
+          "default": "deny",
+          "enum": [
+            "allow",
+            "deny",
+            "require_approval"
+          ],
+          "title": "Docker",
+          "type": "string"
+        },
+        "filesystem_scopes": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+            "type": "string"
+          },
+          "title": "Filesystem Scopes",
+          "type": "array"
+        },
+        "git": {
+          "default": "deny",
+          "enum": [
+            "allow",
+            "deny",
+            "require_approval"
+          ],
+          "title": "Git",
+          "type": "string"
+        },
+        "kind": {
+          "const": "permission_policy",
+          "default": "permission_policy",
+          "title": "Kind",
+          "type": "string"
+        },
+        "network": {
+          "default": "deny",
+          "enum": [
+            "allow",
+            "deny",
+            "require_approval"
+          ],
+          "title": "Network",
+          "type": "string"
+        },
+        "remote_provider": {
+          "default": "deny",
+          "enum": [
+            "allow",
+            "deny",
+            "require_approval"
+          ],
+          "title": "Remote Provider",
+          "type": "string"
+        },
+        "sensitive_action": {
+          "default": "require_approval",
+          "enum": [
+            "deny",
+            "require_approval"
+          ],
+          "title": "Sensitive Action",
+          "type": "string"
+        },
+        "shell": {
+          "default": "deny",
+          "enum": [
+            "allow",
+            "deny",
+            "require_approval"
+          ],
+          "title": "Shell",
+          "type": "string"
+        },
+        "unknown_action": {
+          "default": "deny",
+          "enum": [
+            "deny",
+            "require_approval"
+          ],
+          "title": "Unknown Action",
+          "type": "string"
+        }
+      },
+      "title": "PermissionPolicySpec",
+      "type": "object"
+    },
     "Predicate": {
       "additionalProperties": false,
       "properties": {
@@ -1639,6 +2223,485 @@
       "title": "PredicateOperator",
       "type": "string"
     },
+    "Pricing": {
+      "additionalProperties": false,
+      "properties": {
+        "cached_per_million": {
+          "anyOf": [
+            {
+              "maximum": 1000000.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cached Per Million"
+        },
+        "currency": {
+          "default": "USD",
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        },
+        "effective_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Effective At"
+        },
+        "input_per_million": {
+          "anyOf": [
+            {
+              "maximum": 1000000.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Input Per Million"
+        },
+        "output_per_million": {
+          "anyOf": [
+            {
+              "maximum": 1000000.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Output Per Million"
+        },
+        "source": {
+          "default": "Unspecified",
+          "maxLength": 200,
+          "title": "Source",
+          "type": "string"
+        },
+        "status": {
+          "default": "unknown",
+          "enum": [
+            "known",
+            "unknown",
+            "not_applicable"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "title": "Pricing",
+      "type": "object"
+    },
+    "ProviderChunk": {
+      "additionalProperties": false,
+      "properties": {
+        "demo": {
+          "default": false,
+          "title": "Demo",
+          "type": "boolean"
+        },
+        "index": {
+          "minimum": 0,
+          "title": "Index",
+          "type": "integer"
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProviderResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "text": {
+          "default": "",
+          "maxLength": 262144,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "index"
+      ],
+      "title": "ProviderChunk",
+      "type": "object"
+    },
+    "ProviderFailure": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "maxLength": 120,
+          "title": "Code",
+          "type": "string"
+        },
+        "failure_class": {
+          "$ref": "#/$defs/FailureClass"
+        },
+        "message": {
+          "maxLength": 1024,
+          "title": "Message",
+          "type": "string"
+        },
+        "request_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Request Id"
+        },
+        "retry_after_seconds": {
+          "anyOf": [
+            {
+              "maximum": 3600,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retry After Seconds"
+        },
+        "retryable": {
+          "title": "Retryable",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "failure_class",
+        "code",
+        "message",
+        "retryable"
+      ],
+      "title": "ProviderFailure",
+      "type": "object"
+    },
+    "ProviderRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "correlation_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Correlation Id",
+          "type": "string"
+        },
+        "data_classification": {
+          "default": "public",
+          "enum": [
+            "public",
+            "internal",
+            "confidential",
+            "restricted"
+          ],
+          "title": "Data Classification",
+          "type": "string"
+        },
+        "node_id": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Node Id"
+        },
+        "output_tokens": {
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Output Tokens",
+          "type": "integer"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Project Id"
+        },
+        "purpose": {
+          "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+          "title": "Purpose",
+          "type": "string"
+        },
+        "run_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Run Id"
+        },
+        "structured_schema": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Structured Schema"
+        },
+        "task_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Task Id"
+        },
+        "text": {
+          "maxLength": 262144,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "purpose",
+        "text",
+        "output_tokens",
+        "correlation_id"
+      ],
+      "title": "ProviderRequest",
+      "type": "object"
+    },
+    "ProviderResult": {
+      "additionalProperties": false,
+      "properties": {
+        "demo": {
+          "default": false,
+          "title": "Demo",
+          "type": "boolean"
+        },
+        "failure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProviderFailure"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "finish_reason": {
+          "default": "stop",
+          "enum": [
+            "stop",
+            "length",
+            "cancelled",
+            "failed"
+          ],
+          "title": "Finish Reason",
+          "type": "string"
+        },
+        "latency_ms": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Latency Ms",
+          "type": "integer"
+        },
+        "model_identifier": {
+          "title": "Model Identifier",
+          "type": "string"
+        },
+        "profile_revision_id": {
+          "format": "uuid",
+          "title": "Profile Revision Id",
+          "type": "string"
+        },
+        "provider_kind": {
+          "enum": [
+            "openai",
+            "ollama",
+            "demo"
+          ],
+          "title": "Provider Kind",
+          "type": "string"
+        },
+        "provider_revision_id": {
+          "format": "uuid",
+          "title": "Provider Revision Id",
+          "type": "string"
+        },
+        "request_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Request Id"
+        },
+        "structured": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Structured"
+        },
+        "text": {
+          "default": "",
+          "maxLength": 262144,
+          "title": "Text",
+          "type": "string"
+        },
+        "usage": {
+          "$ref": "#/$defs/Usage"
+        }
+      },
+      "required": [
+        "provider_kind",
+        "profile_revision_id",
+        "provider_revision_id",
+        "model_identifier"
+      ],
+      "title": "ProviderResult",
+      "type": "object"
+    },
+    "ProviderSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "base_url": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Base Url"
+        },
+        "circuit": {
+          "$ref": "#/$defs/CircuitPolicy"
+        },
+        "egress": {
+          "$ref": "#/$defs/EgressPolicy"
+        },
+        "kind": {
+          "const": "provider_connection",
+          "default": "provider_connection",
+          "title": "Kind",
+          "type": "string"
+        },
+        "locality": {
+          "default": "local",
+          "enum": [
+            "local",
+            "local_lan",
+            "remote"
+          ],
+          "title": "Locality",
+          "type": "string"
+        },
+        "provider_kind": {
+          "enum": [
+            "openai",
+            "ollama",
+            "demo"
+          ],
+          "title": "Provider Kind",
+          "type": "string"
+        },
+        "retry_policy_revision_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retry Policy Revision Id"
+        },
+        "timeouts": {
+          "$ref": "#/$defs/TimeoutPolicy"
+        }
+      },
+      "required": [
+        "provider_kind"
+      ],
+      "title": "ProviderSpec",
+      "type": "object"
+    },
     "ReadinessResponse": {
       "additionalProperties": false,
       "properties": {
@@ -1665,6 +2728,322 @@
         "database"
       ],
       "title": "ReadinessResponse",
+      "type": "object"
+    },
+    "RegistryPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/RegistryRecord"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "next_after": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next After"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "RegistryPage",
+      "type": "object"
+    },
+    "RegistryRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "archived": {
+          "title": "Archived",
+          "type": "boolean"
+        },
+        "circuit_state": {
+          "default": "closed",
+          "enum": [
+            "closed",
+            "open",
+            "half_open"
+          ],
+          "title": "Circuit State",
+          "type": "string"
+        },
+        "content_hash": {
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Created By"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "display_name": {
+          "title": "Display Name",
+          "type": "string"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "health": {
+          "default": "unknown",
+          "enum": [
+            "healthy",
+            "degraded",
+            "unavailable",
+            "misconfigured",
+            "unknown"
+          ],
+          "title": "Health",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "revision": {
+          "title": "Revision",
+          "type": "integer"
+        },
+        "revision_id": {
+          "format": "uuid",
+          "title": "Revision Id",
+          "type": "string"
+        },
+        "secret_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Secret Label"
+        },
+        "secret_status": {
+          "default": "not_required",
+          "enum": [
+            "configured",
+            "missing",
+            "not_required"
+          ],
+          "title": "Secret Status",
+          "type": "string"
+        },
+        "spec": {
+          "discriminator": {
+            "mapping": {
+              "model_profile": "#/$defs/ModelProfileSpec",
+              "permission_policy": "#/$defs/PermissionPolicySpec",
+              "provider_connection": "#/$defs/ProviderSpec",
+              "retry_policy": "#/$defs/RetryRegistrySpec",
+              "route_policy": "#/$defs/RoutePolicySpec",
+              "worker": "#/$defs/WorkerSpec"
+            },
+            "propertyName": "kind"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/WorkerSpec"
+            },
+            {
+              "$ref": "#/$defs/ProviderSpec"
+            },
+            {
+              "$ref": "#/$defs/ModelProfileSpec"
+            },
+            {
+              "$ref": "#/$defs/RoutePolicySpec"
+            },
+            {
+              "$ref": "#/$defs/RetryRegistrySpec"
+            },
+            {
+              "$ref": "#/$defs/PermissionPolicySpec"
+            }
+          ],
+          "title": "Spec"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "revision_id",
+        "revision",
+        "version",
+        "key",
+        "display_name",
+        "description",
+        "enabled",
+        "archived",
+        "spec",
+        "content_hash",
+        "created_at",
+        "updated_at"
+      ],
+      "title": "RegistryRecord",
+      "type": "object"
+    },
+    "RegistryWrite": {
+      "additionalProperties": false,
+      "properties": {
+        "archived": {
+          "default": false,
+          "title": "Archived",
+          "type": "boolean"
+        },
+        "clear_secret": {
+          "default": false,
+          "title": "Clear Secret",
+          "type": "boolean"
+        },
+        "deployment_ref": {
+          "anyOf": [
+            {
+              "maxLength": 220,
+              "pattern": "^(secret:[a-zA-Z0-9_-]{1,100}|file:[a-zA-Z0-9_-]+\\.env#[A-Z][A-Z0-9_]{0,99})$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Deployment Ref"
+        },
+        "description": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "Description",
+          "type": "string"
+        },
+        "display_name": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Display Name",
+          "type": "string"
+        },
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "expected_version": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Expected Version",
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 120,
+          "minLength": 8,
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "key": {
+          "maxLength": 120,
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Key",
+          "type": "string"
+        },
+        "secret_ref": {
+          "anyOf": [
+            {
+              "maxLength": 220,
+              "pattern": "^(secret:[a-zA-Z0-9_-]{1,100}|file:[a-zA-Z0-9_-]+\\.env#[A-Z][A-Z0-9_]{0,99})$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Secret Ref"
+        },
+        "spec": {
+          "discriminator": {
+            "mapping": {
+              "model_profile": "#/$defs/ModelProfileSpec",
+              "permission_policy": "#/$defs/PermissionPolicySpec",
+              "provider_connection": "#/$defs/ProviderSpec",
+              "retry_policy": "#/$defs/RetryRegistrySpec",
+              "route_policy": "#/$defs/RoutePolicySpec",
+              "worker": "#/$defs/WorkerSpec"
+            },
+            "propertyName": "kind"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/WorkerSpec"
+            },
+            {
+              "$ref": "#/$defs/ProviderSpec"
+            },
+            {
+              "$ref": "#/$defs/ModelProfileSpec"
+            },
+            {
+              "$ref": "#/$defs/RoutePolicySpec"
+            },
+            {
+              "$ref": "#/$defs/RetryRegistrySpec"
+            },
+            {
+              "$ref": "#/$defs/PermissionPolicySpec"
+            }
+          ],
+          "title": "Spec"
+        }
+      },
+      "required": [
+        "key",
+        "display_name",
+        "idempotency_key",
+        "spec"
+      ],
+      "title": "RegistryWrite",
       "type": "object"
     },
     "ResolvedRevision": {
@@ -1720,9 +3099,43 @@
       "title": "RetryPolicySpec",
       "type": "object"
     },
+    "RetryRegistrySpec": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "retry_policy",
+          "default": "retry_policy",
+          "title": "Kind",
+          "type": "string"
+        },
+        "rules": {
+          "items": {
+            "$ref": "#/$defs/RetryRule"
+          },
+          "title": "Rules",
+          "type": "array"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rules"
+      ],
+      "title": "RetryRegistrySpec",
+      "type": "object"
+    },
     "RetryRule": {
       "additionalProperties": false,
       "properties": {
+        "allow_failover": {
+          "default": false,
+          "title": "Allow Failover",
+          "type": "boolean"
+        },
         "exhaustion_action": {
           "enum": [
             "fail",
@@ -1740,6 +3153,22 @@
           "maximum": 86400000,
           "minimum": 0,
           "title": "Initial Delay Ms",
+          "type": "integer"
+        },
+        "jitter": {
+          "default": "none",
+          "enum": [
+            "none",
+            "deterministic"
+          ],
+          "title": "Jitter",
+          "type": "string"
+        },
+        "max_delay_ms": {
+          "default": 60000,
+          "maximum": 86400000,
+          "minimum": 0,
+          "title": "Max Delay Ms",
           "type": "integer"
         },
         "max_retries": {
@@ -1762,6 +3191,292 @@
         "exhaustion_action"
       ],
       "title": "RetryRule",
+      "type": "object"
+    },
+    "RouteCandidate": {
+      "additionalProperties": false,
+      "properties": {
+        "priority": {
+          "default": 0,
+          "maximum": 10000,
+          "minimum": 0,
+          "title": "Priority",
+          "type": "integer"
+        },
+        "profile_revision_id": {
+          "format": "uuid",
+          "title": "Profile Revision Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "profile_revision_id"
+      ],
+      "title": "RouteCandidate",
+      "type": "object"
+    },
+    "RoutePolicySpec": {
+      "additionalProperties": false,
+      "properties": {
+        "allow_remote": {
+          "default": false,
+          "title": "Allow Remote",
+          "type": "boolean"
+        },
+        "allow_unknown_health": {
+          "default": false,
+          "title": "Allow Unknown Health",
+          "type": "boolean"
+        },
+        "allowed_data": {
+          "default": [
+            "public"
+          ],
+          "items": {
+            "enum": [
+              "public",
+              "internal",
+              "confidential",
+              "restricted"
+            ],
+            "type": "string"
+          },
+          "title": "Allowed Data",
+          "type": "array"
+        },
+        "candidates": {
+          "items": {
+            "$ref": "#/$defs/RouteCandidate"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "title": "Candidates",
+          "type": "array"
+        },
+        "failover_classes": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/FailureClass"
+          },
+          "title": "Failover Classes",
+          "type": "array"
+        },
+        "kind": {
+          "const": "route_policy",
+          "default": "route_policy",
+          "title": "Kind",
+          "type": "string"
+        },
+        "purposes": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "title": "Purposes",
+          "type": "array"
+        },
+        "required_capabilities": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+            "type": "string"
+          },
+          "title": "Required Capabilities",
+          "type": "array"
+        },
+        "spend": {
+          "$ref": "#/$defs/SpendPolicy"
+        }
+      },
+      "required": [
+        "candidates",
+        "purposes"
+      ],
+      "title": "RoutePolicySpec",
+      "type": "object"
+    },
+    "RoutePreviewRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "failed_profile_revision_ids": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Failed Profile Revision Ids",
+          "type": "array"
+        },
+        "failure_class": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FailureClass"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "requirements": {
+          "$ref": "#/$defs/RouteRequirements"
+        },
+        "route_revision_id": {
+          "format": "uuid",
+          "title": "Route Revision Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "route_revision_id",
+        "requirements"
+      ],
+      "title": "RoutePreviewRequest",
+      "type": "object"
+    },
+    "RouteRequirements": {
+      "additionalProperties": false,
+      "properties": {
+        "capabilities": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+            "type": "string"
+          },
+          "title": "Capabilities",
+          "type": "array"
+        },
+        "data_classification": {
+          "default": "public",
+          "enum": [
+            "public",
+            "internal",
+            "confidential",
+            "restricted"
+          ],
+          "title": "Data Classification",
+          "type": "string"
+        },
+        "input_tokens": {
+          "default": 0,
+          "maximum": 10000000,
+          "minimum": 0,
+          "title": "Input Tokens",
+          "type": "integer"
+        },
+        "output_tokens": {
+          "default": 1,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Output Tokens",
+          "type": "integer"
+        },
+        "purpose": {
+          "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+          "title": "Purpose",
+          "type": "string"
+        },
+        "run_spend": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Run Spend"
+        }
+      },
+      "required": [
+        "purpose"
+      ],
+      "title": "RouteRequirements",
+      "type": "object"
+    },
+    "RouteResolution": {
+      "additionalProperties": false,
+      "properties": {
+        "candidates": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/CandidateDecision"
+          },
+          "title": "Candidates",
+          "type": "array"
+        },
+        "decision": {
+          "default": "deny",
+          "enum": [
+            "allow",
+            "deny",
+            "require_approval"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "demo": {
+          "default": false,
+          "title": "Demo",
+          "type": "boolean"
+        },
+        "reasons": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "route_revision_id": {
+          "format": "uuid",
+          "title": "Route Revision Id",
+          "type": "string"
+        },
+        "selected_profile_revision_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Selected Profile Revision Id"
+        },
+        "selected_provider_revision_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Selected Provider Revision Id"
+        },
+        "snapshot_hash": {
+          "title": "Snapshot Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "route_revision_id",
+        "snapshot_hash"
+      ],
+      "title": "RouteResolution",
       "type": "object"
     },
     "Run": {
@@ -2208,6 +3923,77 @@
       "title": "SessionUser",
       "type": "object"
     },
+    "SpendPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "allow_paid": {
+          "default": false,
+          "title": "Allow Paid",
+          "type": "boolean"
+        },
+        "max_call_cost": {
+          "anyOf": [
+            {
+              "maximum": 1000000.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Call Cost"
+        },
+        "max_input_tokens": {
+          "default": 32000,
+          "maximum": 10000000,
+          "minimum": 1,
+          "title": "Max Input Tokens",
+          "type": "integer"
+        },
+        "max_output_tokens": {
+          "default": 4096,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Max Output Tokens",
+          "type": "integer"
+        },
+        "max_run_cost": {
+          "anyOf": [
+            {
+              "maximum": 1000000.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Run Cost"
+        },
+        "on_exceeded": {
+          "default": "deny",
+          "enum": [
+            "deny",
+            "require_approval"
+          ],
+          "title": "On Exceeded",
+          "type": "string"
+        }
+      },
+      "title": "SpendPolicy",
+      "type": "object"
+    },
     "Task": {
       "additionalProperties": false,
       "properties": {
@@ -2386,6 +4172,214 @@
       ],
       "title": "TaskStatus",
       "type": "string"
+    },
+    "TimeoutPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "connect_seconds": {
+          "default": 10,
+          "maximum": 120,
+          "minimum": 1,
+          "title": "Connect Seconds",
+          "type": "integer"
+        },
+        "heartbeat_seconds": {
+          "default": 10,
+          "maximum": 300,
+          "minimum": 1,
+          "title": "Heartbeat Seconds",
+          "type": "integer"
+        },
+        "run_seconds": {
+          "default": 300,
+          "maximum": 86400,
+          "minimum": 1,
+          "title": "Run Seconds",
+          "type": "integer"
+        }
+      },
+      "title": "TimeoutPolicy",
+      "type": "object"
+    },
+    "Usage": {
+      "additionalProperties": false,
+      "properties": {
+        "cached_tokens": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cached Tokens"
+        },
+        "input_tokens": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Input Tokens"
+        },
+        "output_tokens": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Output Tokens"
+        },
+        "provenance": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "estimated",
+            "unknown"
+          ],
+          "title": "Provenance",
+          "type": "string"
+        },
+        "total_tokens": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Tokens"
+        }
+      },
+      "title": "Usage",
+      "type": "object"
+    },
+    "ValidationReport": {
+      "additionalProperties": false,
+      "properties": {
+        "demo": {
+          "default": false,
+          "title": "Demo",
+          "type": "boolean"
+        },
+        "health": {
+          "default": "unknown",
+          "enum": [
+            "healthy",
+            "degraded",
+            "unavailable",
+            "misconfigured",
+            "unknown"
+          ],
+          "title": "Health",
+          "type": "string"
+        },
+        "issues": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Issues",
+          "type": "array"
+        },
+        "network_checked": {
+          "default": false,
+          "title": "Network Checked",
+          "type": "boolean"
+        },
+        "valid": {
+          "title": "Valid",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "valid"
+      ],
+      "title": "ValidationReport",
+      "type": "object"
+    },
+    "WorkerSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "adapter_kind": {
+          "default": "demo",
+          "enum": [
+            "demo",
+            "openhands_ssh_v1"
+          ],
+          "title": "Adapter Kind",
+          "type": "string"
+        },
+        "capabilities": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Capabilities",
+          "type": "array"
+        },
+        "deployment_configured": {
+          "default": false,
+          "title": "Deployment Configured",
+          "type": "boolean"
+        },
+        "execution_host_label": {
+          "default": "Local demo",
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Execution Host Label",
+          "type": "string"
+        },
+        "kind": {
+          "const": "worker",
+          "default": "worker",
+          "title": "Kind",
+          "type": "string"
+        },
+        "labels": {
+          "maxProperties": 32,
+          "patternProperties": {
+            "^[a-z][a-z0-9_.-]{0,63}$": {
+              "type": "string"
+            }
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "max_concurrency": {
+          "default": 1,
+          "maximum": 128,
+          "minimum": 1,
+          "title": "Max Concurrency",
+          "type": "integer"
+        },
+        "model_binding": {
+          "$ref": "#/$defs/ModelBinding"
+        },
+        "timeouts": {
+          "$ref": "#/$defs/TimeoutPolicy"
+        }
+      },
+      "title": "WorkerSpec",
+      "type": "object"
     },
     "WorkflowEdge": {
       "additionalProperties": false,
@@ -2714,6 +4708,17 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
+    "accounting_page": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AccountingPage"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "api_error": {
       "anyOf": [
         {
@@ -2901,6 +4906,39 @@
       ],
       "default": null
     },
+    "provider_chunk": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ProviderChunk"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "provider_request": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ProviderRequest"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "provider_result": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ProviderResult"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "readiness_response": {
       "anyOf": [
         {
@@ -2912,10 +4950,65 @@
       ],
       "default": null
     },
+    "registry_page": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RegistryPage"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "registry_record": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RegistryRecord"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "registry_write": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RegistryWrite"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "retry_policy": {
       "anyOf": [
         {
           "$ref": "#/$defs/RetryPolicySpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "route_preview": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RoutePreviewRequest"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "route_resolution": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RouteResolution"
         },
         {
           "type": "null"
@@ -3015,6 +5108,17 @@
       "anyOf": [
         {
           "$ref": "#/$defs/TaskAttempt"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "validation_report": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ValidationReport"
         },
         {
           "type": "null"

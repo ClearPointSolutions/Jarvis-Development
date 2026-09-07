@@ -37,10 +37,32 @@ from jarvis_contracts.failures import (
     FailureRecord,
     RetryPolicySpec,
 )
+from jarvis_contracts.registry import (
+    AccountingPage,
+    ProviderChunk,
+    ProviderRequest,
+    ProviderResult,
+    RegistryPage,
+    RegistryRecord,
+    RegistryWrite,
+    RoutePreviewRequest,
+    RouteResolution,
+    ValidationReport,
+)
 from jarvis_contracts.workflow import WorkflowSpec, WorkflowVersionContract
 
 
 class JarvisContractBundle(ContractModel):
+    registry_write: RegistryWrite | None = None
+    registry_record: RegistryRecord | None = None
+    registry_page: RegistryPage | None = None
+    validation_report: ValidationReport | None = None
+    route_preview: RoutePreviewRequest | None = None
+    route_resolution: RouteResolution | None = None
+    provider_request: ProviderRequest | None = None
+    provider_result: ProviderResult | None = None
+    provider_chunk: ProviderChunk | None = None
+    accounting_page: AccountingPage | None = None
     api_error: ApiErrorResponse | None = None
     login_request: LoginRequest | None = None
     session_response: SessionResponse | None = None
