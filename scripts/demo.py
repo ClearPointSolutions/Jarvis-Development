@@ -28,6 +28,18 @@ from jarvis_persistence.database import create_async_database_engine, create_asy
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def stop_child(child: subprocess.Popen[bytes]) -> None:
+    """Bound local shutdown even when an SSE client keeps graceful exit open."""
+    if child.poll() is not None:
+        return
+    child.terminate()
+    try:
+        child.wait(timeout=3)
+    except subprocess.TimeoutExpired:
+        child.kill()
+        child.wait(timeout=10)
+
+
 async def seed(url: str, password: str) -> None:
     async with postgres_saver(url, setup=True):
         pass
@@ -67,6 +79,7 @@ def main() -> int:
     # Prevent libpq's implicit lookup of the developer's personal password file.
     passfile = directory / "unused.pgpass"
     passfile.write_text("")
+    passfile.chmod(0o600)
     os.environ["PGPASSFILE"] = str(passfile)
     admin = create_engine(parsed.set(database="postgres"), isolation_level="AUTOCOMMIT")
     children: dict[str, subprocess.Popen[bytes]] = {}
@@ -159,8 +172,7 @@ def main() -> int:
                 for service in ("api", "orchestrator"):
                     child = children.pop(service, None)
                     if child is not None:
-                        child.terminate()
-                        child.wait(timeout=15)
+                        stop_child(child)
 
             start_services()
             print("DEMO Mission Control: http://127.0.0.1:3000 · username demo-owner", flush=True)
@@ -186,9 +198,7 @@ def main() -> int:
             return int(children["web"].returncode or 0)
     finally:
         for child in children.values():
-            if child.poll() is None:
-                child.terminate()
-                child.wait(timeout=15)
+            stop_child(child)
         if args.e2e:
             with admin.connect() as connection:
                 connection.execute(text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))

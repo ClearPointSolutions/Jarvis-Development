@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 import {
   Background,
@@ -61,6 +61,7 @@ export function WorkflowCanvas({
   transitions?: ReadonlyArray<{ from: string; to: string }>;
 }) {
   const viewportControl = useRef(false);
+  const [movement, setMovement] = useState("");
   const nodes: Node[] = spec.nodes.map((node, index) => {
     const problems = issues.filter((issue) => issue.node_id === node.id);
     return {
@@ -108,7 +109,56 @@ export function WorkflowCanvas({
     markerEnd: { type: MarkerType.ArrowClosed, color: "var(--text-muted)" },
   }));
   return (
-    <div className="workflow-canvas" aria-label="Workflow graph" role="region">
+    <div
+      className="workflow-canvas"
+      aria-label="Workflow graph"
+      role="region"
+      onKeyDownCapture={(event) => {
+        // Move the focused canonical node, independent of React Flow's deferred
+        // internal selection synchronization. Other accessibility keys stay native.
+        if (readOnly || !(event.target instanceof HTMLElement)) return;
+        const id = event.target.dataset.id;
+        const node = nodes.find((item) => item.id === id);
+        if (!node || !event.target.classList.contains("react-flow__node"))
+          return;
+        const direction: Record<string, [number, number]> = {
+          ArrowLeft: [-1, 0],
+          ArrowRight: [1, 0],
+          ArrowUp: [0, -1],
+          ArrowDown: [0, 1],
+        };
+        const delta = direction[event.key];
+        if (!delta) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const step = event.shiftKey ? 20 : 5;
+        setMovement(
+          `${node.id}: x ${node.position.x + delta[0] * step}, y ${node.position.y + delta[1] * step}`,
+        );
+        onLayout((current) => {
+          const position = current.nodes?.[node.id] ?? node.position;
+          return {
+            ...current,
+            nodes: {
+              ...current.nodes,
+              [node.id]: {
+                x: Math.max(
+                  -100000,
+                  Math.min(100000, position.x + delta[0] * step),
+                ),
+                y: Math.max(
+                  -100000,
+                  Math.min(100000, position.y + delta[1] * step),
+                ),
+              },
+            },
+          };
+        });
+      }}
+    >
+      <span className="sr-only" aria-live="polite">
+        {movement}
+      </span>
       <ReactFlow
         nodes={nodes}
         edges={edges}

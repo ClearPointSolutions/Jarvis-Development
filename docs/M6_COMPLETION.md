@@ -150,6 +150,13 @@ Studio keyboard/layout race. Node position and viewport callbacks now use
 functional state updates so a viewport event cannot restore stale positions.
 A focused regression covers callbacks arriving before a render, and the browser
 gate retains its exact five-pixel keyboard movement and mouse-drag assertions.
+The second CI run also exposed deferred React Flow selection during keyboard
+movement and Linux graceful shutdown waiting on live SSE clients. The canvas now
+moves the focused node directly with bounded layout updates and a screen-reader
+announcement, while retaining native selection/deletion keys. The demo launcher
+allows three seconds of graceful shutdown before killing its own child process;
+this exercises durable crash recovery instead of waiting indefinitely for SSE.
+The dedicated empty PostgreSQL password file uses mode 0600 on Unix.
 The post-review linked-retry correction also passed all three affected control
 integration tests plus strict types/lint. Cold SSE replay retains authorization
 for every frame; browser acceptance allows at most 30 seconds to catch up to the
