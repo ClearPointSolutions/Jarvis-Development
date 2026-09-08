@@ -132,7 +132,7 @@ page/console errors, and external request attempts must all remain empty.
 
 Current local evidence: 593 Python tests pass with 88.82% combined coverage
 (91.61% statements; 78.78% branches), including migration round-trip/drift/roles,
-all M0–M5 regressions and eight M6 PostgreSQL acceptance tests. All 48 frontend
+all M0–M5 regressions and eight M6 PostgreSQL acceptance tests. All 49 frontend
 tests pass. Clean npm installation/audit reports zero vulnerabilities. Generated
 schema, integrated OpenAPI and both TypeScript artifacts pass drift checks;
 strict Python/TypeScript, formatting, lint, production build and secret scans pass.
@@ -144,6 +144,12 @@ Visual review improved graph ordering, task/usage readability and activity-filte
 spacing. The complete PostgreSQL-enabled `scripts/verify.sh` passed, including
 all nine foundation browser tests and M6 acceptance (four runs; 2.9 minutes).
 Exact-commit GitHub CI remains the publication gate.
+The first branch CI run (34187988596) passed all 593 Python tests at 88.89%
+combined coverage and the original 48 frontend tests, then exposed a Workflow
+Studio keyboard/layout race. Node position and viewport callbacks now use
+functional state updates so a viewport event cannot restore stale positions.
+A focused regression covers callbacks arriving before a render, and the browser
+gate retains its exact five-pixel keyboard movement and mouse-drag assertions.
 The post-review linked-retry correction also passed all three affected control
 integration tests plus strict types/lint. Cold SSE replay retains authorization
 for every frame; browser acceptance allows at most 30 seconds to catch up to the

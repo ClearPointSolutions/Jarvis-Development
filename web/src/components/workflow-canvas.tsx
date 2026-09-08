@@ -51,7 +51,9 @@ export function WorkflowCanvas({
   issues?: WorkflowIssue[];
   selection: WorkflowSelection;
   onSelect: (value: WorkflowSelection) => void;
-  onLayout: (value: WorkflowLayout) => void;
+  onLayout: (
+    value: WorkflowLayout | ((current: WorkflowLayout) => WorkflowLayout),
+  ) => void;
   onConnect: (connection: Connection) => void;
   onRemove: (nodeIds: string[], edgeIds: string[]) => void;
   /** Future event projections may annotate a read-only graph without advancing it. */
@@ -130,14 +132,16 @@ export function WorkflowCanvas({
             (change) => change.type === "position" && change.position,
           );
           if (!readOnly && positions.length) {
-            const next = { ...layout.nodes };
-            for (const change of positions)
-              if (change.type === "position" && change.position)
-                next[change.id] = {
-                  x: Math.max(-100000, Math.min(100000, change.position.x)),
-                  y: Math.max(-100000, Math.min(100000, change.position.y)),
-                };
-            onLayout({ ...layout, nodes: next });
+            onLayout((current) => {
+              const next = { ...current.nodes };
+              for (const change of positions)
+                if (change.type === "position" && change.position)
+                  next[change.id] = {
+                    x: Math.max(-100000, Math.min(100000, change.position.x)),
+                    y: Math.max(-100000, Math.min(100000, change.position.y)),
+                  };
+              return { ...current, nodes: next };
+            });
           }
           const selected = changes.find(
             (change) => change.type === "select" && change.selected,
@@ -161,7 +165,7 @@ export function WorkflowCanvas({
         onConnect={onConnect}
         onMoveEnd={(event, viewport) => {
           if (!readOnly && (event || viewportControl.current))
-            onLayout({ ...layout, viewport });
+            onLayout((current) => ({ ...current, viewport }));
           viewportControl.current = false;
         }}
         proOptions={{ hideAttribution: false }}

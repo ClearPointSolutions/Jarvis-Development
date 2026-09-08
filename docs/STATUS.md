@@ -26,7 +26,7 @@ These verified results supersede the historical M5 pending-publication entries b
 
 M6 only. No homelab, real runtime credentials, deployment, legacy edits or M7 work.
 
-M6 local evidence: 593 Python tests, 88.82% combined coverage, 48 frontend tests,
+M6 local evidence: 593 Python tests, 88.82% combined coverage, 49 frontend tests,
 9 foundation browser tests plus the four-run M6 acceptance test, zero M6 axe or
 serious console findings, clean dependency audit/secret scans, production build,
 and the complete PostgreSQL-enabled `scripts/verify.sh` pass. The final linked-run
@@ -279,8 +279,8 @@ documentation-only milestone; the M0 application gates are recorded above.
 
 ## Next milestone
 
-Finish M5 local verification and exact-commit GitHub CI, then stop. M6 has not
-started. Real worker/provider adapters and deployment remain later milestones.
+Finish M6 exact-commit GitHub CI, then stop for review. M7 has not started.
+Real worker/provider adapters and deployment remain later milestones.
 
 ## Open gates and risks
 

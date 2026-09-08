@@ -254,6 +254,7 @@ test("WF-001 / WF-004 canonical editor, validation, publication, immutable histo
     .getByRole("button", { name: "Inspect Worker (worker)", exact: true })
     .click();
   const oldX = Number(await page.getByLabel("Position x").inputValue());
+  await expect(workerNode).toHaveClass(/selected/);
   await workerNode.focus();
   await page.keyboard.press("ArrowRight");
   await expect(page.getByLabel("Position x")).toHaveValue(String(oldX + 5));
