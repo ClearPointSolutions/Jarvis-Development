@@ -8,6 +8,7 @@ from pydantic import Field, model_validator
 
 from jarvis_contracts.base import ContractModel
 from jarvis_contracts.commands import IdempotencyKey
+from jarvis_contracts.demo import DemoFixture
 from jarvis_contracts.enums import RunCommandKind
 
 
@@ -34,6 +35,13 @@ class JobCreate(ContractModel):
     objective: str = Field(min_length=1, max_length=8000)
     priority: int = Field(default=0, ge=-100, le=100)
     mode: Literal["real", "demo"] = "demo"
+    demo_fixture: DemoFixture | None = None
+
+    @model_validator(mode="after")
+    def demo_only(self) -> "JobCreate":
+        if self.demo_fixture is not None and self.mode != "demo":
+            raise ValueError("Demo fixture controls require demo mode")
+        return self
 
 
 class RunView(ContractModel):

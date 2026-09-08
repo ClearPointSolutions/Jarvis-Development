@@ -201,4 +201,28 @@ describe("same-origin native HTTP transport", () => {
       "The API is temporarily unavailable.",
     );
   });
+  it("ends interrupted SSE cleanly so EventSource can reconnect", async () => {
+    let disconnect: () => void = () => undefined;
+    await backend((request, response) => {
+      response.writeHead(200, { "Content-Type": "text/event-stream" });
+      response.write("id: 17\nevent: jarvis.event\ndata: {}\n\n");
+      disconnect = () => request.socket.destroy();
+    });
+    const response = await GET(
+      new NextRequest("http://localhost/api/v1/runs/id/events/stream", {
+        headers: { host: "localhost" },
+      }),
+      {
+        params: Promise.resolve({
+          path: ["v1", "runs", "id", "events", "stream"],
+        }),
+      },
+    );
+    const reader = response.body!.getReader();
+    expect(new TextDecoder().decode((await reader.read()).value)).toContain(
+      "id: 17",
+    );
+    disconnect();
+    expect((await reader.read()).done).toBe(true);
+  });
 });

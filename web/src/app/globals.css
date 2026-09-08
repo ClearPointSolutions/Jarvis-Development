@@ -1300,3 +1300,30 @@ h1 {
     grid-column: 1 / -1;
   }
 }
+
+.activity-filter {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1rem 0;
+  max-width: 30rem;
+}
+.activity-filter input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  color: var(--text);
+  background: var(--surface);
+}
+.run-experience-card h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+.run-experience-card p,
+.run-experience-card ul {
+  margin-bottom: 0.75rem;
+}
+.run-experience-card li {
+  margin-bottom: 0.4rem;
+}

@@ -1,10 +1,39 @@
 # Jarvis V1 Status
 
 Last updated: 2026-09-08
-Current phase: M5 — local implementation and quality gates complete; publication gate pending
-Overall state: M4 complete and READY FOR M5. M5 is NOT READY FOR M6 until the complete local and exact-commit CI gates pass.
+Current phase: M6 — local verification complete; branch publication/CI pending
+Overall state: M5 COMPLETE and READY FOR M6; M6 is not yet ready for M7.
 
-## Active M5 criteria
+## Active M6 criteria
+
+Fetched clean main/base: `26fcdc5694f73adaf864227dd21579b3a61f6033`.
+Branch: `codex/m6-deterministic-demo`. M5 branch commit
+`9ad204ccaeeb3199c2cc30c2ab0c29264501048a` passed
+[verify 34180910635](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34180910635).
+[PR #2](https://github.com/ClearPointSolutions/Jarvis-Development/pull/2) merged that branch;
+post-merge main passed
+[verify 34181196662](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34181196662).
+These verified results supersede the historical M5 pending-publication entries below.
+
+- [x] Fetch main, verify M5 exact-commit branch and post-merge CI, create M6 branch.
+- [x] Read current architecture, implementation, contracts, tests and legacy references.
+- [x] Explicit fail-closed demo mode, deterministic adapters and idempotent bootstrap.
+- [x] Real compiled workflow, durable tasks/attempts, retries, artifacts and demo decision.
+- [x] Authenticated objective/start, live graph/feed/progress and persistent history UI.
+- [x] Network-denied canonical browser E2E, secondary failures, restart/reconnect and determinism.
+- [x] Full PostgreSQL, Python, frontend, browser, accessibility, security and script gates.
+- [ ] Completion evidence, clean committed branch, push and exact-commit green CI.
+
+M6 only. No homelab, real runtime credentials, deployment, legacy edits or M7 work.
+
+M6 local evidence: 593 Python tests, 88.82% combined coverage, 48 frontend tests,
+9 foundation browser tests plus the four-run M6 acceptance test, zero M6 axe or
+serious console findings, clean dependency audit/secret scans, production build,
+and the complete PostgreSQL-enabled `scripts/verify.sh` pass. The final linked-run
+fixture preservation correction also passes all three affected control tests.
+See `docs/M6_COMPLETION.md`. Exact-commit branch CI is the remaining gate.
+
+## Historical M5 criteria (publication resolved above)
 
 Base/main: `4367599eeed256d345296dff8f85c52cdc87d38a`, fetched and confirmed on 2026-09-07.
 M4 exact-commit [verify run 34171942359](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34171942359) completed successfully.
@@ -18,11 +47,11 @@ Branch: `codex/m5-durable-orchestrator`. Earlier M4 publication blockers below a
 - [x] Recovery, graceful drain, authoritative event-backed projections.
 - [x] RUN-001 through RUN-009, applicable FAIL tests, two-instance and crash-window tests.
 - [x] Full PostgreSQL/Python/frontend/browser/accessibility/security/verify gates.
-- [ ] Completion documentation, coherent commits, branch push and exact-commit green CI.
+- [x] Completion documentation, coherent commits, branch push and exact-commit green CI.
 
 M5 only: no homelab contact, real provider credentials, deployment, legacy edits, or M6 work.
 
-Current M5 evidence: **570 Python tests**, **88.50% combined line/branch coverage** (78.18% branch-only), **47 frontend tests**, and **9 Playwright tests** pass. RUN-001-009, FAIL-001-007, two-instance concurrency/recovery, all eight crash boundaries, backoff pause/resume, migration roundtrip/drift/roles and API security checks pass. Desktop/mobile axe and serious-console checks report zero findings. Generated contracts, strict types, lint, clean npm install/audit, production build, secret scans and the complete PostgreSQL-enabled `scripts/verify.sh` pass. Diff and visual review are complete. Exact-commit GitHub CI is the remaining gate. See `docs/M5_COMPLETION.md`.
+M5 evidence: **570 Python tests**, **88.50% combined line/branch coverage** (78.18% branch-only), **47 frontend tests**, and **9 Playwright tests** pass. RUN-001-009, FAIL-001-007, two-instance concurrency/recovery, all eight crash boundaries, backoff pause/resume, migration roundtrip/drift/roles and API security checks pass. Desktop/mobile axe and serious-console checks report zero findings. Generated contracts, strict types, lint, clean npm install/audit, production build, secret scans and the complete PostgreSQL-enabled `scripts/verify.sh` pass. Diff and visual review are complete. Exact-commit branch CI and post-merge main CI passed as recorded above. See `docs/M5_COMPLETION.md`.
 
 ## Historical M4 criteria (publication resolved above)
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -55,6 +56,10 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        if os.environ.get("JARVIS_DEMO_NETWORK_GUARD") == "1":
+            from jarvis_orchestrator.demo.safety import install_network_guard
+
+            install_network_guard(config.database_url)
         yield
         if owned_engine is not None:
             await owned_engine.dispose()

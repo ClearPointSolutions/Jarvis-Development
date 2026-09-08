@@ -190,6 +190,13 @@ class AccountingService:
         self.writer = event_writer()
 
     async def record(self, record: AccountingRecord, *, idempotency_key: str) -> AccountingRecord:
+        async with self.factory() as session, session.begin():
+            return await self.record_in_session(session, record, idempotency_key=idempotency_key)
+
+    async def record_in_session(
+        self, session: AsyncSession, record: AccountingRecord, *, idempotency_key: str
+    ) -> AccountingRecord:
+        """Share an existing fenced effect transaction without a second connection."""
         # Accounting never stores prompts, credentials or native exceptions.
         if (
             not 8 <= len(idempotency_key) <= 200
@@ -199,89 +206,80 @@ class AccountingService:
         payload = record.model_dump(mode="json")
         if RecursiveRedactor().redact(payload).value != payload:
             raise ValueError("accounting contains sensitive content")
-        async with self.factory() as session, session.begin():
-            await lock_events(session)
-            prior = await session.scalar(
-                select(ModelCallModel).where(
-                    ModelCallModel.correlation_id == record.correlation_id,
-                    ModelCallModel.idempotency_key == idempotency_key,
-                )
+        await lock_events(session)
+        prior = await session.scalar(
+            select(ModelCallModel).where(
+                ModelCallModel.correlation_id == record.correlation_id,
+                ModelCallModel.idempotency_key == idempotency_key,
             )
-            if prior is not None:
-                if sha256_digest(prior.record_json) != sha256_digest(payload):
-                    raise IdempotencyConflictError("accounting idempotency conflict")
-                return AccountingRecord.model_validate(prior.record_json)
-            profile_revision = await session.get(
-                ConfigurationRevisionModel, record.profile_revision_id
+        )
+        if prior is not None:
+            if sha256_digest(prior.record_json) != sha256_digest(payload):
+                raise IdempotencyConflictError("accounting idempotency conflict")
+            return AccountingRecord.model_validate(prior.record_json)
+        profile_revision = await session.get(ConfigurationRevisionModel, record.profile_revision_id)
+        provider_revision = await session.get(
+            ConfigurationRevisionModel, record.provider_revision_id
+        )
+        if profile_revision is None or provider_revision is None:
+            raise ValueError("accounting references missing revisions")
+        profile = REGISTRY_SPEC_ADAPTER.validate_python(profile_revision.spec_json.get("spec"))
+        provider = REGISTRY_SPEC_ADAPTER.validate_python(provider_revision.spec_json.get("spec"))
+        if (
+            not isinstance(profile, ModelProfileSpec)
+            or not isinstance(provider, ProviderSpec)
+            or profile.provider_revision_id != record.provider_revision_id
+            or record.pricing != profile.pricing
+            or record.cost != calculate_cost(record.usage, record.pricing)
+            or record.demo != (provider.provider_kind == "demo")
+        ):
+            raise ValueError("accounting snapshot or cost does not match configuration")
+        if record.route_revision_id:
+            route_revision = await session.get(ConfigurationRevisionModel, record.route_revision_id)
+            if route_revision is None:
+                raise ValueError("accounting route revision is missing")
+            route = REGISTRY_SPEC_ADAPTER.validate_python(route_revision.spec_json.get("spec"))
+            if not isinstance(route, RoutePolicySpec) or record.profile_revision_id not in {
+                c.profile_revision_id for c in route.candidates
+            }:
+                raise ValueError("accounting profile is not declared by route")
+        session.add(
+            ModelCallModel(
+                id=record.id,
+                profile_revision_id=record.profile_revision_id,
+                provider_revision_id=record.provider_revision_id,
+                route_revision_id=record.route_revision_id,
+                run_id=record.run_id,
+                correlation_id=record.correlation_id,
+                idempotency_key=idempotency_key,
+                record_json=payload,
+                created_at=record.created_at,
             )
-            provider_revision = await session.get(
-                ConfigurationRevisionModel, record.provider_revision_id
-            )
-            if profile_revision is None or provider_revision is None:
-                raise ValueError("accounting references missing revisions")
-            profile = REGISTRY_SPEC_ADAPTER.validate_python(profile_revision.spec_json.get("spec"))
-            provider = REGISTRY_SPEC_ADAPTER.validate_python(
-                provider_revision.spec_json.get("spec")
-            )
-            if (
-                not isinstance(profile, ModelProfileSpec)
-                or not isinstance(provider, ProviderSpec)
-                or profile.provider_revision_id != record.provider_revision_id
-                or record.pricing != profile.pricing
-                or record.cost != calculate_cost(record.usage, record.pricing)
-                or record.demo != (provider.provider_kind == "demo")
-            ):
-                raise ValueError("accounting snapshot or cost does not match configuration")
-            if record.route_revision_id:
-                route_revision = await session.get(
-                    ConfigurationRevisionModel, record.route_revision_id
-                )
-                if route_revision is None:
-                    raise ValueError("accounting route revision is missing")
-                route = REGISTRY_SPEC_ADAPTER.validate_python(route_revision.spec_json.get("spec"))
-                if not isinstance(route, RoutePolicySpec) or record.profile_revision_id not in {
-                    c.profile_revision_id for c in route.candidates
-                }:
-                    raise ValueError("accounting profile is not declared by route")
-            session.add(
-                ModelCallModel(
-                    id=record.id,
-                    profile_revision_id=record.profile_revision_id,
-                    provider_revision_id=record.provider_revision_id,
-                    route_revision_id=record.route_revision_id,
+        )
+        await session.flush()
+        await self.writer.append(
+            session,
+            EventIntent(
+                occurred_at=record.created_at,
+                type="model.usage_recorded",
+                severity=EventSeverity.INFO,
+                mode=EventMode.DEMO if record.demo else EventMode.REAL,
+                visibility=EventVisibility.OWNER,
+                source=EventSource(kind="provider_adapter", name="accounting", instance_id="m3"),
+                correlation_id=record.correlation_id,
+                scope=EventScope(
                     run_id=record.run_id,
-                    correlation_id=record.correlation_id,
-                    idempotency_key=idempotency_key,
-                    record_json=payload,
-                    created_at=record.created_at,
-                )
-            )
-            await session.flush()
-            await self.writer.append(
-                session,
-                EventIntent(
-                    occurred_at=record.created_at,
-                    type="model.usage_recorded",
-                    severity=EventSeverity.INFO,
-                    mode=EventMode.DEMO if record.demo else EventMode.REAL,
-                    visibility=EventVisibility.OWNER,
-                    source=EventSource(
-                        kind="provider_adapter", name="accounting", instance_id="m3"
-                    ),
-                    correlation_id=record.correlation_id,
-                    scope=EventScope(
-                        run_id=record.run_id,
-                        project_id=record.project_id,
-                        task_id=record.task_id,
-                        workflow_node_id=record.node_id,
-                    ),
-                    data={
-                        "model_call_id": str(record.id),
-                        "profile_revision_id": str(record.profile_revision_id),
-                        "usage": record.usage.model_dump(mode="json"),
-                        "cost": record.cost.model_dump(mode="json"),
-                        "outcome": record.outcome,
-                    },
+                    project_id=record.project_id,
+                    task_id=record.task_id,
+                    workflow_node_id=record.node_id,
                 ),
-            )
+                data={
+                    "model_call_id": str(record.id),
+                    "profile_revision_id": str(record.profile_revision_id),
+                    "usage": record.usage.model_dump(mode="json"),
+                    "cost": record.cost.model_dump(mode="json"),
+                    "outcome": record.outcome,
+                },
+            ),
+        )
         return record

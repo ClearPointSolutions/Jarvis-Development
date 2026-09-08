@@ -46,6 +46,36 @@ const eventLabels: Record<string, string> = {
   "model.failover": "Model failover",
   "instruction.applied": "Instruction delivered",
   "task.created": "Task created",
+  "task.ready": "Task ready",
+  "task.dependencies_set": "Dependencies recorded",
+  "task.attempt_started": "Developer attempt started",
+  "task.verifying": "Verifying task",
+  "task.reviewing": "Reviewing task",
+  "task.succeeded": "Task succeeded",
+  "task.retry_scheduled": "Task retry scheduled",
+  "worker.invocation_dispatched": "Demo worker dispatched",
+  "worker.invocation_completed": "Demo worker completed",
+  "worker.invocation_failed": "Demo worker failed",
+  "worker.cancelled": "Worker cancelled",
+  "command.started": "Command activity started",
+  "command.completed": "Command activity completed",
+  "file.write_completed": "File change recorded",
+  "test.started": "Verification started",
+  "test.failed": "Verification failed",
+  "review.started": "Review started",
+  "review.failed": "Review failed",
+  "review.completed": "Review completed",
+  "model.call_started": "Model call started",
+  "model.call_completed": "Model call completed",
+  "model.call_failed": "Model call failed",
+  "model.usage_recorded": "Model usage recorded",
+  "service.health_changed": "Dependency health changed",
+  "artifact.created": "Immutable artifact created",
+  "approval.requested": "Decision requested",
+  "approval.decided": "Decision recorded",
+  "git.push_started": "Publication started",
+  "git.pr_created": "Publication recorded",
+  "git.ci_updated": "CI status updated",
   "test.completed": "Verification completed",
 };
 
@@ -74,6 +104,15 @@ export function EventRow({ event }: { event: NormalizedEvent }) {
       </div>
       <h3>{knownLabel ?? "Observable event"}</h3>
       <p>{safeDisplayText(event.message)}</p>
+      {event.data?.summary || event.data?.feedback || event.data?.ci ? (
+        <p>
+          {safeDisplayText(
+            String(
+              event.data.feedback ?? event.data.summary ?? event.data.ci,
+            ).slice(0, 1000),
+          )}
+        </p>
+      ) : null}
       <code>{safeDisplayText(event.type)}</code>
       {!knownLabel ? (
         <span className="unknown-label">Unknown event type</span>

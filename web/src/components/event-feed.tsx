@@ -35,6 +35,7 @@ export function EventFeed({ runId }: { runId?: string }) {
   const [connection, setConnection] = useState("Waiting for a run");
   const recoveryCursor = useRef<number | undefined>(undefined);
   const [generation, setGeneration] = useState(0);
+  const [filter, setFilter] = useState("");
   const projection = useQuery({
     queryKey: ["run-projection", runId],
     queryFn: () => snapshot(runId!),
@@ -66,6 +67,7 @@ export function EventFeed({ runId }: { runId?: string }) {
       `/api/v1/runs/${encodeURIComponent(runId)}/events/stream?after=${after}`,
     );
     let stopped = false;
+    let refreshTimer: ReturnType<typeof setTimeout> | undefined;
     source.onopen = () => {
       setConnection("Live");
       void client.invalidateQueries({ queryKey: ["run-projection", runId] });
@@ -81,7 +83,22 @@ export function EventFeed({ runId }: { runId?: string }) {
         client.setQueryData<NormalizedEvent[]>(key, (previous = []) =>
           mergeEvent(previous, event),
         );
-        void client.invalidateQueries({ queryKey: ["run-projection", runId] });
+        if (!refreshTimer)
+          refreshTimer = setTimeout(() => {
+            refreshTimer = undefined;
+            for (const name of [
+              "runtime-run",
+              "runtime-tasks",
+              "runtime-nodes",
+              "runtime-decision",
+              "runtime-evidence",
+            ]) {
+              void client.invalidateQueries({ queryKey: [name, runId] });
+            }
+            void client.invalidateQueries({
+              queryKey: ["run-projection", runId],
+            });
+          }, 200);
       } catch (error) {
         stopped = true;
         source.close();
@@ -122,6 +139,7 @@ export function EventFeed({ runId }: { runId?: string }) {
     });
     return () => {
       stopped = true;
+      clearTimeout(refreshTimer);
       source.close();
     };
   }, [runId, ready, client, generation]);
@@ -181,6 +199,15 @@ export function EventFeed({ runId }: { runId?: string }) {
           >
             Reconnect and refresh
           </button>
+          <div className="activity-filter">
+            <label htmlFor="event-filter">Filter activity by event type</label>
+            <input
+              id="event-filter"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
+              placeholder="For example: test, worker, review"
+            />
+          </div>
           <div
             className="activity-list"
             role="region"
@@ -188,9 +215,9 @@ export function EventFeed({ runId }: { runId?: string }) {
             aria-label="Persisted run events"
           >
             {events.data.length ? (
-              events.data.map((event) => (
-                <EventRow event={event} key={event.event_id} />
-              ))
+              events.data
+                .filter((event) => event.type.includes(filter.trim()))
+                .map((event) => <EventRow event={event} key={event.event_id} />)
             ) : (
               <p>No events have been received.</p>
             )}

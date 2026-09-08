@@ -20,6 +20,7 @@ from jarvis_contracts.api import (
 from jarvis_contracts.base import ContractModel
 from jarvis_contracts.commands import IdempotencyContract, RunCommandReceipt, RunCommandRequest
 from jarvis_contracts.configuration import ConfigurationRevision, RunConfigurationSnapshot
+from jarvis_contracts.demo import DemoDecision, DemoDecisionView, TaskPage
 from jarvis_contracts.entities import (
     ArtifactMetadata,
     Effect,
@@ -92,6 +93,9 @@ from jarvis_contracts.workflow_nodes import (
 
 
 class JarvisContractBundle(ContractModel):
+    demo_decision: DemoDecision
+    demo_decision_view: DemoDecisionView
+    runtime_tasks: TaskPage
     runtime_commands: CommandPage
     runtime_nodes: NodePage
     project_create: ProjectCreate | None = None

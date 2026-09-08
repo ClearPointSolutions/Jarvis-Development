@@ -1,5 +1,6 @@
 import { EventFeed } from "@/components/event-feed";
 import { StatusLabel } from "@/components/states";
+import Link from "next/link";
 
 export default function MissionPage() {
   return (
@@ -10,17 +11,19 @@ export default function MissionPage() {
           <h1>Mission overview</h1>
           <p className="page-lede">Your durable development control plane.</p>
         </div>
-        <StatusLabel label="M2 foundation" tone="neutral" />
+        <StatusLabel label="DEMO · deterministic runtime" tone="neutral" />
       </header>
       <div className="mission-grid">
         <section className="content-card" aria-labelledby="organizer-title">
           <p className="eyebrow">01 / Intent</p>
           <h2 id="organizer-title">Organizer</h2>
           <p>
-            Conversation and job creation become available with the organizer
-            milestone.
+            Give Organizer an objective, select a published workflow, and follow
+            its durable tasks, verification, and review.
           </p>
-          <StatusLabel label="Not available yet" tone="neutral" />
+          <Link className="button" href="/runs">
+            Create an objective
+          </Link>
         </section>
         <section
           className="content-card graph-region"

@@ -147,10 +147,27 @@ async function forward(
       upstream.resume();
       return new Response(null, { status, headers: outgoing });
     }
-    return new Response(
-      Readable.toWeb(upstream) as ReadableStream<Uint8Array>,
-      { status, headers: outgoing },
-    );
+    const source = Readable.toWeb(upstream) as ReadableStream<Uint8Array>;
+    if (!outgoing.get("content-type")?.startsWith("text/event-stream"))
+      return new Response(source, { status, headers: outgoing });
+    // An API restart ends this SSE connection. EventSource reconnects with its
+    // durable cursor; do not turn the expected transport closure into a page error.
+    const reader = source.getReader();
+    const stream = new ReadableStream<Uint8Array>({
+      async pull(controller) {
+        try {
+          const next = await reader.read();
+          if (next.done) controller.close();
+          else controller.enqueue(next.value);
+        } catch {
+          controller.close();
+        }
+      },
+      cancel() {
+        return reader.cancel();
+      },
+    });
+    return new Response(stream, { status, headers: outgoing });
   } catch (error) {
     return failure(error instanceof RequestTooLarge ? 413 : 502);
   }

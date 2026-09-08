@@ -8,6 +8,12 @@ import type {
   RunPage,
   RunView,
   RunCommandReceipt,
+  TaskPage,
+  NodePage,
+  WorkflowSpec,
+  DemoDecision,
+  DemoDecisionView,
+  EventPage,
 } from "@jarvis/contracts";
 import { ApiRequestError } from "./client";
 
@@ -38,6 +44,23 @@ export function createRuntimeClient(csrfToken?: string) {
     return response.json() as Promise<T>;
   }
   return {
+    evidence: (id: string) =>
+      request<EventPage>(`/runs/${encodeURIComponent(id)}/events?limit=1000`),
+    tasks: (id: string) =>
+      request<TaskPage>(`/runs/${encodeURIComponent(id)}/tasks`),
+    nodes: (id: string) =>
+      request<NodePage>(`/runs/${encodeURIComponent(id)}/nodes?limit=100`),
+    workflow: (id: string) =>
+      request<WorkflowSpec>(`/runs/${encodeURIComponent(id)}/workflow`),
+    decision: (id: string) =>
+      request<DemoDecisionView | null>(
+        `/runs/${encodeURIComponent(id)}/demo-decision`,
+      ),
+    decide: (id: string, body: DemoDecision) =>
+      request<DemoDecisionView>(
+        `/runs/${encodeURIComponent(id)}/demo-decision`,
+        body,
+      ),
     projects: () => request<ProjectPage>("/projects"),
     createProject: (body: ProjectCreate) =>
       request<ProjectView>("/projects", body),

@@ -5,6 +5,8 @@ import logging
 import signal
 import sys
 from datetime import timedelta
+from pathlib import Path
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -23,10 +25,18 @@ class OrchestratorSettings(BaseSettings):
     lease_seconds: int = Field(default=30, ge=5, le=600)
     poll_seconds: float = Field(default=0.2, ge=0.01, le=1)
     grace_seconds: float = Field(default=10, ge=0, le=300)
+    runtime_mode: Literal["real", "demo"] = "real"
+    artifact_root: Path = Field(
+        default=Path("var/artifacts"), validation_alias="JARVIS_ARTIFACT_ROOT"
+    )
 
 
 async def serve() -> None:
     settings = OrchestratorSettings()
+    if settings.runtime_mode == "demo":
+        from jarvis_orchestrator.demo.safety import install_network_guard
+
+        install_network_guard(settings.database_url)
     engine = create_async_database_engine(settings.database_url)
     ownership = RunOwnership(
         create_async_session_factory(engine),
@@ -46,6 +56,8 @@ async def serve() -> None:
             global_concurrency=settings.global_concurrency,
             poll_seconds=settings.poll_seconds,
             grace_seconds=settings.grace_seconds,
+            demo=settings.runtime_mode == "demo",
+            artifact_root=settings.artifact_root,
         ).serve(stop)
     finally:
         for signum, handler in previous.items():

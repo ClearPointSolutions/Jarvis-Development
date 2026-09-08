@@ -96,6 +96,11 @@ async def test_run009_retry_preserves_terminal_history(
         run = await session.get(RunModel, run_id)
         assert run is not None
         run.status = "failed"
+        run.mode = "demo"
+        run.runtime_json = {
+            "demo_fixture": {"seed": 99, "scenario": "infrastructure"},
+            "wait": {"kind": "pause"},
+        }
         previous_thread = run.langgraph_thread_id
     await enqueue(session_factory, run_id, RunCommandKind.RETRY)
     async with session_factory() as session:
@@ -105,3 +110,5 @@ async def test_run009_retry_preserves_terminal_history(
         assert linked is not None and linked.status == "queued"
         assert linked.langgraph_thread_id != previous_thread
         assert linked.config_snapshot_id == old.config_snapshot_id
+        assert linked.runtime_json == {"demo_fixture": {"seed": 99, "scenario": "infrastructure"}}
+        assert old.runtime_json["wait"] == {"kind": "pause"}

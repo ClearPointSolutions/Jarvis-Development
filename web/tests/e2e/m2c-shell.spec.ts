@@ -53,8 +53,11 @@ test("desktop shell is keyboard accessible, secure, and free of serious violatio
   await expect(page.getByRole("heading", { name: "Organizer" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
   await expect(
-    page.getByText("M2 foundation", { exact: true }).first(),
+    page.getByText("DEMO · deterministic runtime", { exact: true }).first(),
   ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Create an objective" }),
+  ).toHaveAttribute("href", "/runs");
 
   const csp = response?.headers()["content-security-policy"] ?? "";
   const scriptPolicy = csp

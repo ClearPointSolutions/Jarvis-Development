@@ -43,6 +43,7 @@ export function WorkflowCanvas({
   onConnect,
   onRemove,
   projection = {},
+  transitions = [],
 }: {
   spec: WorkflowSpec;
   layout: WorkflowLayout;
@@ -55,6 +56,7 @@ export function WorkflowCanvas({
   onRemove: (nodeIds: string[], edgeIds: string[]) => void;
   /** Future event projections may annotate a read-only graph without advancing it. */
   projection?: Readonly<Record<string, string>>;
+  transitions?: ReadonlyArray<{ from: string; to: string }>;
 }) {
   const viewportControl = useRef(false);
   const nodes: Node[] = spec.nodes.map((node, index) => {
@@ -89,6 +91,12 @@ export function WorkflowCanvas({
     id: edge.id,
     source: edge.from,
     target: edge.to,
+    animated:
+      transitions.at(-1)?.from === edge.from &&
+      transitions.at(-1)?.to === edge.to,
+    style: transitions.some((t) => t.from === edge.from && t.to === edge.to)
+      ? { stroke: "var(--accent)", strokeWidth: 3 }
+      : undefined,
     label: `${edge.kind}${edge.fallback ? " · fallback" : ""}`,
     selected: selection?.kind === "edge" && selection.id === edge.id,
     className: issues.some((issue) => issue.edge_id === edge.id)

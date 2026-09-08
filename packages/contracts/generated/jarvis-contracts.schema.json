@@ -457,6 +457,43 @@
       "title": "AttemptStatus",
       "type": "string"
     },
+    "AttemptView": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "number": {
+          "title": "Number",
+          "type": "integer"
+        },
+        "snapshot_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Snapshot Digest"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "status",
+        "snapshot_digest"
+      ],
+      "title": "AttemptView",
+      "type": "object"
+    },
     "CandidateDecision": {
       "additionalProperties": false,
       "properties": {
@@ -713,6 +750,121 @@
         }
       },
       "title": "Cost",
+      "type": "object"
+    },
+    "DemoDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "enum": [
+            "approved",
+            "rejected"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "decision_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Decision Id",
+          "type": "string"
+        },
+        "expected_run_version": {
+          "minimum": 0,
+          "title": "Expected Run Version",
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 120,
+          "minLength": 8,
+          "title": "Idempotency Key",
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision_id",
+        "decision",
+        "expected_run_version",
+        "idempotency_key"
+      ],
+      "title": "DemoDecision",
+      "type": "object"
+    },
+    "DemoDecisionView": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "title": "Decision",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "decision"
+      ],
+      "title": "DemoDecisionView",
+      "type": "object"
+    },
+    "DemoFixture": {
+      "additionalProperties": false,
+      "properties": {
+        "ci": {
+          "default": "success",
+          "enum": [
+            "success",
+            "failure"
+          ],
+          "title": "Ci",
+          "type": "string"
+        },
+        "clock": {
+          "default": "2026-01-01T00:00:00Z",
+          "format": "date-time",
+          "title": "Clock",
+          "type": "string"
+        },
+        "delay_seconds": {
+          "default": 0.15,
+          "maximum": 5,
+          "minimum": 0,
+          "title": "Delay Seconds",
+          "type": "number"
+        },
+        "health": {
+          "default": "healthy",
+          "enum": [
+            "healthy",
+            "degraded",
+            "unavailable",
+            "unknown"
+          ],
+          "title": "Health",
+          "type": "string"
+        },
+        "scenario": {
+          "default": "canonical",
+          "enum": [
+            "canonical",
+            "infrastructure",
+            "review",
+            "provider"
+          ],
+          "title": "Scenario",
+          "type": "string"
+        },
+        "seed": {
+          "default": 6,
+          "maximum": 1000000,
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        }
+      },
+      "title": "DemoFixture",
       "type": "object"
     },
     "DesiredRunState": {
@@ -1589,6 +1741,17 @@
     "JobCreate": {
       "additionalProperties": false,
       "properties": {
+        "demo_fixture": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DemoFixture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "idempotency_key": {
           "maxLength": 200,
           "minLength": 8,
@@ -5143,6 +5306,36 @@
       "title": "TaskAttempt",
       "type": "object"
     },
+    "TaskPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/TaskView"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "next_after": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next After"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "TaskPage",
+      "type": "object"
+    },
     "TaskStatus": {
       "enum": [
         "pending",
@@ -5158,6 +5351,58 @@
       ],
       "title": "TaskStatus",
       "type": "string"
+    },
+    "TaskView": {
+      "additionalProperties": false,
+      "properties": {
+        "attempts": {
+          "items": {
+            "$ref": "#/$defs/AttemptView"
+          },
+          "title": "Attempts",
+          "type": "array"
+        },
+        "dependencies": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Dependencies",
+          "type": "array"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "weight": {
+          "title": "Weight",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "key",
+        "title",
+        "status",
+        "weight",
+        "dependencies",
+        "attempts"
+      ],
+      "title": "TaskView",
+      "type": "object"
     },
     "TimeoutPolicy": {
       "additionalProperties": false,
@@ -6567,6 +6812,12 @@
       ],
       "default": null
     },
+    "demo_decision": {
+      "$ref": "#/$defs/DemoDecision"
+    },
+    "demo_decision_view": {
+      "$ref": "#/$defs/DemoDecisionView"
+    },
     "effect": {
       "anyOf": [
         {
@@ -6969,6 +7220,9 @@
     "runtime_nodes": {
       "$ref": "#/$defs/NodePage"
     },
+    "runtime_tasks": {
+      "$ref": "#/$defs/TaskPage"
+    },
     "session_response": {
       "anyOf": [
         {
@@ -7217,6 +7471,9 @@
     }
   },
   "required": [
+    "demo_decision",
+    "demo_decision_view",
+    "runtime_tasks",
     "runtime_commands",
     "runtime_nodes"
   ],

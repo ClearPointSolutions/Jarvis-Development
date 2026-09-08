@@ -60,6 +60,7 @@ else
   echo "== Playwright =="
   if [ -n "${TEST_DATABASE_URL:-}" ]; then
     "$PYTHON_BIN" -m scripts.verify_m2_browser
+    "$PYTHON_BIN" -m scripts.demo --e2e
   else
     (cd web && npm run test:e2e)
   fi

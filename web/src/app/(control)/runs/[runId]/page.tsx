@@ -1,5 +1,6 @@
 import { EventFeed } from "@/components/event-feed";
 import { RunControls } from "@/components/run-controls";
+import { RunExperience } from "@/components/run-experience";
 export default async function RunPage({
   params,
 }: {
@@ -14,6 +15,7 @@ export default async function RunPage({
         <p>{runId}</p>
       </header>
       <RunControls runId={runId} />
+      <RunExperience runId={runId} />
       <EventFeed runId={runId} />
     </div>
   );
