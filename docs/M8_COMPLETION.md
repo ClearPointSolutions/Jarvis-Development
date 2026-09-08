@@ -174,6 +174,10 @@ state after task completion, before asserting that its decision button is enable
 This removes an assumption that task completion and approval checkpointing happen
 within the same five-second UI assertion window. The complete four-run scenario
 passes with this additional authoritative-state assertion.
+Cold demo adapter imports are now loaded off the event loop before the service
+claims runs. This removes measured startup work from the five-second demo lease
+window. The lease duration and complete canonical event-sequence comparison are
+unchanged; the four-run browser scenario passes after this runtime correction.
 
 The live npm advisory feed subsequently reported
 [GHSA-2883-xcg3-v3hh](https://github.com/advisories/GHSA-2883-xcg3-v3hh)

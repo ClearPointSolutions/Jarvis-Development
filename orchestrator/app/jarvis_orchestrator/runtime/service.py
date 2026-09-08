@@ -6,6 +6,7 @@ import asyncio
 import logging
 from collections.abc import Callable, Mapping
 from contextlib import suppress
+from importlib import import_module
 from pathlib import Path
 from typing import cast
 
@@ -70,6 +71,16 @@ class OrchestratorService:
         self.active: dict[RunFence, asyncio.Task[None]] = {}
 
     async def serve(self, stop: asyncio.Event) -> None:
+        if self.demo:
+            # Cold adapter imports can consume a short lease and block its
+            # heartbeat. Load trusted runtime code before claiming any work.
+            for module in (
+                "jarvis_orchestrator.demo.adapters",
+                "jarvis_orchestrator.demo.boundaries",
+                "jarvis_orchestrator.demo.decision",
+                "jarvis_orchestrator.demo.safety",
+            ):
+                await asyncio.to_thread(import_module, module)
         await self.ownership.register()
         try:
             while not stop.is_set():
