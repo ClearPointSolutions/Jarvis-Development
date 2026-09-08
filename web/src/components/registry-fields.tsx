@@ -642,8 +642,8 @@ export function RegistryFields({
               </label>
             ))}
           <p>
-            Legacy SSH configuration requires one worker-managed profile and
-            concurrency one. Execution is not enabled in M3.
+            OpenHands SSH requires one worker-managed profile and concurrency
+            one.
           </p>
         </fieldset>
       ) : null}

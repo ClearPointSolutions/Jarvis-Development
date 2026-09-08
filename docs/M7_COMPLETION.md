@@ -1,8 +1,12 @@
 # M7 worker adapter completion evidence
 
-Status: local final verification and exact-commit publication pending.
+Status: **M7 COMPLETE — READY FOR M8** (local adapter/protocol scope).
 Branch: `codex/m7-worker-adapter`.
 Base: `bb6646210e9f6a96f0d165aa3b13ac96fc0f60ed`.
+Validated implementation: `8fbd99acc202ca81873e097dd169338d9f2064ea`.
+Its exact Linux [verify run 34227977202](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34227977202)
+passed every enabled gate. The final completion-record commit is verified separately
+before handoff; its exact SHA and run are included in the task's final response.
 
 ## Prerequisite
 
@@ -45,8 +49,26 @@ Transport tests never open a socket. Wrapper tests run synthetic local child
 processes and temporary Git repositories. The cancellation test preserves an
 unrelated local process. M7 integration tests use loopback PostgreSQL only.
 
-Final full-suite metrics and publication evidence will be recorded after the
-complete verification command and exact-commit CI finish.
+The complete local Python suite passes **650 tests with 86.44% combined coverage**.
+Migration round-trip and schema drift, Python formatting/lint, 154-file type checks
+(including a Linux-targeted check), secret scanning and generated contract drift
+pass. Linux CI passes the same 650 tests at **86.37% coverage**.
+
+| Final gate | Result |
+| --- | --- |
+| `npm ci` and dependency audit | Passed; zero vulnerabilities reported |
+| Frontend formatting, lint and type checking | Passed |
+| Frontend unit/component tests | 49 passed |
+| Production Next.js build | Passed |
+| Foundation Chromium acceptance | 9 passed; M6 is intentionally handled by its dedicated command |
+| M6 Chromium acceptance | 1 test covering four runs passed, including restart and durable decision |
+| Accessibility and serious console checks | Passed in the browser suite; no serious findings |
+| Log/browser bundle secret canaries | Absent |
+| PostgreSQL-enabled `scripts/verify.sh` | All enabled gates passed locally and in Linux CI |
+| Worker wrapper wheel | Built locally; implementation and console entrypoint verified |
+
+The worker mobile view was visually reviewed. An obsolete M3-only helper sentence
+was removed after that review. No real host connection was used for any M7 test.
 
 ## Security review and bounded limitations
 
@@ -58,9 +80,10 @@ complete verification command and exact-commit CI finish.
 - The existing M5 run fence remains authoritative. A worker lease's random-token
   hash is an audit commitment; generation checks and the current owner transaction
   authorize mutations. Expiry alone does not free a remote workspace.
-- The POSIX wrapper owns a process group. Windows local cancellation reports
-  unknown when whole-tree termination cannot be proved. Linux process-group
-  behavior still requires later authorized staging validation.
+- The POSIX wrapper owns a process group; Linux CI verifies targeted cancellation
+  with actual local child processes. Windows local cancellation reports unknown
+  when whole-tree termination cannot be proved. The actual Worker-01 environment
+  still requires later authorized staging validation.
 - The legacy worker remains exclusive; it cannot honor arbitrary worktree roots
   or cosmetic per-task model changes. The independent worktree manager is ready
   for a future compatible worker without pretending the legacy runner supports it.
@@ -76,4 +99,5 @@ No deployment occurred, `/opt/jarvis` and legacy references were preserved, no m
 to main occurred, and M8 was not started. Later authorized staging steps are in
 [the wrapper package](../worker-wrapper/v1/README.md).
 
-Recommendation remains pending final gates; do not treat this draft as completion.
+Recommendation: **READY FOR M8**. M8 has not been started. Real Worker-01 staging
+and deployment remain separate future authorization gates, not claimed M7 evidence.
