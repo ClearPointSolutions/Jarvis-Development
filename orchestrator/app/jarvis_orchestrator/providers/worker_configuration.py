@@ -36,6 +36,9 @@ class OpenHandsDeployment(ContractModel):
     runner_path: str = Field(min_length=2, max_length=1024, repr=False)
     venv_activate: str = Field(min_length=2, max_length=1024, repr=False)
     invocation_root: str = Field(min_length=2, max_length=1024, repr=False)
+    wrapper_path: str | None = Field(default=None, min_length=2, max_length=1024, repr=False)
+    python_path: str | None = Field(default=None, min_length=2, max_length=1024, repr=False)
+    runner_python_path: str | None = Field(default=None, min_length=2, max_length=1024, repr=False)
     timeouts: TimeoutPolicy = Field(default_factory=TimeoutPolicy)
 
     @field_validator("workspace_root", "runner_path", "venv_activate", "invocation_root")
@@ -51,6 +54,11 @@ class OpenHandsDeployment(ContractModel):
         ):
             raise ValueError("deployment paths must be canonical absolute POSIX paths")
         return value
+
+    @field_validator("wrapper_path", "python_path", "runner_python_path")
+    @classmethod
+    def optional_program_path(cls, value: str | None) -> str | None:
+        return cls.absolute_posix_path(value) if value is not None else None
 
 
 def validate_model_binding(spec: WorkerSpec, profile_revision_id: UUID | None) -> ValidationReport:

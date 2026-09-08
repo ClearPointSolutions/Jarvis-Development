@@ -126,6 +126,52 @@ class RegistryService:
             ) from None
         private = await session.get(ConfigurationPrivateRefModel, revision.id)
         health = await session.get(ProviderHealthModel, revision.id)
+        worker_runtime = None
+        worker_health = None
+        if isinstance(spec, WorkerSpec):
+            from sqlalchemy import func
+
+            from jarvis_contracts.registry import WorkerRuntimeFacts
+            from jarvis_persistence.models import (
+                WorkerHealthModel,
+                WorkerInvocationModel,
+                WorkerLeaseModel,
+                WorkerSlotModel,
+            )
+
+            worker_health = await session.get(WorkerHealthModel, revision.id)
+            count, heartbeat = (
+                await session.execute(
+                    select(
+                        func.count(WorkerLeaseModel.slot_id).filter(
+                            WorkerLeaseModel.released_at.is_(None)
+                        ),
+                        func.max(WorkerLeaseModel.renewed_at),
+                    )
+                    .join(WorkerSlotModel, WorkerLeaseModel.slot_id == WorkerSlotModel.id)
+                    .where(WorkerSlotModel.worker_id == identity.id)
+                )
+            ).one()
+            stalled = await session.scalar(
+                select(func.bool_or(WorkerInvocationModel.possibly_stalled))
+                .join(WorkerLeaseModel, WorkerInvocationModel.lease_id == WorkerLeaseModel.id)
+                .join(WorkerSlotModel, WorkerLeaseModel.slot_id == WorkerSlotModel.id)
+                .where(
+                    WorkerSlotModel.worker_id == identity.id,
+                    WorkerLeaseModel.released_at.is_(None),
+                )
+            )
+            worker_runtime = WorkerRuntimeFacts(
+                slots_in_use=count,
+                last_heartbeat_at=heartbeat,
+                possibly_stalled=bool(stalled),
+                validated_at=worker_health.observed_at if worker_health else None,
+                validation_issues=tuple(
+                    worker_health.report_json.get("health", {}).get("issues", [])
+                )
+                if worker_health
+                else (),
+            )
         status = "not_required"
         if isinstance(spec, ProviderSpec):
             if private and private.secret_ref:
@@ -150,7 +196,12 @@ class RegistryService:
                 "created_by": revision.created_by,
                 "secret_status": status,
                 "secret_label": "Server-managed credential" if status == "configured" else None,
-                "health": health.status if health else "unknown",
+                "health": worker_health.report_json["health"]["status"]
+                if worker_health
+                else health.status
+                if health
+                else "unknown",
+                "worker_runtime": worker_runtime,
                 "circuit_state": health.circuit_state if health else "closed",
             }
         )

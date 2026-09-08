@@ -21,6 +21,7 @@ from jarvis_orchestrator.runtime.commands import CommandProcessor
 from jarvis_orchestrator.runtime.effects import EffectAdapter, EffectLedger
 from jarvis_orchestrator.runtime.nodes import NodeRuntime
 from jarvis_orchestrator.runtime.ownership import RunFence, RunOwnership, StaleExecutorError
+from jarvis_orchestrator.workers.registry import WorkerRuntimeRegistry
 from jarvis_orchestrator.workflows import compile_workflow, workflow_run_config
 from jarvis_orchestrator.workflows.state import WorkflowStateV1
 from jarvis_persistence.models import (
@@ -44,6 +45,7 @@ class OrchestratorService:
         adapters: Mapping[str, EffectAdapter] | None = None,
         demo: bool = False,
         artifact_root: Path = Path("var/artifacts"),
+        worker_registry: WorkerRuntimeRegistry | None = None,
     ) -> None:
         if (
             not 1 <= max_concurrency <= 64
@@ -61,6 +63,7 @@ class OrchestratorService:
         self.adapters = dict(adapters or {})
         self.demo = demo
         self.artifact_root = artifact_root
+        self.worker_registry = worker_registry
         self.commands = CommandProcessor(ownership)
         self.active: dict[RunFence, asyncio.Task[None]] = {}
 
@@ -204,6 +207,7 @@ class OrchestratorService:
         ledger = EffectLedger(self.ownership, fence)
         adapters = self.adapters
         decision_handler = None
+        worker_registry = self.worker_registry
         if self.demo:
             from jarvis_contracts.demo import DemoFixture
             from jarvis_orchestrator.demo.adapters import DemoEffectAdapter
@@ -213,7 +217,7 @@ class OrchestratorService:
             )
             from jarvis_orchestrator.demo.decision import demo_decision
             from jarvis_orchestrator.demo.safety import validate_demo_snapshot
-            from jarvis_orchestrator.runtime.adapters import PublicationAdapter, WorkerAdapter
+            from jarvis_orchestrator.runtime.adapters import PublicationAdapter
 
             if mode != "demo":
                 raise ValueError("Demo service refuses real runs")
@@ -221,18 +225,18 @@ class OrchestratorService:
             adapter = DemoEffectAdapter(
                 self.ownership, fence, self.artifact_root, DemoFixture.model_validate(fixture_data)
             )
-            worker: WorkerAdapter = DemoWorkerAdapter(
-                self.ownership, fence, self.artifact_root, adapter.fixture
+            worker_registry = WorkerRuntimeRegistry(
+                {
+                    "demo": lambda owner, claimed, _revision, _spec: DemoWorkerAdapter(
+                        owner, claimed, self.artifact_root, adapter.fixture
+                    )
+                }
             )
             publication: PublicationAdapter = DemoPublicationAdapter(
                 self.ownership, fence, self.artifact_root, adapter.fixture
             )
             adapters = {
-                node.id: worker
-                if node.type.value == "worker"
-                else publication
-                if node.type.value == "github_publish"
-                else adapter
+                node.id: publication if node.type.value == "github_publish" else adapter
                 for node in spec.nodes
                 if node.type.value
                 in {
@@ -246,6 +250,30 @@ class OrchestratorService:
                 }
             }
             decision_handler = demo_decision(self.ownership, fence)
+        if worker_registry is not None:
+            from jarvis_contracts.registry import WorkerSpec
+            from jarvis_orchestrator.workflows.validation import effective_policy
+
+            if (mode == "demo") != self.demo:
+                raise ValueError("Worker registry runtime mode mismatch")
+            adapters = dict(adapters)
+            for workflow_node in spec.nodes:
+                if workflow_node.type.value != "worker":
+                    continue
+                selector = effective_policy(spec, workflow_node).worker_selector
+                revision = next(
+                    (
+                        item
+                        for item in snapshot.revisions
+                        if selector and item.revision_id == selector.revision_id
+                    ),
+                    None,
+                )
+                if revision is None or not isinstance(revision.spec, WorkerSpec):
+                    raise ValueError("Worker revision missing from immutable snapshot")
+                adapters[workflow_node.id] = worker_registry.resolve(
+                    revision.revision_id, revision.spec, self.ownership, fence, demo=self.demo
+                )
         if cancelling:
             await ledger.cancel_pending(adapters)
         async with fenced_saver(self.database_url, fence) as saver:

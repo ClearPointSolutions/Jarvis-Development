@@ -2593,6 +2593,16 @@
           "version": {
             "title": "Version",
             "type": "integer"
+          },
+          "worker_runtime": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkerRuntimeFacts"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -3969,6 +3979,62 @@
           }
         },
         "title": "VerificationPolicy",
+        "type": "object"
+      },
+      "WorkerRuntimeFacts": {
+        "additionalProperties": false,
+        "properties": {
+          "exclusive_workspace": {
+            "default": true,
+            "title": "Exclusive Workspace",
+            "type": "boolean"
+          },
+          "last_heartbeat_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Heartbeat At"
+          },
+          "possibly_stalled": {
+            "default": false,
+            "title": "Possibly Stalled",
+            "type": "boolean"
+          },
+          "slots_in_use": {
+            "default": 0,
+            "maximum": 128.0,
+            "minimum": 0.0,
+            "title": "Slots In Use",
+            "type": "integer"
+          },
+          "validated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validated At"
+          },
+          "validation_issues": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Validation Issues",
+            "type": "array"
+          }
+        },
+        "title": "WorkerRuntimeFacts",
         "type": "object"
       },
       "WorkerSelector": {

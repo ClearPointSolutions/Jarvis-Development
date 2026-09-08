@@ -494,6 +494,31 @@
       "title": "AttemptView",
       "type": "object"
     },
+    "CancelResult": {
+      "additionalProperties": false,
+      "properties": {
+        "invocation_id": {
+          "format": "uuid",
+          "title": "Invocation Id",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "cancelled",
+            "unknown",
+            "already_terminal"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "invocation_id",
+        "status"
+      ],
+      "title": "CancelResult",
+      "type": "object"
+    },
     "CandidateDecision": {
       "additionalProperties": false,
       "properties": {
@@ -2942,6 +2967,25 @@
       "title": "PredicateOperator",
       "type": "string"
     },
+    "PreparedInvocation": {
+      "additionalProperties": false,
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/WorkerInvocationRequest"
+        },
+        "request_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Request Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "request",
+        "request_digest"
+      ],
+      "title": "PreparedInvocation",
+      "type": "object"
+    },
     "Pricing": {
       "additionalProperties": false,
       "properties": {
@@ -3629,6 +3673,40 @@
       "title": "ReadinessResponse",
       "type": "object"
     },
+    "ReconciliationResult": {
+      "additionalProperties": false,
+      "properties": {
+        "invocation_id": {
+          "format": "uuid",
+          "title": "Invocation Id",
+          "type": "string"
+        },
+        "safe_to_start": {
+          "default": false,
+          "title": "Safe To Start",
+          "type": "boolean"
+        },
+        "state": {
+          "enum": [
+            "absent",
+            "starting",
+            "running",
+            "succeeded",
+            "failed",
+            "cancelled",
+            "unknown"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "invocation_id",
+        "state"
+      ],
+      "title": "ReconciliationResult",
+      "type": "object"
+    },
     "RegistryPage": {
       "additionalProperties": false,
       "properties": {
@@ -3804,6 +3882,17 @@
         "version": {
           "title": "Version",
           "type": "integer"
+        },
+        "worker_runtime": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorkerRuntimeFacts"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -5582,6 +5671,38 @@
       "title": "VerifyConfig",
       "type": "object"
     },
+    "WorkerArtifact": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "stdout",
+            "stderr",
+            "repository"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size_bytes": {
+          "maximum": 104857600,
+          "minimum": 0,
+          "title": "Size Bytes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "sha256",
+        "size_bytes"
+      ],
+      "title": "WorkerArtifact",
+      "type": "object"
+    },
     "WorkerConfig": {
       "additionalProperties": false,
       "properties": {
@@ -5593,6 +5714,622 @@
         }
       },
       "title": "WorkerConfig",
+      "type": "object"
+    },
+    "WorkerEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "invocation_id": {
+          "format": "uuid",
+          "title": "Invocation Id",
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "source_sequence": {
+          "exclusiveMinimum": 0,
+          "title": "Source Sequence",
+          "type": "integer"
+        },
+        "type": {
+          "enum": [
+            "worker.invocation_dispatched",
+            "worker.heartbeat",
+            "worker.invocation_completed",
+            "worker.invocation_failed",
+            "worker.cancel_requested",
+            "worker.cancelled"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "invocation_id",
+        "source_sequence",
+        "occurred_at",
+        "type"
+      ],
+      "title": "WorkerEvent",
+      "type": "object"
+    },
+    "WorkerHealth": {
+      "additionalProperties": false,
+      "properties": {
+        "capabilities": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+            "type": "string"
+          },
+          "title": "Capabilities",
+          "type": "array"
+        },
+        "issues": {
+          "default": [],
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$",
+            "type": "string"
+          },
+          "title": "Issues",
+          "type": "array"
+        },
+        "network_checked": {
+          "default": false,
+          "title": "Network Checked",
+          "type": "boolean"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "healthy",
+            "degraded",
+            "unavailable",
+            "misconfigured",
+            "unknown"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "observed_at"
+      ],
+      "title": "WorkerHealth",
+      "type": "object"
+    },
+    "WorkerInvocationHandle": {
+      "additionalProperties": false,
+      "properties": {
+        "generation": {
+          "exclusiveMinimum": 0,
+          "title": "Generation",
+          "type": "integer"
+        },
+        "invocation_id": {
+          "format": "uuid",
+          "title": "Invocation Id",
+          "type": "string"
+        },
+        "request_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Request Digest",
+          "type": "string"
+        },
+        "worker_revision_id": {
+          "format": "uuid",
+          "title": "Worker Revision Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "invocation_id",
+        "request_digest",
+        "worker_revision_id",
+        "generation"
+      ],
+      "title": "WorkerInvocationHandle",
+      "type": "object"
+    },
+    "WorkerInvocationRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "architecture_artifact_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Architecture Artifact Id"
+        },
+        "feedback_artifact_ids": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Feedback Artifact Ids",
+          "type": "array"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "invocation_id": {
+          "format": "uuid",
+          "title": "Invocation Id",
+          "type": "string"
+        },
+        "lease": {
+          "$ref": "#/$defs/WorkerSlotFence"
+        },
+        "limits": {
+          "$ref": "#/$defs/WorkerLimits"
+        },
+        "model_profile_revision_id": {
+          "format": "uuid",
+          "title": "Model Profile Revision Id",
+          "type": "string"
+        },
+        "objective": {
+          "maxLength": 16000,
+          "minLength": 1,
+          "title": "Objective",
+          "type": "string"
+        },
+        "project": {
+          "$ref": "#/$defs/WorkerProject"
+        },
+        "protocol_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Protocol Version",
+          "type": "string"
+        },
+        "required_capabilities": {
+          "default": [
+            "code",
+            "git"
+          ],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Required Capabilities",
+          "type": "array"
+        },
+        "run_id": {
+          "format": "uuid",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "task": {
+          "$ref": "#/$defs/WorkerTask"
+        },
+        "task_attempt_id": {
+          "format": "uuid",
+          "title": "Task Attempt Id",
+          "type": "string"
+        },
+        "task_id": {
+          "format": "uuid",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "worker_revision_id": {
+          "format": "uuid",
+          "title": "Worker Revision Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "invocation_id",
+        "idempotency_key",
+        "run_id",
+        "task_id",
+        "task_attempt_id",
+        "worker_revision_id",
+        "lease",
+        "project",
+        "objective",
+        "task",
+        "model_profile_revision_id"
+      ],
+      "title": "WorkerInvocationRequest",
+      "type": "object"
+    },
+    "WorkerInvocationStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "invocation_id": {
+          "format": "uuid",
+          "title": "Invocation Id",
+          "type": "string"
+        },
+        "last_activity_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Activity At"
+        },
+        "possibly_stalled": {
+          "default": false,
+          "title": "Possibly Stalled",
+          "type": "boolean"
+        },
+        "source_sequence": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Source Sequence",
+          "type": "integer"
+        },
+        "state": {
+          "enum": [
+            "absent",
+            "starting",
+            "running",
+            "succeeded",
+            "failed",
+            "cancelled",
+            "unknown"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "invocation_id",
+        "state"
+      ],
+      "title": "WorkerInvocationStatus",
+      "type": "object"
+    },
+    "WorkerLimits": {
+      "additionalProperties": false,
+      "properties": {
+        "max_output_bytes": {
+          "default": 1048576,
+          "maximum": 104857600,
+          "minimum": 1024,
+          "title": "Max Output Bytes",
+          "type": "integer"
+        },
+        "max_result_bytes": {
+          "default": 65536,
+          "maximum": 262144,
+          "minimum": 1024,
+          "title": "Max Result Bytes",
+          "type": "integer"
+        },
+        "max_runtime_seconds": {
+          "default": 7200,
+          "maximum": 86400,
+          "minimum": 1,
+          "title": "Max Runtime Seconds",
+          "type": "integer"
+        }
+      },
+      "title": "WorkerLimits",
+      "type": "object"
+    },
+    "WorkerProject": {
+      "additionalProperties": false,
+      "properties": {
+        "base_sha": {
+          "pattern": "^[a-f0-9]{40}$",
+          "title": "Base Sha",
+          "type": "string"
+        },
+        "branch": {
+          "title": "Branch",
+          "type": "string"
+        },
+        "project_id": {
+          "format": "uuid",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "repository_id": {
+          "format": "uuid",
+          "title": "Repository Id",
+          "type": "string"
+        },
+        "slug": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$",
+          "title": "Slug",
+          "type": "string"
+        },
+        "workspace_root": {
+          "maxLength": 1024,
+          "title": "Workspace Root",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "repository_id",
+        "slug",
+        "workspace_root",
+        "branch",
+        "base_sha"
+      ],
+      "title": "WorkerProject",
+      "type": "object"
+    },
+    "WorkerRepositorySnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "diff_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Diff Digest",
+          "type": "string"
+        },
+        "file_count": {
+          "maximum": 100000,
+          "minimum": 0,
+          "title": "File Count",
+          "type": "integer"
+        },
+        "git_status": {
+          "enum": [
+            "clean",
+            "dirty"
+          ],
+          "title": "Git Status",
+          "type": "string"
+        },
+        "head_sha": {
+          "pattern": "^[a-f0-9]{40}$",
+          "title": "Head Sha",
+          "type": "string"
+        },
+        "manifest_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Manifest Digest",
+          "type": "string"
+        },
+        "metadata_truncated": {
+          "default": false,
+          "title": "Metadata Truncated",
+          "type": "boolean"
+        },
+        "status_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Status Digest",
+          "type": "string"
+        },
+        "tree_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Tree Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "head_sha",
+        "tree_digest",
+        "status_digest",
+        "git_status",
+        "file_count",
+        "manifest_digest",
+        "diff_digest"
+      ],
+      "title": "WorkerRepositorySnapshot",
+      "type": "object"
+    },
+    "WorkerResult": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_manifest": {
+          "items": {
+            "$ref": "#/$defs/WorkerArtifact"
+          },
+          "maxItems": 16,
+          "title": "Artifact Manifest",
+          "type": "array"
+        },
+        "branch": {
+          "title": "Branch",
+          "type": "string"
+        },
+        "end_head": {
+          "pattern": "^[a-f0-9]{40}$",
+          "title": "End Head",
+          "type": "string"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error"
+        },
+        "finished_at": {
+          "format": "date-time",
+          "title": "Finished At",
+          "type": "string"
+        },
+        "generation": {
+          "exclusiveMinimum": 0,
+          "title": "Generation",
+          "type": "integer"
+        },
+        "invocation_id": {
+          "format": "uuid",
+          "title": "Invocation Id",
+          "type": "string"
+        },
+        "model_profile_revision_id": {
+          "format": "uuid",
+          "title": "Model Profile Revision Id",
+          "type": "string"
+        },
+        "protocol_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Protocol Version",
+          "type": "string"
+        },
+        "repository_snapshot": {
+          "$ref": "#/$defs/WorkerRepositorySnapshot"
+        },
+        "request_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Request Digest",
+          "type": "string"
+        },
+        "source_sequence": {
+          "exclusiveMinimum": 0,
+          "title": "Source Sequence",
+          "type": "integer"
+        },
+        "start_head": {
+          "pattern": "^[a-f0-9]{40}$",
+          "title": "Start Head",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "succeeded",
+            "failed",
+            "cancelled",
+            "unknown"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 1024,
+          "title": "Summary",
+          "type": "string"
+        },
+        "task_attempt_id": {
+          "format": "uuid",
+          "title": "Task Attempt Id",
+          "type": "string"
+        },
+        "task_id": {
+          "format": "uuid",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "workspace_root": {
+          "title": "Workspace Root",
+          "type": "string"
+        }
+      },
+      "required": [
+        "invocation_id",
+        "task_id",
+        "task_attempt_id",
+        "request_digest",
+        "generation",
+        "status",
+        "workspace_root",
+        "branch",
+        "start_head",
+        "end_head",
+        "repository_snapshot",
+        "artifact_manifest",
+        "summary",
+        "model_profile_revision_id",
+        "started_at",
+        "finished_at",
+        "source_sequence"
+      ],
+      "title": "WorkerResult",
+      "type": "object"
+    },
+    "WorkerRuntimeFacts": {
+      "additionalProperties": false,
+      "properties": {
+        "exclusive_workspace": {
+          "default": true,
+          "title": "Exclusive Workspace",
+          "type": "boolean"
+        },
+        "last_heartbeat_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Heartbeat At"
+        },
+        "possibly_stalled": {
+          "default": false,
+          "title": "Possibly Stalled",
+          "type": "boolean"
+        },
+        "slots_in_use": {
+          "default": 0,
+          "maximum": 128,
+          "minimum": 0,
+          "title": "Slots In Use",
+          "type": "integer"
+        },
+        "validated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Validated At"
+        },
+        "validation_issues": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Validation Issues",
+          "type": "array"
+        }
+      },
+      "title": "WorkerRuntimeFacts",
       "type": "object"
     },
     "WorkerSelector": {
@@ -5618,6 +6355,52 @@
         "revision_id"
       ],
       "title": "WorkerSelector",
+      "type": "object"
+    },
+    "WorkerSlotFence": {
+      "additionalProperties": false,
+      "properties": {
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "generation": {
+          "exclusiveMinimum": 0,
+          "title": "Generation",
+          "type": "integer"
+        },
+        "lease_id": {
+          "format": "uuid",
+          "title": "Lease Id",
+          "type": "string"
+        },
+        "run_generation": {
+          "exclusiveMinimum": 0,
+          "title": "Run Generation",
+          "type": "integer"
+        },
+        "slot": {
+          "maximum": 127,
+          "minimum": 0,
+          "title": "Slot",
+          "type": "integer"
+        },
+        "worker_revision_id": {
+          "format": "uuid",
+          "title": "Worker Revision Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "lease_id",
+        "worker_revision_id",
+        "slot",
+        "generation",
+        "run_generation",
+        "expires_at"
+      ],
+      "title": "WorkerSlotFence",
       "type": "object"
     },
     "WorkerSpec": {
@@ -5685,6 +6468,110 @@
         }
       },
       "title": "WorkerSpec",
+      "type": "object"
+    },
+    "WorkerTask": {
+      "additionalProperties": false,
+      "properties": {
+        "acceptance_criteria": {
+          "items": {
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "title": "Acceptance Criteria",
+          "type": "array"
+        },
+        "description": {
+          "maxLength": 16000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "key": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "verification": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/WorkerVerification"
+          },
+          "maxItems": 32,
+          "title": "Verification",
+          "type": "array"
+        }
+      },
+      "required": [
+        "key",
+        "title",
+        "description",
+        "acceptance_criteria"
+      ],
+      "title": "WorkerTask",
+      "type": "object"
+    },
+    "WorkerValidationReport": {
+      "additionalProperties": false,
+      "properties": {
+        "exclusive_workspace": {
+          "default": true,
+          "title": "Exclusive Workspace",
+          "type": "boolean"
+        },
+        "health": {
+          "$ref": "#/$defs/WorkerHealth"
+        },
+        "valid": {
+          "title": "Valid",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "valid",
+        "health"
+      ],
+      "title": "WorkerValidationReport",
+      "type": "object"
+    },
+    "WorkerVerification": {
+      "additionalProperties": false,
+      "properties": {
+        "argv": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "title": "Argv",
+          "type": "array"
+        },
+        "kind": {
+          "const": "argv",
+          "default": "argv",
+          "title": "Kind",
+          "type": "string"
+        },
+        "timeout_seconds": {
+          "default": 1200,
+          "maximum": 86400,
+          "minimum": 1,
+          "title": "Timeout Seconds",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "argv"
+      ],
+      "title": "WorkerVerification",
       "type": "object"
     },
     "WorkflowArchiveRequest": {
@@ -7267,6 +8154,36 @@
       ],
       "default": null
     },
+    "worker_cancel": {
+      "$ref": "#/$defs/CancelResult"
+    },
+    "worker_event": {
+      "$ref": "#/$defs/WorkerEvent"
+    },
+    "worker_handle": {
+      "$ref": "#/$defs/WorkerInvocationHandle"
+    },
+    "worker_health": {
+      "$ref": "#/$defs/WorkerHealth"
+    },
+    "worker_invocation_request": {
+      "$ref": "#/$defs/WorkerInvocationRequest"
+    },
+    "worker_prepared": {
+      "$ref": "#/$defs/PreparedInvocation"
+    },
+    "worker_reconciliation": {
+      "$ref": "#/$defs/ReconciliationResult"
+    },
+    "worker_result": {
+      "$ref": "#/$defs/WorkerResult"
+    },
+    "worker_status": {
+      "$ref": "#/$defs/WorkerInvocationStatus"
+    },
+    "worker_validation": {
+      "$ref": "#/$defs/WorkerValidationReport"
+    },
     "workflow_archive_request": {
       "anyOf": [
         {
@@ -7471,6 +8388,16 @@
     }
   },
   "required": [
+    "worker_invocation_request",
+    "worker_prepared",
+    "worker_handle",
+    "worker_status",
+    "worker_event",
+    "worker_result",
+    "worker_health",
+    "worker_validation",
+    "worker_cancel",
+    "worker_reconciliation",
     "demo_decision",
     "demo_decision_view",
     "runtime_tasks",

@@ -392,6 +392,12 @@ export type Shell = "allow" | "deny" | "require_approval";
 export type UnknownAction = "deny" | "require_approval";
 export type UpdatedAt2 = string;
 export type Version2 = number;
+export type ExclusiveWorkspace = boolean;
+export type LastHeartbeatAt = string | null;
+export type PossiblyStalled = boolean;
+export type SlotsInUse = number;
+export type ValidatedAt = string | null;
+export type ValidationIssues = string[];
 export type Items4 = RegistryRecord[];
 export type NextAfter4 = string | null;
 export type Archived1 = boolean;
@@ -579,22 +585,272 @@ export type Health2 = "healthy" | "degraded" | "unavailable" | "misconfigured" |
 export type Issues = string[];
 export type NetworkChecked = boolean;
 export type Valid = boolean;
+export type InvocationId = string;
+export type Status11 = "cancelled" | "unknown" | "already_terminal";
+export type InvocationId1 = string;
+export type OccurredAt2 = string;
+export type SourceSequence1 = number;
+export type Type2 =
+  | "worker.invocation_dispatched"
+  | "worker.heartbeat"
+  | "worker.invocation_completed"
+  | "worker.invocation_failed"
+  | "worker.cancel_requested"
+  | "worker.cancelled";
+export type Generation1 = number;
+export type InvocationId2 = string;
+export type RequestDigest4 = string;
+export type WorkerRevisionId = string;
+export type Capabilities3 = string[];
+export type Issues1 = string[];
+export type NetworkChecked1 = boolean;
+export type ObservedAt = string;
+export type Status12 = "healthy" | "degraded" | "unavailable" | "misconfigured" | "unknown";
+export type ArchitectureArtifactId = string | null;
+/**
+ * @maxItems 32
+ */
+export type FeedbackArtifactIds = string[];
+export type IdempotencyKey10 = string;
+export type InvocationId3 = string;
+export type ExpiresAt1 = string;
+export type Generation2 = number;
+export type LeaseId = string;
+export type RunGeneration = number;
+export type Slot = number;
+export type WorkerRevisionId1 = string;
+export type MaxOutputBytes = number;
+export type MaxResultBytes = number;
+export type MaxRuntimeSeconds = number;
+export type ModelProfileRevisionId = string;
+export type Objective3 = string;
+export type BaseSha1 = string;
+export type Branch = string;
+export type ProjectId6 = string;
+export type RepositoryId = string;
+export type Slug2 = string;
+export type WorkspaceRoot = string;
+export type ProtocolVersion = "1.0";
+/**
+ * @maxItems 64
+ */
+export type RequiredCapabilities1 = string[];
+export type RunId11 = string;
+/**
+ * @minItems 1
+ * @maxItems 64
+ */
+export type AcceptanceCriteria1 = [string, ...string[]];
+export type Description3 = string;
+export type Key7 = string;
+export type Title2 = string;
+/**
+ * @minItems 1
+ * @maxItems 64
+ */
+export type Argv = [string, ...string[]];
+export type Kind10 = "argv";
+export type TimeoutSeconds = number;
+/**
+ * @maxItems 32
+ */
+export type Verification1 = WorkerVerification[];
+export type TaskAttemptId4 = string;
+export type TaskId5 = string;
+export type WorkerRevisionId2 = string;
+export type RequestDigest5 = string;
+export type InvocationId4 = string;
+export type SafeToStart = boolean;
+export type State1 = "absent" | "starting" | "running" | "succeeded" | "failed" | "cancelled" | "unknown";
+/**
+ * @maxItems 16
+ */
+export type ArtifactManifest =
+  | []
+  | [WorkerArtifact]
+  | [WorkerArtifact, WorkerArtifact]
+  | [WorkerArtifact, WorkerArtifact, WorkerArtifact]
+  | [WorkerArtifact, WorkerArtifact, WorkerArtifact, WorkerArtifact]
+  | [WorkerArtifact, WorkerArtifact, WorkerArtifact, WorkerArtifact, WorkerArtifact]
+  | [WorkerArtifact, WorkerArtifact, WorkerArtifact, WorkerArtifact, WorkerArtifact, WorkerArtifact]
+  | [WorkerArtifact, WorkerArtifact, WorkerArtifact, WorkerArtifact, WorkerArtifact, WorkerArtifact, WorkerArtifact]
+  | [
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact
+    ]
+  | [
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact
+    ]
+  | [
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact
+    ]
+  | [
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact
+    ]
+  | [
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact
+    ]
+  | [
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact
+    ]
+  | [
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact
+    ]
+  | [
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact
+    ]
+  | [
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact,
+      WorkerArtifact
+    ];
+export type Kind11 = "stdout" | "stderr" | "repository";
+export type Sha2561 = string;
+export type SizeBytes1 = number;
+export type Branch1 = string;
+export type EndHead = string;
+export type Error = string | null;
+export type FinishedAt = string;
+export type Generation3 = number;
+export type InvocationId5 = string;
+export type ModelProfileRevisionId1 = string;
+export type ProtocolVersion1 = "1.0";
+export type DiffDigest = string;
+export type FileCount = number;
+export type GitStatus = "clean" | "dirty";
+export type HeadSha = string;
+export type ManifestDigest = string;
+export type MetadataTruncated = boolean;
+export type StatusDigest = string;
+export type TreeDigest = string;
+export type RequestDigest6 = string;
+export type SourceSequence2 = number;
+export type StartHead = string;
+export type StartedAt3 = string;
+export type Status13 = "succeeded" | "failed" | "cancelled" | "unknown";
+export type Summary2 = string;
+export type TaskAttemptId5 = string;
+export type TaskId6 = string;
+export type WorkspaceRoot1 = string;
+export type InvocationId6 = string;
+export type LastActivityAt = string | null;
+export type PossiblyStalled1 = boolean;
+export type SourceSequence3 = number;
+export type State2 = "absent" | "starting" | "running" | "succeeded" | "failed" | "cancelled" | "unknown";
+export type ExclusiveWorkspace1 = boolean;
+export type Valid1 = boolean;
 export type Archived2 = boolean;
 export type ExpectedVersion1 = number;
-export type IdempotencyKey10 = string;
-export type ExpectedVersion2 = number;
 export type IdempotencyKey11 = string;
-export type Description3 = string;
+export type ExpectedVersion2 = number;
 export type IdempotencyKey12 = string;
-export type Key7 = string;
+export type Description4 = string;
+export type IdempotencyKey13 = string;
+export type Key8 = string;
 export type Name5 = string;
 export type Archived3 = boolean;
 export type CreatedAt10 = string;
 export type CurrentDraftVersionId = string | null;
 export type CurrentPublishedVersionId = string | null;
-export type Description4 = string;
+export type Description5 = string;
 export type Id23 = string;
-export type Key8 = string;
+export type Key9 = string;
 export type Name6 = string;
 export type UpdatedAt5 = string;
 export type Version6 = number;
@@ -618,7 +874,7 @@ export type MaxConcurrency1 = number | null;
 export type ModelRouteRef = string | null;
 export type PermissionPolicyRef = string | null;
 export type RetryPolicyRef = string | null;
-export type TimeoutSeconds = number | null;
+export type TimeoutSeconds1 = number | null;
 export type Required = boolean;
 export type Source1 = "task";
 /**
@@ -626,7 +882,7 @@ export type Source1 = "task";
  */
 export type Requires = string[];
 export type RevisionId2 = string;
-export type Description5 = string;
+export type Description6 = string;
 export type Fallback = boolean;
 export type From = string;
 export type Id25 = string;
@@ -647,7 +903,7 @@ export type Path = string | null;
  */
 export type Edges = WorkflowEdge[];
 export type Entrypoint = string;
-export type Key9 = string;
+export type Key10 = string;
 export type Name7 = string;
 /**
  * @minItems 1
@@ -677,9 +933,9 @@ export type StateSchema = "jarvis.workflow_state.v1";
 export type Version7 = number;
 export type WorkflowTemplateId = string;
 export type ExpectedVersion3 = number;
-export type IdempotencyKey13 = string;
-export type ExpectedVersion4 = number;
 export type IdempotencyKey14 = string;
+export type ExpectedVersion4 = number;
+export type IdempotencyKey15 = string;
 export type SourceVersionId = string | null;
 export type WorkflowNodeConfigs =
   | OrganizerConfig
@@ -724,16 +980,16 @@ export type Outcome1 = "derive" | "failed" | "blocked" | "cancelled";
 export type ExternalBehavior = boolean;
 export type InputChannels = string[];
 export type OutputChannels = string[];
-export type RequiredCapabilities1 = string[];
+export type RequiredCapabilities2 = string[];
 export type Items9 = NodeTypeDefinition[];
 export type CompilerVersion1 = "1.0.0";
 export type Archived4 = boolean;
 export type ConfigurationId1 = string;
 export type ContentHash4 = string;
-export type Description6 = string;
+export type Description7 = string;
 export type DisplayName2 = string;
 export type Enabled2 = boolean;
-export type Key10 = string;
+export type Key11 = string;
 export type Revision2 = number;
 export type RevisionId3 = string;
 export type Spec3 =
@@ -743,16 +999,16 @@ export type WorkflowContentHash1 = string;
 export type Items10 = WorkflowTemplateRecord[];
 export type NextAfter9 = string | null;
 export type ExpectedVersion5 = number;
-export type IdempotencyKey15 = string;
+export type IdempotencyKey16 = string;
 export type ContentHash5 = string | null;
 export type Code4 = string;
 export type EdgeId = string | null;
 export type Message4 = string;
 export type NodeId2 = string | null;
 export type Path1 = string | null;
-export type Issues1 = WorkflowIssue[];
+export type Issues2 = WorkflowIssue[];
 export type SnapshotHash3 = string | null;
-export type Valid1 = boolean;
+export type Valid2 = boolean;
 export type CompilerVersion2 = string;
 export type ContentHash6 = string;
 export type Id27 = string;
@@ -813,6 +1069,16 @@ export interface JarvisContractBundle {
   task?: Task | null;
   task_attempt?: TaskAttempt | null;
   validation_report?: ValidationReport | null;
+  worker_cancel: CancelResult;
+  worker_event: WorkerEvent;
+  worker_handle: WorkerInvocationHandle;
+  worker_health: WorkerHealth;
+  worker_invocation_request: WorkerInvocationRequest;
+  worker_prepared: PreparedInvocation;
+  worker_reconciliation: ReconciliationResult;
+  worker_result: WorkerResult;
+  worker_status: WorkerInvocationStatus;
+  worker_validation: WorkerValidationReport;
   workflow_archive_request?: WorkflowArchiveRequest | null;
   workflow_command?: WorkflowCommand | null;
   workflow_create?: WorkflowCreateRequest | null;
@@ -1207,6 +1473,7 @@ export interface RegistryRecord {
   spec: Spec1;
   updated_at: UpdatedAt2;
   version: Version2;
+  worker_runtime?: WorkerRuntimeFacts | null;
 }
 export interface WorkerSpec {
   adapter_kind?: AdapterKind;
@@ -1327,6 +1594,14 @@ export interface PermissionPolicySpec {
   sensitive_action?: SensitiveAction;
   shell?: Shell;
   unknown_action?: UnknownAction;
+}
+export interface WorkerRuntimeFacts {
+  exclusive_workspace?: ExclusiveWorkspace;
+  last_heartbeat_at?: LastHeartbeatAt;
+  possibly_stalled?: PossiblyStalled;
+  slots_in_use?: SlotsInUse;
+  validated_at?: ValidatedAt;
+  validation_issues?: ValidationIssues;
 }
 export interface RegistryWrite {
   archived?: Archived1;
@@ -1569,19 +1844,150 @@ export interface ValidationReport {
   network_checked?: NetworkChecked;
   valid: Valid;
 }
+export interface CancelResult {
+  invocation_id: InvocationId;
+  status: Status11;
+}
+export interface WorkerEvent {
+  invocation_id: InvocationId1;
+  occurred_at: OccurredAt2;
+  source_sequence: SourceSequence1;
+  type: Type2;
+}
+export interface WorkerInvocationHandle {
+  generation: Generation1;
+  invocation_id: InvocationId2;
+  request_digest: RequestDigest4;
+  worker_revision_id: WorkerRevisionId;
+}
+export interface WorkerHealth {
+  capabilities?: Capabilities3;
+  issues?: Issues1;
+  network_checked?: NetworkChecked1;
+  observed_at: ObservedAt;
+  status: Status12;
+}
+export interface WorkerInvocationRequest {
+  architecture_artifact_id?: ArchitectureArtifactId;
+  feedback_artifact_ids?: FeedbackArtifactIds;
+  idempotency_key: IdempotencyKey10;
+  invocation_id: InvocationId3;
+  lease: WorkerSlotFence;
+  limits?: WorkerLimits;
+  model_profile_revision_id: ModelProfileRevisionId;
+  objective: Objective3;
+  project: WorkerProject;
+  protocol_version?: ProtocolVersion;
+  required_capabilities?: RequiredCapabilities1;
+  run_id: RunId11;
+  task: WorkerTask;
+  task_attempt_id: TaskAttemptId4;
+  task_id: TaskId5;
+  worker_revision_id: WorkerRevisionId2;
+}
+export interface WorkerSlotFence {
+  expires_at: ExpiresAt1;
+  generation: Generation2;
+  lease_id: LeaseId;
+  run_generation: RunGeneration;
+  slot: Slot;
+  worker_revision_id: WorkerRevisionId1;
+}
+export interface WorkerLimits {
+  max_output_bytes?: MaxOutputBytes;
+  max_result_bytes?: MaxResultBytes;
+  max_runtime_seconds?: MaxRuntimeSeconds;
+}
+export interface WorkerProject {
+  base_sha: BaseSha1;
+  branch: Branch;
+  project_id: ProjectId6;
+  repository_id: RepositoryId;
+  slug: Slug2;
+  workspace_root: WorkspaceRoot;
+}
+export interface WorkerTask {
+  acceptance_criteria: AcceptanceCriteria1;
+  description: Description3;
+  key: Key7;
+  title: Title2;
+  verification?: Verification1;
+}
+export interface WorkerVerification {
+  argv: Argv;
+  kind?: Kind10;
+  timeout_seconds?: TimeoutSeconds;
+}
+export interface PreparedInvocation {
+  request: WorkerInvocationRequest;
+  request_digest: RequestDigest5;
+}
+export interface ReconciliationResult {
+  invocation_id: InvocationId4;
+  safe_to_start?: SafeToStart;
+  state: State1;
+}
+export interface WorkerResult {
+  artifact_manifest: ArtifactManifest;
+  branch: Branch1;
+  end_head: EndHead;
+  error?: Error;
+  finished_at: FinishedAt;
+  generation: Generation3;
+  invocation_id: InvocationId5;
+  model_profile_revision_id: ModelProfileRevisionId1;
+  protocol_version?: ProtocolVersion1;
+  repository_snapshot: WorkerRepositorySnapshot;
+  request_digest: RequestDigest6;
+  source_sequence: SourceSequence2;
+  start_head: StartHead;
+  started_at: StartedAt3;
+  status: Status13;
+  summary: Summary2;
+  task_attempt_id: TaskAttemptId5;
+  task_id: TaskId6;
+  workspace_root: WorkspaceRoot1;
+}
+export interface WorkerArtifact {
+  kind: Kind11;
+  sha256: Sha2561;
+  size_bytes: SizeBytes1;
+}
+export interface WorkerRepositorySnapshot {
+  diff_digest: DiffDigest;
+  file_count: FileCount;
+  git_status: GitStatus;
+  head_sha: HeadSha;
+  manifest_digest: ManifestDigest;
+  metadata_truncated?: MetadataTruncated;
+  status_digest: StatusDigest;
+  tree_digest: TreeDigest;
+}
+export interface WorkerInvocationStatus {
+  invocation_id: InvocationId6;
+  last_activity_at?: LastActivityAt;
+  possibly_stalled?: PossiblyStalled1;
+  source_sequence?: SourceSequence3;
+  state: State2;
+}
+export interface WorkerValidationReport {
+  exclusive_workspace?: ExclusiveWorkspace1;
+  health: WorkerHealth;
+  valid: Valid1;
+}
 export interface WorkflowArchiveRequest {
   archived: Archived2;
   expected_version: ExpectedVersion1;
-  idempotency_key: IdempotencyKey10;
+  idempotency_key: IdempotencyKey11;
 }
 export interface WorkflowCommand {
   expected_version: ExpectedVersion2;
-  idempotency_key: IdempotencyKey11;
+  idempotency_key: IdempotencyKey12;
 }
 export interface WorkflowCreateRequest {
-  description?: Description3;
-  idempotency_key: IdempotencyKey12;
-  key: Key7;
+  description?: Description4;
+  idempotency_key: IdempotencyKey13;
+  key: Key8;
   name: Name5;
 }
 export interface WorkflowDocument {
@@ -1593,9 +1999,9 @@ export interface WorkflowTemplateRecord {
   created_at: CreatedAt10;
   current_draft_version_id?: CurrentDraftVersionId;
   current_published_version_id?: CurrentPublishedVersionId;
-  description: Description4;
+  description: Description5;
   id: Id23;
-  key: Key8;
+  key: Key9;
   name: Name6;
   updated_at: UpdatedAt5;
   version: Version6;
@@ -1631,10 +2037,10 @@ export interface WorkflowViewport {
 }
 export interface WorkflowSpec {
   defaults?: NodePolicy;
-  description?: Description5;
+  description?: Description6;
   edges: Edges;
   entrypoint: Entrypoint;
-  key: Key9;
+  key: Key10;
   name: Name7;
   nodes: Nodes1;
   outputs: WorkflowOutputs;
@@ -1649,7 +2055,7 @@ export interface NodePolicy {
   model_route_ref?: ModelRouteRef;
   permission_policy_ref?: PermissionPolicyRef;
   retry_policy_ref?: RetryPolicyRef;
-  timeout_seconds?: TimeoutSeconds;
+  timeout_seconds?: TimeoutSeconds1;
   verification?: VerificationPolicy | null;
   worker_selector?: WorkerSelector | null;
 }
@@ -1704,13 +2110,13 @@ export interface Reducers {
 }
 export interface WorkflowDraftWrite {
   expected_version: ExpectedVersion3;
-  idempotency_key: IdempotencyKey13;
+  idempotency_key: IdempotencyKey14;
   layout?: WorkflowLayout;
   spec: WorkflowSpec;
 }
 export interface WorkflowNewDraft {
   expected_version: ExpectedVersion4;
-  idempotency_key: IdempotencyKey14;
+  idempotency_key: IdempotencyKey15;
   source_version_id?: SourceVersionId;
 }
 export interface OrganizerConfig {
@@ -1770,7 +2176,7 @@ export interface NodeTypeDefinition {
   input_channels: InputChannels;
   output_channels: OutputChannels;
   policy_schema: PolicySchema;
-  required_capabilities: RequiredCapabilities1;
+  required_capabilities: RequiredCapabilities2;
   type: WorkflowNodeType;
 }
 export interface ConfigSchema {
@@ -1791,10 +2197,10 @@ export interface WorkflowResolvedRevision {
   archived?: Archived4;
   configuration_id: ConfigurationId1;
   content_hash: ContentHash4;
-  description?: Description6;
+  description?: Description7;
   display_name: DisplayName2;
   enabled?: Enabled2;
-  key: Key10;
+  key: Key11;
   revision: Revision2;
   revision_id: RevisionId3;
   spec: Spec3;
@@ -1805,7 +2211,7 @@ export interface WorkflowTemplatePage {
 }
 export interface WorkflowValidateRequest {
   expected_version: ExpectedVersion5;
-  idempotency_key: IdempotencyKey15;
+  idempotency_key: IdempotencyKey16;
   layout?: Layout;
   spec: Spec4;
 }
@@ -1817,9 +2223,9 @@ export interface Spec4 {
 }
 export interface WorkflowValidationReport {
   content_hash?: ContentHash5;
-  issues?: Issues1;
+  issues?: Issues2;
   snapshot_hash?: SnapshotHash3;
-  valid: Valid1;
+  valid: Valid2;
 }
 export interface WorkflowIssue {
   code: Code4;

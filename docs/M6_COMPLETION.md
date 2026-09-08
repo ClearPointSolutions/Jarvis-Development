@@ -1,7 +1,13 @@
 # M6 deterministic demo vertical slice
 
 Status: COMPLETE / READY FOR M7. Local and exact-commit branch CI gates pass.
-The M6 branch remains unmerged. M7 has not started.
+M6 publication reconciled on 2026-09-08: final branch commit
+`c10fdd281e4fcbfe5e971d11ab8c468f7ca739ea` passed
+[verify 34218524317](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34218524317).
+PR #3 merged as `bb6646210e9f6a96f0d165aa3b13ac96fc0f60ed`; its post-merge
+[verify 34218540048](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34218540048)
+passed. Fetched main confirms that merge. M6 is COMPLETE / READY FOR M7.
+Historical statements about M7 below describe the M6 delivery boundary.
 
 ## Source and scope
 

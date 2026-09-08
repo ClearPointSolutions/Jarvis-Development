@@ -137,6 +137,21 @@ test("M3 real registry forms, immutable revisions, route preview and accessibili
   await page.getByLabel("Capabilities (comma separated)").fill("code, review");
   await page.getByLabel("Maximum concurrency").fill("2");
   await save("Browser worker");
+  const workerCard = page.getByRole("article").filter({
+    has: page.getByRole("heading", { name: "Browser worker", exact: true }),
+  });
+  await expect(
+    workerCard.getByText("Slots in use", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    workerCard.getByText("Last slot heartbeat", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    workerCard.getByText("Runtime validation", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    workerCard.getByText("DEMO fixture", { exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Edit Browser worker" }).click();
   await page.getByLabel("Display name").fill("Browser worker revised");
   await page.getByLabel("Enabled", { exact: true }).uncheck();

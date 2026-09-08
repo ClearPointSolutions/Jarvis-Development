@@ -1,8 +1,40 @@
 # Jarvis V1 Status
 
 Last updated: 2026-09-08
-Current phase: M6 — COMPLETE; branch published and exact-commit CI green
-Overall state: READY FOR M7. Stop for review; M7 has not started and M6 is unmerged.
+Current phase: M7 — COMPLETE (local adapter/protocol/workspace proof only)
+Overall state: M7 COMPLETE / READY FOR M8. M8 has not started.
+
+## Active M7 criteria
+
+Base: fetched clean main `bb6646210e9f6a96f0d165aa3b13ac96fc0f60ed`.
+Branch: `codex/m7-worker-adapter`.
+M6 branch publication at `c10fdd281e4fcbfe5e971d11ab8c468f7ca739ea` passed
+[verify 34218524317](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34218524317).
+PR #3 merged; the exact post-merge main passed
+[verify 34218540048](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34218540048).
+This supersedes historical unmerged M6 statements below: M6 COMPLETE / READY FOR M7.
+
+- [x] Fetch main and confirm exact M6 branch and post-merge CI.
+- [x] Generic worker lifecycle and durable invocation contracts.
+- [x] OpenHands compatibility adapter, pinned SSH transport and health/capabilities.
+- [x] Durable numbered slots, generation fencing and M5 ownership integration.
+- [x] Versioned local wrapper package, idempotency, cancellation and reconciliation.
+- [x] Workspace containment, isolated worktrees and authoritative result inspection.
+- [x] Bounded sentinel/result validation and immutable redacted log artifacts.
+- [x] Local fake SSH acceptance and PostgreSQL/orchestrator E2E; demo safety retained.
+- [x] Truthful worker API/UI facts, full local gates and exact-commit GitHub CI.
+- [x] Completion report, coherent commits and clean working tree.
+
+M7 evidence: 650 Python tests, 86.44% local coverage (86.37% Linux CI), 57 focused
+M7 tests, 49 frontend tests, production build, nine foundation browser tests and
+the four-run M6 browser acceptance test. Accessibility, serious console checks,
+secret scans, dependency audit, migration round-trip and full `scripts/verify.sh`
+pass. Implementation `8fbd99acc202ca81873e097dd169338d9f2064ea` passed
+[exact-commit CI 34227977202](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34227977202).
+See [M7 completion evidence](M7_COMPLETION.md). The final completion-record commit
+and its exact CI are verified before handoff.
+
+No homelab contact, worker SSH, wrapper deployment or M8 work is authorized here.
 
 ## Active M6 criteria
 
