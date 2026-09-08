@@ -170,6 +170,15 @@ test exercises its Secure/HttpOnly loopback cookie behavior, rather than the
 separate Node HTTP client's different Secure-cookie rules. No assertion or gate
 was weakened.
 
+The live npm advisory feed subsequently reported
+[GHSA-2883-xcg3-v3hh](https://github.com/advisories/GHSA-2883-xcg3-v3hh)
+and [GHSA-82fw-gwwq-j7x9](https://github.com/advisories/GHSA-82fw-gwwq-j7x9).
+Vitest is now pinned to 4.1.11. A scoped OpenAPI-tooling override selects
+`js-yaml` 4.3.2 because its parent pins the vulnerable version exactly. The stale
+nested lock entry was aligned with the patched registry integrity metadata;
+clean `npm ci`, `npm ls js-yaml` and audit verify the installed resolution.
+The clean install reports zero vulnerabilities. The audit threshold is unchanged.
+
 ## Scope
 
 No homelab/Worker-01 contact, production provider/runtime GitHub credentials,
