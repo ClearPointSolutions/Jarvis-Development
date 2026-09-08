@@ -7,6 +7,7 @@ from datetime import timedelta
 from typing import cast
 
 from langchain_core.runnables import RunnableConfig
+from langgraph.errors import GraphInterrupt
 from langgraph.types import interrupt
 from pydantic import JsonValue
 from sqlalchemy import func, select
@@ -67,7 +68,10 @@ class NodeRuntime:
             async with self.ownership.fenced(self.fence) as (session, run):
                 if run.desired_state == "cancelled":
                     return {"cancelled": True, "final": {"status": "cancelled"}}
-                if run.runtime_json.get("wait"):
+                if (
+                    run.runtime_json.get("wait")
+                    and run.runtime_json["wait"].get("kind") != "demo_decision"
+                ):
                     wait = run.runtime_json["wait"]
                 elif run.desired_state == "paused" or run.claimable_at > self.ownership.clock.now():
                     wait = {
@@ -183,7 +187,7 @@ class NodeRuntime:
                 )
             try:
                 update = safe_result(await execute(state, config))
-            except StaleExecutorError:
+            except (StaleExecutorError, GraphInterrupt):
                 raise
             except CooperativeCancelError:
                 update = {"cancelled": True, "final": {"status": "cancelled"}}

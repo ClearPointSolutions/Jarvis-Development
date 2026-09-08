@@ -1,11 +1,20 @@
 # M5 — Durable orchestrator, controls and recovery
 
-Status: **LOCAL GATES COMPLETE / NOT READY FOR M6**. Exact-commit GitHub CI
-is the remaining completion gate.
+Status: **COMPLETE / READY FOR M6**.
+
+Publication reconciled on 2026-09-08: branch commit
+`9ad204ccaeeb3199c2cc30c2ab0c29264501048a` passed
+[verify 34180910635](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34180910635).
+[PR #2](https://github.com/ClearPointSolutions/Jarvis-Development/pull/2) merged as
+`26fcdc5694f73adaf864227dd21579b3a61f6033`; its post-merge main
+[verify 34181196662](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34181196662)
+completed successfully. Fetch confirms this is current main. Pending publication,
+CI and unmerged-main statements in the historical local record below are superseded.
 
 Base: `4367599eeed256d345296dff8f85c52cdc87d38a` (verified origin/main).
 M4 verify: [34171942359](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34171942359).
-Branch: `codex/m5-durable-orchestrator`. Final SHA and CI evidence are pending.
+Branch: `codex/m5-durable-orchestrator`. Final source SHA:
+`9ad204ccaeeb3199c2cc30c2ab0c29264501048a`; branch and post-merge CI are green as linked above.
 Prerequisite/status commit: `e6ab1d7`.
 
 ## Runtime and database
@@ -163,8 +172,8 @@ violations or serious console errors. Browser API logs and frontend bundles cont
 no secret canaries; desktop paused and mobile cancelled screenshots were reviewed.
 The complete PostgreSQL-enabled **`scripts/verify.sh` passes** on the final source,
 including the backoff pause regression, all Python/frontend/browser gates and
-security checks. Diff and visual review are complete. Exact-commit GitHub CI
-remains **pending**. No quality or security threshold was weakened.
+security checks. Diff and visual review are complete. Exact-commit branch CI and
+post-merge main CI **passed**. No quality or security threshold was weakened.
 
 ## Scope and limitations
 
@@ -177,4 +186,5 @@ integration. UI history requests are bounded and use the existing polling/SSE
 approach; the final Mission dashboard remains M10.
 
 No homelab system was contacted. No deployment occurred. `/opt/jarvis` and
-`/opt/jarvis-v1` were not touched. M6 was not started. Main is not merged.
+`/opt/jarvis-v1` were not touched. M6 was not started during M5. M5 is merged into
+main through PR #2 at `26fcdc5694f73adaf864227dd21579b3a61f6033`.

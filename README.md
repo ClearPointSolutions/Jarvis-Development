@@ -4,7 +4,8 @@ Jarvis V1 is the durable human control plane for a LangGraph-based development
 system. M5 adds a dedicated PostgreSQL queue consumer, fenced LangGraph execution,
 durable pause/resume/cancel commands, effect reconciliation and retry scheduling
 to the M2–M4 authentication, events, configuration and workflow foundations.
-Only internal nodes and explicitly injected deterministic adapters execute in M5.
+M6 adds a deterministic demo vertical slice through that same runtime, with
+real tasks, verification retries, artifacts, live graph updates and restart history.
 The legacy prototype is unchanged.
 
 The API enqueues work and returns 202. Run `python -m jarvis_orchestrator.main`
@@ -39,8 +40,11 @@ run `npm ci` with `web` as the working directory.
 
 Run the complete local gate with `scripts/verify.sh`. Database tests run when
 `TEST_DATABASE_URL` is set; CI always supplies an isolated PostgreSQL 16 service.
-`scripts/demo.sh` and `scripts/deploy-core.sh` intentionally refuse to run until
-their later milestones are implemented.
+After building `web`, run `scripts/demo.sh` for the local deterministic demo or
+`scripts/demo.sh --e2e` for disposable browser acceptance. On Windows use
+`.venv/Scripts/python.exe -m scripts.demo --e2e`. See
+[M6 demo operation and boundaries](docs/M6_COMPLETION.md).
+`scripts/deploy-core.sh` still refuses deployment until its later milestone.
 
 Start the disposable local PostgreSQL database and include its M1 gates with:
 

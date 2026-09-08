@@ -6,6 +6,7 @@ import asyncio
 import logging
 from collections.abc import Mapping
 from contextlib import suppress
+from pathlib import Path
 from typing import cast
 
 from langgraph.types import Command
@@ -41,6 +42,8 @@ class OrchestratorService:
         poll_seconds: float = 0.2,
         grace_seconds: float = 10,
         adapters: Mapping[str, EffectAdapter] | None = None,
+        demo: bool = False,
+        artifact_root: Path = Path("var/artifacts"),
     ) -> None:
         if (
             not 1 <= max_concurrency <= 64
@@ -56,6 +59,8 @@ class OrchestratorService:
         self.poll_seconds = poll_seconds
         self.grace_seconds = grace_seconds
         self.adapters = dict(adapters or {})
+        self.demo = demo
+        self.artifact_root = artifact_root
         self.commands = CommandProcessor(ownership)
         self.active: dict[RunFence, asyncio.Task[None]] = {}
 
@@ -181,6 +186,8 @@ class OrchestratorService:
             job = await session.get(JobModel, run.job_id)
             assert job is not None
             objective = job.objective
+            mode = run.mode
+            fixture_data = run.runtime_json.get("demo_fixture", {})
             job.status = "active"
             cancelling = run.desired_state == "cancelled"
             first = run.started_at is None
@@ -195,8 +202,52 @@ class OrchestratorService:
                 )
         nodes = NodeRuntime(self.ownership, fence)
         ledger = EffectLedger(self.ownership, fence)
+        adapters = self.adapters
+        decision_handler = None
+        if self.demo:
+            from jarvis_contracts.demo import DemoFixture
+            from jarvis_orchestrator.demo.adapters import DemoEffectAdapter
+            from jarvis_orchestrator.demo.boundaries import (
+                DemoPublicationAdapter,
+                DemoWorkerAdapter,
+            )
+            from jarvis_orchestrator.demo.decision import demo_decision
+            from jarvis_orchestrator.demo.safety import validate_demo_snapshot
+            from jarvis_orchestrator.runtime.adapters import PublicationAdapter, WorkerAdapter
+
+            if mode != "demo":
+                raise ValueError("Demo service refuses real runs")
+            validate_demo_snapshot(snapshot)
+            adapter = DemoEffectAdapter(
+                self.ownership, fence, self.artifact_root, DemoFixture.model_validate(fixture_data)
+            )
+            worker: WorkerAdapter = DemoWorkerAdapter(
+                self.ownership, fence, self.artifact_root, adapter.fixture
+            )
+            publication: PublicationAdapter = DemoPublicationAdapter(
+                self.ownership, fence, self.artifact_root, adapter.fixture
+            )
+            adapters = {
+                node.id: worker
+                if node.type.value == "worker"
+                else publication
+                if node.type.value == "github_publish"
+                else adapter
+                for node in spec.nodes
+                if node.type.value
+                in {
+                    "organizer",
+                    "architect",
+                    "worker",
+                    "verify",
+                    "reviewer",
+                    "integrate",
+                    "github_publish",
+                }
+            }
+            decision_handler = demo_decision(self.ownership, fence)
         if cancelling:
-            await ledger.cancel_pending(self.adapters)
+            await ledger.cancel_pending(adapters)
         async with fenced_saver(self.database_url, fence) as saver:
             graph = compile_workflow(
                 spec,
@@ -205,9 +256,20 @@ class OrchestratorService:
                 middleware=nodes.wrap,
                 route_observer=nodes.route,
                 handlers={
-                    key: ledger.handler(adapter)
-                    for key, adapter in self.adapters.items()
-                    if key in {node.id for node in spec.nodes}
+                    **{
+                        key: ledger.handler(adapter)
+                        for key, adapter in adapters.items()
+                        if key in {node.id for node in spec.nodes}
+                    },
+                    **(
+                        {
+                            node.id: decision_handler
+                            for node in spec.nodes
+                            if node.type.value == "approval"
+                        }
+                        if decision_handler
+                        else {}
+                    ),
                 },
             )
             config = workflow_run_config(thread)
@@ -245,7 +307,13 @@ class OrchestratorService:
                 )
                 if any(task.interrupts for task in saved.tasks):
                     wait = run.runtime_json.get("wait", {})
-                    run.status = "paused" if wait.get("kind") == "pause" else "queued"
+                    run.status = (
+                        "approval_required"
+                        if wait.get("kind") == "demo_decision"
+                        else "paused"
+                        if wait.get("kind") == "pause"
+                        else "queued"
+                    )
                     for node in (
                         await session.scalars(
                             select(NodeExecutionModel).where(

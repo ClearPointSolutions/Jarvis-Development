@@ -148,7 +148,9 @@ class CommandProcessor:
             mode=run.mode,
             priority=run.priority,
             claimable_at=self.ownership.clock.now(),
-            runtime_json={},
+            runtime_json={"demo_fixture": run.runtime_json["demo_fixture"]}
+            if run.mode == "demo" and "demo_fixture" in run.runtime_json
+            else {},
         )
         session.add(linked)
         job = await session.get(JobModel, run.job_id)

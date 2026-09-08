@@ -62,6 +62,10 @@ export function RuntimeRuns() {
         workflow_version_id: String(data.get("workflow")),
         objective: String(data.get("objective")),
         mode: "demo",
+        demo_fixture: {
+          scenario: String(data.get("scenario")) as
+            "canonical" | "infrastructure" | "review" | "provider",
+        },
         priority: 0,
         idempotency_key: crypto.randomUUID(),
       });
@@ -101,7 +105,7 @@ export function RuntimeRuns() {
         <h2>Start run</h2>
         <p>
           Local deterministic mode. No real worker or provider adapters are
-          enabled in M5.
+          enabled in demo mode.
         </p>
         <label htmlFor="run-project">Project</label>
         <select id="run-project" name="project" required defaultValue="">
@@ -132,6 +136,13 @@ export function RuntimeRuns() {
                 {workflow.name}
               </option>
             ))}
+        </select>
+        <label htmlFor="demo-scenario">DEMO scenario</label>
+        <select id="demo-scenario" name="scenario" defaultValue="canonical">
+          <option value="canonical">Test failure, retry, success</option>
+          <option value="infrastructure">Worker infrastructure recovery</option>
+          <option value="review">Reviewer feedback and retry</option>
+          <option value="provider">Provider transient recovery</option>
         </select>
         <label htmlFor="run-objective">Objective</label>
         <textarea

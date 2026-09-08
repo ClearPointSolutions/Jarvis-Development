@@ -376,7 +376,9 @@ export function WorkflowEditor({
     setReport(null);
     setNotice("");
   }
-  function changeLayout(value: WorkflowLayout) {
+  function changeLayout(
+    value: WorkflowLayout | ((current: WorkflowLayout) => WorkflowLayout),
+  ) {
     if (readOnly) return;
     setLayout(value);
     setDirty(true);

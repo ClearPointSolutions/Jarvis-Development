@@ -354,7 +354,7 @@ class WorkflowService:
             await session.flush()
             await self._audit(session, row, actor, correlation, "created", version)
             result = await self._document(session, row)
-            idem.response_json = result.model_dump(mode="json")
+            idem.response_json = result.model_dump(mode="json", by_alias=True)
             return result
 
     async def new_draft(
@@ -381,7 +381,7 @@ class WorkflowService:
             await session.flush()
             await self._audit(session, row, actor, correlation, "revised", version)
             result = await self._document(session, row)
-            idem.response_json = result.model_dump(mode="json")
+            idem.response_json = result.model_dump(mode="json", by_alias=True)
             return result
 
     async def save(
@@ -426,7 +426,7 @@ class WorkflowService:
             await session.flush()
             await self._audit(session, row, actor, correlation, "revised", version)
             result = await self._document(session, row)
-            idem.response_json = result.model_dump(mode="json")
+            idem.response_json = result.model_dump(mode="json", by_alias=True)
             return result
 
     async def _resolve(
@@ -618,7 +618,7 @@ class WorkflowService:
             await session.flush()
             await self._audit(session, row, actor, correlation, "published", version)
             result = await self._document(session, row, version.id)
-            idem.response_json = result.model_dump(mode="json")
+            idem.response_json = result.model_dump(mode="json", by_alias=True)
             return result
 
     async def archive(
@@ -639,5 +639,5 @@ class WorkflowService:
                 session, row, actor, correlation, "archived" if body.archived else "restored"
             )
             result = template_record(row)
-            idem.response_json = result.model_dump(mode="json")
+            idem.response_json = result.model_dump(mode="json", by_alias=True)
             return result

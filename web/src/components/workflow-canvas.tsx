@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 import {
   Background,
@@ -43,6 +43,7 @@ export function WorkflowCanvas({
   onConnect,
   onRemove,
   projection = {},
+  transitions = [],
 }: {
   spec: WorkflowSpec;
   layout: WorkflowLayout;
@@ -50,13 +51,17 @@ export function WorkflowCanvas({
   issues?: WorkflowIssue[];
   selection: WorkflowSelection;
   onSelect: (value: WorkflowSelection) => void;
-  onLayout: (value: WorkflowLayout) => void;
+  onLayout: (
+    value: WorkflowLayout | ((current: WorkflowLayout) => WorkflowLayout),
+  ) => void;
   onConnect: (connection: Connection) => void;
   onRemove: (nodeIds: string[], edgeIds: string[]) => void;
   /** Future event projections may annotate a read-only graph without advancing it. */
   projection?: Readonly<Record<string, string>>;
+  transitions?: ReadonlyArray<{ from: string; to: string }>;
 }) {
   const viewportControl = useRef(false);
+  const [movement, setMovement] = useState("");
   const nodes: Node[] = spec.nodes.map((node, index) => {
     const problems = issues.filter((issue) => issue.node_id === node.id);
     return {
@@ -89,6 +94,12 @@ export function WorkflowCanvas({
     id: edge.id,
     source: edge.from,
     target: edge.to,
+    animated:
+      transitions.at(-1)?.from === edge.from &&
+      transitions.at(-1)?.to === edge.to,
+    style: transitions.some((t) => t.from === edge.from && t.to === edge.to)
+      ? { stroke: "var(--accent)", strokeWidth: 3 }
+      : undefined,
     label: `${edge.kind}${edge.fallback ? " · fallback" : ""}`,
     selected: selection?.kind === "edge" && selection.id === edge.id,
     className: issues.some((issue) => issue.edge_id === edge.id)
@@ -98,7 +109,56 @@ export function WorkflowCanvas({
     markerEnd: { type: MarkerType.ArrowClosed, color: "var(--text-muted)" },
   }));
   return (
-    <div className="workflow-canvas" aria-label="Workflow graph" role="region">
+    <div
+      className="workflow-canvas"
+      aria-label="Workflow graph"
+      role="region"
+      onKeyDownCapture={(event) => {
+        // Move the focused canonical node, independent of React Flow's deferred
+        // internal selection synchronization. Other accessibility keys stay native.
+        if (readOnly || !(event.target instanceof HTMLElement)) return;
+        const id = event.target.dataset.id;
+        const node = nodes.find((item) => item.id === id);
+        if (!node || !event.target.classList.contains("react-flow__node"))
+          return;
+        const direction: Record<string, [number, number]> = {
+          ArrowLeft: [-1, 0],
+          ArrowRight: [1, 0],
+          ArrowUp: [0, -1],
+          ArrowDown: [0, 1],
+        };
+        const delta = direction[event.key];
+        if (!delta) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const step = event.shiftKey ? 20 : 5;
+        setMovement(
+          `${node.id}: x ${node.position.x + delta[0] * step}, y ${node.position.y + delta[1] * step}`,
+        );
+        onLayout((current) => {
+          const position = current.nodes?.[node.id] ?? node.position;
+          return {
+            ...current,
+            nodes: {
+              ...current.nodes,
+              [node.id]: {
+                x: Math.max(
+                  -100000,
+                  Math.min(100000, position.x + delta[0] * step),
+                ),
+                y: Math.max(
+                  -100000,
+                  Math.min(100000, position.y + delta[1] * step),
+                ),
+              },
+            },
+          };
+        });
+      }}
+    >
+      <span className="sr-only" aria-live="polite">
+        {movement}
+      </span>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -122,14 +182,16 @@ export function WorkflowCanvas({
             (change) => change.type === "position" && change.position,
           );
           if (!readOnly && positions.length) {
-            const next = { ...layout.nodes };
-            for (const change of positions)
-              if (change.type === "position" && change.position)
-                next[change.id] = {
-                  x: Math.max(-100000, Math.min(100000, change.position.x)),
-                  y: Math.max(-100000, Math.min(100000, change.position.y)),
-                };
-            onLayout({ ...layout, nodes: next });
+            onLayout((current) => {
+              const next = { ...current.nodes };
+              for (const change of positions)
+                if (change.type === "position" && change.position)
+                  next[change.id] = {
+                    x: Math.max(-100000, Math.min(100000, change.position.x)),
+                    y: Math.max(-100000, Math.min(100000, change.position.y)),
+                  };
+              return { ...current, nodes: next };
+            });
           }
           const selected = changes.find(
             (change) => change.type === "select" && change.selected,
@@ -153,7 +215,7 @@ export function WorkflowCanvas({
         onConnect={onConnect}
         onMoveEnd={(event, viewport) => {
           if (!readOnly && (event || viewportControl.current))
-            onLayout({ ...layout, viewport });
+            onLayout((current) => ({ ...current, viewport }));
           viewportControl.current = false;
         }}
         proOptions={{ hideAttribution: false }}

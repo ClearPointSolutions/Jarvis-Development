@@ -19,6 +19,7 @@ from jarvis_api.registry.service import _safe_strings
 from jarvis_api.workflows.service import WorkflowService
 from jarvis_contracts.base import sha256_digest
 from jarvis_contracts.commands import RunCommandReceipt, RunCommandRequest
+from jarvis_contracts.demo import AttemptView, DemoDecision, DemoDecisionView, TaskPage, TaskView
 from jarvis_contracts.enums import EventMode, EventSeverity, EventVisibility
 from jarvis_contracts.events import EventScope, EventSource
 from jarvis_contracts.runtime_api import (
@@ -37,6 +38,7 @@ from jarvis_contracts.runtime_api import (
     RunView,
 )
 from jarvis_contracts.workflow import WorkflowSpec
+from jarvis_orchestrator.demo.safety import validate_demo_snapshot
 from jarvis_orchestrator.runtime.ownership import RunOwnership, lock_events, runtime_writer
 from jarvis_persistence.models import (
     JobModel,
@@ -45,6 +47,9 @@ from jarvis_persistence.models import (
     RunCommandModel,
     RunConfigSnapshotModel,
     RunModel,
+    TaskAttemptModel,
+    TaskDependencyModel,
+    TaskModel,
     WorkflowTemplateModel,
     WorkflowVersionModel,
 )
@@ -57,6 +62,168 @@ from jarvis_persistence.repositories import (
 
 router = APIRouter(prefix="/api/v1", tags=["runs"])
 Limit = Annotated[int, Query(ge=1, le=100)]
+
+
+@router.get("/runs/{run_id}/workflow", response_model=WorkflowSpec)
+async def run_workflow(request: Request, run_id: UUID, principal: CurrentPrincipal) -> WorkflowSpec:
+    view = await get_run(request, run_id, principal)
+    async with sessions(request, principal)() as session:
+        version = await session.get(WorkflowVersionModel, view.workflow_version_id)
+        if version is None:
+            raise missing()
+        return WorkflowSpec.model_validate(version.spec_json)
+
+
+@router.get("/runs/{run_id}/tasks", response_model=TaskPage)
+async def run_tasks(
+    request: Request,
+    run_id: UUID,
+    principal: CurrentPrincipal,
+    after: UUID | None = None,
+    limit: Limit = 50,
+) -> TaskPage:
+    await get_run(request, run_id, principal)
+    async with sessions(request, principal)() as session:
+        query = select(TaskModel).where(TaskModel.run_id == run_id)
+        if after:
+            query = query.where(TaskModel.id > after)
+        rows = (await session.scalars(query.order_by(TaskModel.id).limit(limit + 1))).all()
+        items = []
+        for row in rows[:limit]:
+            attempts = (
+                await session.scalars(
+                    select(TaskAttemptModel)
+                    .where(
+                        TaskAttemptModel.task_id == row.id,
+                    )
+                    .order_by(TaskAttemptModel.attempt_number)
+                    .limit(100)
+                )
+            ).all()
+            dependencies = (
+                await session.scalars(
+                    select(TaskDependencyModel.depends_on_task_id).where(
+                        TaskDependencyModel.task_id == row.id,
+                    )
+                )
+            ).all()
+            items.append(
+                TaskView(
+                    id=row.id,
+                    key=row.key,
+                    title=row.title,
+                    status=row.status,
+                    weight=row.weight,
+                    dependencies=tuple(dependencies),
+                    attempts=tuple(
+                        AttemptView(
+                            id=a.id,
+                            number=a.attempt_number,
+                            status=a.status,
+                            snapshot_digest=a.result_sha,
+                        )
+                        for a in attempts
+                    ),
+                )
+            )
+        return TaskPage(
+            items=tuple(items), next_after=rows[limit - 1].id if len(rows) > limit else None
+        )
+
+
+@router.get("/runs/{run_id}/demo-decision", response_model=DemoDecisionView | None)
+async def get_demo_decision(
+    request: Request,
+    run_id: UUID,
+    principal: CurrentPrincipal,
+) -> DemoDecisionView | None:
+    await get_run(request, run_id, principal)
+    async with sessions(request, principal)() as session:
+        run = await session.get(RunModel, run_id)
+        assert run is not None
+        value = run.runtime_json.get("demo_decision")
+        return DemoDecisionView(id=value["id"], decision=value["decision"]) if value else None
+
+
+@router.post("/runs/{run_id}/demo-decision", response_model=DemoDecisionView, status_code=202)
+async def submit_demo_decision(
+    request: Request,
+    run_id: UUID,
+    body: DemoDecision,
+    principal: CsrfPrincipal,
+) -> DemoDecisionView:
+    factory = sessions(request, principal)
+    async with factory.begin() as session:
+        await lock_events(session)
+        run = await session.scalar(
+            select(RunModel)
+            .join(JobModel)
+            .join(ProjectModel)
+            .where(
+                RunModel.id == run_id,
+                ProjectModel.owner_user_id == principal.user_id,
+            )
+        )
+        if run is None or run.mode != "demo":
+            raise missing()
+        try:
+            record, fresh = await IdempotencyRepository().begin(
+                session,
+                scope=f"demo-decision:{principal.user_id}:{run_id}",
+                key=body.idempotency_key,
+                request_digest=sha256_digest(body),
+            )
+        except IdempotencyConflictError:
+            raise ApiProblemError(409, "demo.conflict", "Decision identity changed") from None
+        if not fresh:
+            return DemoDecisionView.model_validate(record.response_json)
+        decision = run.runtime_json.get("demo_decision", {})
+        pending_command = await session.scalar(
+            select(RunCommandModel.id)
+            .where(
+                RunCommandModel.run_id == run_id,
+                RunCommandModel.status == "pending",
+            )
+            .limit(1)
+        )
+        if (
+            run.status != "approval_required"
+            or run.desired_state != "running"
+            or run.version != body.expected_run_version
+            or decision.get("id") != body.decision_id
+            or decision.get("decision") != "pending"
+            or pending_command is not None
+        ):
+            raise ApiProblemError(409, "demo.conflict", "Demo wait is no longer current")
+        run.runtime_json = {
+            **run.runtime_json,
+            "demo_decision": {
+                **decision,
+                "decision": body.decision,
+                "actor_id": str(principal.user_id),
+            },
+        }
+        run.status = "queued"
+        run.claimable_at = datetime.now(UTC)
+        run.version += 1
+        await RunOwnership(factory, owner="control-api").event(
+            session,
+            run,
+            "approval.decided",
+            {
+                "decision": body.decision,
+                "decision_id": body.decision_id,
+                "actor_id": str(principal.user_id),
+                "summary": "DEMO decision only",
+            },
+        )
+        view = DemoDecisionView(id=body.decision_id, decision=body.decision)
+        record.state, record.response_status, record.response_json = (
+            "completed",
+            202,
+            view.model_dump(mode="json"),
+        )
+        return view
 
 
 def sessions(request: Request, principal: AuthPrincipal) -> async_sessionmaker[AsyncSession]:
@@ -221,6 +388,13 @@ async def create_job(
                 422, "run.configuration_invalid", "Published workflow configuration is unavailable"
             )
         payload = {"snapshot": snapshot.model_dump(mode="json")}
+        if body.mode == "demo":
+            try:
+                validate_demo_snapshot(snapshot)
+            except ValueError:
+                raise ApiProblemError(
+                    422, "run.demo_boundary", "Demo runs require demo adapters"
+                ) from None
         digest = sha256_digest(
             {"version_id": str(version.id), "snapshot": snapshot.model_dump(mode="json")}
         )
@@ -256,7 +430,9 @@ async def create_job(
             priority=body.priority,
             mode=body.mode,
             claimable_at=ownership.clock.now(),
-            runtime_json={},
+            runtime_json={"demo_fixture": body.demo_fixture.model_dump(mode="json")}
+            if body.demo_fixture
+            else {},
         )
         session.add(run)
         await session.flush()
