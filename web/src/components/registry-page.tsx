@@ -363,7 +363,7 @@ function RecordDetails({ record }: { record: RegistryRecord }) {
               <dt>Runtime validation</dt>
               <dd>
                 {record.worker_runtime?.validated_at
-                  ? record.worker_runtime.validation_issues.length
+                  ? record.worker_runtime.validation_issues?.length
                     ? record.worker_runtime.validation_issues.join(", ")
                     : "Passed"
                   : "Not observed"}
