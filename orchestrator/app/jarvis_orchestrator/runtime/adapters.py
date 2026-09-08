@@ -8,13 +8,9 @@ an SSH invocation protocol behind WorkerAdapter without changing the graph.
 
 from typing import Protocol
 
-from jarvis_contracts.registry import ValidationReport, WorkerSpec
+from jarvis_contracts.registry import ValidationReport
 from jarvis_orchestrator.runtime.effects import EffectAdapter
-
-
-class WorkerAdapter(EffectAdapter, Protocol):
-    def validate(self, worker: WorkerSpec) -> ValidationReport: ...
-    async def health(self) -> ValidationReport: ...
+from jarvis_orchestrator.workers.base import WorkerAdapter as WorkerAdapter
 
 
 class PublicationAdapter(EffectAdapter, Protocol):

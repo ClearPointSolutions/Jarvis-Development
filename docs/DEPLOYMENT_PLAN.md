@@ -145,3 +145,11 @@ The deployment script MUST print the exact non-destructive V1-only rollback comm
 ## 13. Promotion criteria
 
 Promotion is out of scope until all acceptance tests pass on real staging; V1 has run reliably for an agreed observation window; security/residual worker risks are reviewed; backup restore succeeds; operator runbook and rollback are rehearsed; and the user explicitly authorizes traffic/DNS changes. Even promotion does not imply deleting legacy.
+
+## M7 worker package staging plan
+
+The [versioned compatibility wrapper](../worker-wrapper/v1/README.md) documents
+checksum verification, a separate Python environment, immutable revision binding,
+independently pinned host keys, protected invocation storage and the later staging
+test sequence. This is documentation only. M7 local validation does not deploy or
+contact any homelab service, and preserves the existing runner and environments.

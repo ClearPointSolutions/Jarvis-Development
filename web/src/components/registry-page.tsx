@@ -324,14 +324,50 @@ function RecordDetails({ record }: { record: RegistryRecord }) {
             <div>
               <dt>Adapter</dt>
               <dd>
-                {spec.adapter_kind === "demo"
-                  ? "DEMO"
-                  : "Legacy SSH (configuration only)"}
+                {spec.adapter_kind === "demo" ? "DEMO" : "OpenHands SSH v1"}
               </dd>
             </div>
             <div>
               <dt>Concurrency</dt>
               <dd>{spec.max_concurrency}</dd>
+            </div>
+            <div>
+              <dt>Slots in use</dt>
+              <dd>{record.worker_runtime?.slots_in_use ?? 0}</dd>
+            </div>
+            {record.worker_runtime?.possibly_stalled ? (
+              <div>
+                <dt>Remote activity</dt>
+                <dd>Possibly stalled — reconciliation required</dd>
+              </div>
+            ) : null}
+            <div>
+              <dt>Last slot heartbeat</dt>
+              <dd>
+                {record.worker_runtime?.last_heartbeat_at
+                  ? new Date(
+                      record.worker_runtime.last_heartbeat_at,
+                    ).toLocaleString()
+                  : "Not observed"}
+              </dd>
+            </div>
+            <div>
+              <dt>Workspace access</dt>
+              <dd>
+                {spec.adapter_kind === "demo"
+                  ? "DEMO fixture"
+                  : "Exclusive legacy workspace"}
+              </dd>
+            </div>
+            <div>
+              <dt>Runtime validation</dt>
+              <dd>
+                {record.worker_runtime?.validated_at
+                  ? record.worker_runtime.validation_issues.length
+                    ? record.worker_runtime.validation_issues.join(", ")
+                    : "Passed"
+                  : "Not observed"}
+              </dd>
             </div>
             <div>
               <dt>Model binding</dt>

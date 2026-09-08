@@ -1,8 +1,31 @@
 # Jarvis V1 Status
 
 Last updated: 2026-09-08
-Current phase: M6 — COMPLETE; branch published and exact-commit CI green
-Overall state: READY FOR M7. Stop for review; M7 has not started and M6 is unmerged.
+Current phase: M7 — IN PROGRESS (local adapter/protocol/workspace proof only)
+Overall state: M6 COMPLETE. M7 implementation and acceptance gates pending.
+
+## Active M7 criteria
+
+Base: fetched clean main `bb6646210e9f6a96f0d165aa3b13ac96fc0f60ed`.
+Branch: `codex/m7-worker-adapter`.
+M6 branch publication at `c10fdd281e4fcbfe5e971d11ab8c468f7ca739ea` passed
+[verify 34218524317](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34218524317).
+PR #3 merged; the exact post-merge main passed
+[verify 34218540048](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34218540048).
+This supersedes historical unmerged M6 statements below: M6 COMPLETE / READY FOR M7.
+
+- [x] Fetch main and confirm exact M6 branch and post-merge CI.
+- [x] Generic worker lifecycle and durable invocation contracts.
+- [x] OpenHands compatibility adapter, pinned SSH transport and health/capabilities.
+- [x] Durable numbered slots, generation fencing and M5 ownership integration.
+- [x] Versioned local wrapper package, idempotency, cancellation and reconciliation.
+- [x] Workspace containment, isolated worktrees and authoritative result inspection.
+- [x] Bounded sentinel/result validation and immutable redacted log artifacts.
+- [x] Local fake SSH acceptance and PostgreSQL/orchestrator E2E; demo safety retained.
+- [ ] Truthful worker API/UI facts, full local gates and exact-commit GitHub CI.
+- [ ] Completion report, coherent commits and clean working tree.
+
+No homelab contact, worker SSH, wrapper deployment or M8 work is authorized here.
 
 ## Active M6 criteria
 

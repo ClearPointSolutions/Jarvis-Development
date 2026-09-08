@@ -2,6 +2,43 @@
 
 Status: normative adapter contract and initial OpenHands SSH mapping
 
+## M7 implemented boundary
+
+The executable contracts are `jarvis_contracts.workers`; the generic lifecycle is
+`jarvis_orchestrator.workers.base.WorkerAdapter`. `WorkerEffectAdapter` connects
+that lifecycle to the existing M5 effect ledger and run fence. Worker selection
+uses `WorkerRuntimeRegistry` for both the retained M6 demo effect implementation
+and the OpenHands lifecycle bridge. Demo mode cannot select OpenHands.
+
+Migration 0007 adds numbered worker slots, leases, invocation identity and cached
+health observations. Slot acquisition is serialized under the M5 event-counter/run
+lock order. Expired slots remain occupied until remote termination or absence is
+reconciled. Slot generation and the current run-owner transaction fence authorize
+result commits; the stored random-token hash is an audit commitment, not a bearer
+credential exposed to the worker or browser. Immutable invocation IDs derive from
+the M5 effect identity. The result and task-attempt SHA commit together, while a
+stale or cancelled result is retained only as diagnostic evidence.
+
+OpenHands uses an authenticated, pinned SSH channel and request digests, not a
+separate result-signature scheme. The compatibility wrapper reserves each UUID
+directory before launching a detached supervisor and never retries an incomplete
+reservation. It preserves the legacy runner unchanged. Shared legacy workspaces
+remain exclusive (`max_concurrency=1`); the separate worktree manager creates and
+inspects isolated branches but this adapter does not claim that the legacy runner
+can execute in an arbitrary worktree.
+
+Logs use bounded private-memory staging with a separate bounded sentinel channel.
+Only redacted bytes become immutable, authorized artifacts. Heartbeats distinguish
+run ownership, slot renewal and actual remote output activity. Silent output sets
+`possibly_stalled`; it does not establish failure. Wrapper liveness loss is unknown.
+
+The generic snapshots identify HEAD, tree, index manifest, working status and a
+bounded diff digest. `metadata_truncated` reports incomplete inspection metadata.
+These facts are not M8 verification/review seals. No merge or publication occurs.
+See [the versioned wrapper package](../worker-wrapper/v1/README.md) for the explicit
+server binding API and future authorized staging procedure. M7 does not contact
+Worker-01 or install the wrapper there.
+
 ## 1. Goals
 
 The protocol isolates LangGraph from a worker implementation. It supports capability selection, bounded concurrency, durable invocation identity, lifecycle events, cancellation, heartbeats, authoritative repository roots, redacted artifacts, and recovery. OpenHands on Jarvis-Worker-01 is the first adapter; future Codex workers implement the same contract.
@@ -51,7 +88,7 @@ collect(handle) -> WorkerResult
 reconcile(handle) -> ReconciliationResult
 ```
 
-All calls accept a deadline and correlation context. `prepare`/`start` are idempotent by `invocation_id`. `collect` never infers success from SSH exit alone; it validates a signed/digested structured result associated with the invocation.
+All calls accept a deadline and correlation context. `prepare`/`start` are idempotent by `invocation_id`. `collect` never infers success from SSH exit alone; it validates a digested structured result associated with the invocation over the authenticated transport.
 
 ## 4. Invocation request
 

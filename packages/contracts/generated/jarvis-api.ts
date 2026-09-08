@@ -1600,6 +1600,7 @@ export interface components {
             updated_at: string;
             /** Version */
             version: number;
+            worker_runtime?: components["schemas"]["WorkerRuntimeFacts"] | null;
         };
         /** RegistryValidationRequest */
         RegistryValidationRequest: {
@@ -2186,6 +2187,33 @@ export interface components {
              * @constant
              */
             source: "task";
+        };
+        /** WorkerRuntimeFacts */
+        WorkerRuntimeFacts: {
+            /**
+             * Exclusive Workspace
+             * @default true
+             */
+            exclusive_workspace: boolean;
+            /** Last Heartbeat At */
+            last_heartbeat_at?: string | null;
+            /**
+             * Possibly Stalled
+             * @default false
+             */
+            possibly_stalled: boolean;
+            /**
+             * Slots In Use
+             * @default 0
+             */
+            slots_in_use: number;
+            /** Validated At */
+            validated_at?: string | null;
+            /**
+             * Validation Issues
+             * @default []
+             */
+            validation_issues: string[];
         };
         /** WorkerSelector */
         WorkerSelector: {

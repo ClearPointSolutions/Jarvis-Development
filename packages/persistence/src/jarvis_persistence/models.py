@@ -640,6 +640,99 @@ class RunLeaseModel(Base):
     released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class WorkerHealthModel(Base):
+    __tablename__ = "worker_health"
+    __table_args__ = ({"schema": CONTROL_SCHEMA},)
+    revision_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.configuration_revisions.id", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+    report_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class WorkerSlotModel(Base):
+    __tablename__ = "worker_slots"
+    __table_args__ = (
+        UniqueConstraint("worker_id", "slot_number", name="uq_worker_slot_number"),
+        CheckConstraint("slot_number >= 0 AND slot_number < 128", name="slot_number"),
+        CheckConstraint("generation >= 0", name="generation"),
+        {"schema": CONTROL_SCHEMA},
+    )
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid7)
+    worker_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.configurations.id", ondelete="RESTRICT"), nullable=False
+    )
+    slot_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    generation: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+
+
+class WorkerLeaseModel(Base):
+    __tablename__ = "worker_leases"
+    __table_args__ = (
+        UniqueConstraint("slot_id", "generation", name="uq_worker_lease_generation"),
+        CheckConstraint("generation > 0 AND run_generation > 0", name="generation"),
+        Index(
+            "uq_worker_leases_active",
+            "slot_id",
+            unique=True,
+            postgresql_where=text("released_at IS NULL"),
+        ),
+        {"schema": CONTROL_SCHEMA},
+    )
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid7)
+    slot_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.worker_slots.id", ondelete="RESTRICT"), nullable=False
+    )
+    worker_revision_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.configuration_revisions.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    run_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.runs.id", ondelete="RESTRICT"), nullable=False
+    )
+    task_attempt_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.task_attempts.id", ondelete="RESTRICT"), nullable=False
+    )
+    owner_instance_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    generation: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    run_generation: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    acquired_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    renewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class WorkerInvocationModel(Base):
+    __tablename__ = "worker_invocations"
+    __table_args__ = (
+        UniqueConstraint("effect_id", name="uq_worker_invocation_effect"),
+        CheckConstraint("generation > 0", name="generation"),
+        {"schema": CONTROL_SCHEMA},
+    )
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
+    effect_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.effects.id", ondelete="RESTRICT"), nullable=False
+    )
+    lease_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.worker_leases.id", ondelete="RESTRICT"), nullable=False
+    )
+    generation: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    request_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    request_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    result_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    diagnostic_result_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    possibly_stalled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    last_activity_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancellation_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
 class EffectModel(MutableRow, Base):
     __tablename__ = "effects"
     __table_args__ = (

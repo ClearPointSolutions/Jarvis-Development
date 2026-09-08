@@ -42,6 +42,7 @@ dev = [
 jarvis-api = "jarvis_api.main:run"
 jarvis-orchestrator = "jarvis_orchestrator.main:run"
 jarvis-contracts = "jarvis_contracts.generate:main"
+jarvis-worker-wrapper-v1 = "jarvis_orchestrator.workers.wrapper:main"
 
 [tool.setuptools.packages.find]
 where = ["api/app", "orchestrator/app", "packages/contracts/src", "packages/persistence/src"]

@@ -291,6 +291,15 @@ class RegistryWrite(ContractModel):
     clear_secret: bool = False
 
 
+class WorkerRuntimeFacts(ContractModel):
+    slots_in_use: int = Field(default=0, ge=0, le=128)
+    last_heartbeat_at: datetime | None = None
+    possibly_stalled: bool = False
+    validation_issues: tuple[str, ...] = ()
+    validated_at: datetime | None = None
+    exclusive_workspace: bool = True
+
+
 class RegistryRecord(ContractModel):
     id: UUID
     revision_id: UUID
@@ -310,6 +319,7 @@ class RegistryRecord(ContractModel):
     secret_label: str | None = None
     health: HealthStatus = "unknown"
     circuit_state: Literal["closed", "open", "half_open"] = "closed"
+    worker_runtime: WorkerRuntimeFacts | None = None
 
 
 class RegistryPage(ContractModel):

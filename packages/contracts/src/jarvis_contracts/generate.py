@@ -60,6 +60,18 @@ from jarvis_contracts.runtime_api import (
     RunControl,
     RunPage,
 )
+from jarvis_contracts.workers import (
+    CancelResult,
+    PreparedInvocation,
+    ReconciliationResult,
+    WorkerEvent,
+    WorkerHealth,
+    WorkerInvocationHandle,
+    WorkerInvocationRequest,
+    WorkerInvocationStatus,
+    WorkerResult,
+    WorkerValidationReport,
+)
 from jarvis_contracts.workflow import WorkflowSpec, WorkflowVersionContract
 from jarvis_contracts.workflow_api import (
     WorkflowArchiveRequest,
@@ -93,6 +105,16 @@ from jarvis_contracts.workflow_nodes import (
 
 
 class JarvisContractBundle(ContractModel):
+    worker_invocation_request: WorkerInvocationRequest
+    worker_prepared: PreparedInvocation
+    worker_handle: WorkerInvocationHandle
+    worker_status: WorkerInvocationStatus
+    worker_event: WorkerEvent
+    worker_result: WorkerResult
+    worker_health: WorkerHealth
+    worker_validation: WorkerValidationReport
+    worker_cancel: CancelResult
+    worker_reconciliation: ReconciliationResult
     demo_decision: DemoDecision
     demo_decision_view: DemoDecisionView
     runtime_tasks: TaskPage
