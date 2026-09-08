@@ -385,6 +385,9 @@ class RunModel(MutableRow, Base):
             name="status",
         ),
         CheckConstraint("desired_state IN ('running','paused','cancelled')", name="desired_state"),
+        CheckConstraint("mode IN ('demo','real')", name="mode"),
+        CheckConstraint("jsonb_typeof(runtime_json) = 'object'", name="runtime_object"),
+        Index("ix_runs_claim_order", "priority", "claimable_at", "created_at", "id"),
         {"schema": CONTROL_SCHEMA},
     )
 
@@ -405,6 +408,15 @@ class RunModel(MutableRow, Base):
     langgraph_thread_id: Mapped[str] = mapped_column(String(200), nullable=False)
     status: Mapped[str] = mapped_column(String(30), nullable=False)
     desired_state: Mapped[str] = mapped_column(String(20), nullable=False, default="running")
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    mode: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="demo", server_default="demo"
+    )
+    runtime_json: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default="{}"
+    )
+    result_summary: Mapped[str | None] = mapped_column(String(1024))
+    current_node: Mapped[str | None] = mapped_column(String(80))
     claimable_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     next_command_sequence: Mapped[int] = mapped_column(
         BigInteger, nullable=False, default=0, server_default="0"
@@ -623,6 +635,7 @@ class RunLeaseModel(Base):
     )
     generation: Mapped[int] = mapped_column(BigInteger, nullable=False)
     acquired_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

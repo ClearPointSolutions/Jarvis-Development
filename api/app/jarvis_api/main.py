@@ -20,6 +20,7 @@ from jarvis_api.event_delivery import install_event_delivery
 from jarvis_api.registry.routes import router as registry_router
 from jarvis_api.registry.service import RegistryService
 from jarvis_api.routing.routes import router as routing_router
+from jarvis_api.runtime import router as runtime_router
 from jarvis_api.security import install_security_middleware
 from jarvis_api.workflows.routes import router as workflow_router
 from jarvis_api.workflows.service import WorkflowService
@@ -91,6 +92,7 @@ def create_app(
     app.include_router(registry_router)
     app.include_router(routing_router)
     app.include_router(workflow_router)
+    app.include_router(runtime_router)
     install_event_delivery(app, config, session_factory, app.state.auth_service)
 
     @app.get(

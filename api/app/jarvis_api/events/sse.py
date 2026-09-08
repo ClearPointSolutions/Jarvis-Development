@@ -13,11 +13,11 @@ from uuid import UUID
 
 import psycopg
 from psycopg import sql
-from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from jarvis_contracts.api import EventStreamReset
 from jarvis_contracts.events import NormalizedEvent
+from jarvis_persistence.checkpoints import psycopg_connection_string
 from jarvis_persistence.repositories import (
     EventCursorExpiredError,
     EventRepository,
@@ -56,8 +56,7 @@ class PostgresEventWakeups:
     def __init__(self, database_url: str, *, channel: str = "jarvis_v1_events") -> None:
         if _CHANNEL.fullmatch(channel) is None:
             raise ValueError("PostgreSQL notification channel is invalid")
-        parsed = make_url(database_url)
-        self._conninfo = parsed.set(drivername="postgresql").render_as_string(hide_password=False)
+        self._conninfo = psycopg_connection_string(database_url)
         self._channel = channel
 
     @asynccontextmanager

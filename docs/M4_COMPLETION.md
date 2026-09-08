@@ -1,5 +1,13 @@
 # M4 workflow system completion record
 
+## Publication gate verified — 2026-09-07
+
+M4 is complete and READY FOR M5. Fetched origin/main is
+`4367599eeed256d345296dff8f85c52cdc87d38a`. Exact-commit
+[GitHub verify run 34171942359](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34171942359)
+completed successfully. Historical publication/CI blockers in the original
+completion record below are superseded by this verification.
+
 Date: 2026-09-07. Branch: `codex/m4-workflow-system`.
 
 M4A and M4B are implemented and all local acceptance gates pass, including the

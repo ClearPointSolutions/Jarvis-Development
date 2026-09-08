@@ -13,6 +13,14 @@ const demoSession = {
 };
 
 async function installDemoSession(page: Page) {
+  for (const resource of ["projects", "runs", "workflow-templates"]) {
+    await page.route(`**/api/v1/${resource}*`, (route) =>
+      route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ items: [], next_after: null }),
+      }),
+    );
+  }
   await page.route("**/api/v1/session", (route) =>
     route.fulfill({
       contentType: "application/json",

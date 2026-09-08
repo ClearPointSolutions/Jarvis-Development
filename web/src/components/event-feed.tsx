@@ -181,7 +181,12 @@ export function EventFeed({ runId }: { runId?: string }) {
           >
             Reconnect and refresh
           </button>
-          <div className="activity-list" aria-label="Persisted run events">
+          <div
+            className="activity-list"
+            role="region"
+            tabIndex={0}
+            aria-label="Persisted run events"
+          >
             {events.data.length ? (
               events.data.map((event) => (
                 <EventRow event={event} key={event.event_id} />

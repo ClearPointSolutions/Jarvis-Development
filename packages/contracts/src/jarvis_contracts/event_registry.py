@@ -75,6 +75,9 @@ approval.cancelled approval.decided approval.expired approval.requested approval
 approval.resumed artifact.created artifact.unavailable artifact.verified command.completed
 command.failed command.output_summary command.started command.timed_out config.created
 config.revised
+effect.prepared effect.dispatched effect.succeeded effect.cancel_requested
+effect.cancelled effect.unknown
+project.created
 config.validated failure.classified file.created file.deleted file.read file.snapshot_created
 file.write_completed file.write_started git.branch_created git.ci_updated git.commit_created
 git.integration_completed git.integration_conflict git.integration_started git.pr_created
@@ -106,6 +109,8 @@ _PREFIX_CATEGORIES = {
     "artifact": EventCategory.ARTIFACT,
     "command": EventCategory.COMMAND,
     "config": EventCategory.CONFIG,
+    "effect": EventCategory.NODE,
+    "project": EventCategory.CONFIG,
     "failure": EventCategory.FAILURE,
     "file": EventCategory.FILE,
     "git": EventCategory.GIT,
