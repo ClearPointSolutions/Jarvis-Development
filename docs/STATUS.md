@@ -4,6 +4,17 @@ Last updated: 2026-09-08
 Current phase: M7 — COMPLETE (local adapter/protocol/workspace proof only)
 Overall state: M7 COMPLETE / READY FOR M8. M8 has not started.
 
+## M7 formal merge closure
+
+Fetched origin on 2026-09-08; current main is the clean M7 merge
+`e62b7e8a44a6af99d54c6e6c760eaaf2657f2250` (PR #4).
+Exact branch commit `01f64fe360e1055824f4fa08dcdface82b18961f` passed
+[verify 34232277520](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34232277520).
+The exact post-merge main passed
+[verify 34232309196](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34232309196).
+M7 COMPLETE / READY FOR M8. M8 branch `codex/m8-verification-review-git`
+starts from that verified merge. M8 implementation and gates remain pending.
+
 ## Active M7 criteria
 
 Base: fetched clean main `bb6646210e9f6a96f0d165aa3b13ac96fc0f60ed`.

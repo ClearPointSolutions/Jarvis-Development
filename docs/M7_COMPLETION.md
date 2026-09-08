@@ -1,6 +1,18 @@
 # M7 worker adapter completion evidence
 
 Status: **M7 COMPLETE — READY FOR M8** (local adapter/protocol scope).
+
+## Formal merge closure (2026-09-08)
+
+PR #4 merged as `e62b7e8a44a6af99d54c6e6c760eaaf2657f2250`, confirmed
+as current origin/main after fetch. Exact final branch commit
+`01f64fe360e1055824f4fa08dcdface82b18961f` passed
+[verify 34232277520](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34232277520).
+The exact post-merge main commit passed
+[verify 34232309196](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34232309196).
+M7 COMPLETE / READY FOR M8. This supersedes the historical unmerged scope
+statement below.
+
 Branch: `codex/m7-worker-adapter`.
 Base: `bb6646210e9f6a96f0d165aa3b13ac96fc0f60ed`.
 Validated implementation: `8fbd99acc202ca81873e097dd169338d9f2064ea`.
