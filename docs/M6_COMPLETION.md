@@ -13,8 +13,9 @@ and main passed [verify 34181196662](https://github.com/ClearPointSolutions/Jarv
 M6 branch: `codex/m6-deterministic-demo`. Final implementation SHA:
 `42522847da6464d67fe07fe31bc2300c564fdac7`, verified by
 [verify 34190353517](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34190353517).
-The subsequent completion-record commit changes documentation only; its exact
-branch-tip SHA and verification result are included in the final delivery report.
+Subsequent handoff commits record completion and isolate prior tests' crash-fixture
+leases before M5 global-capacity acceptance. The exact final branch-tip SHA and
+verification result are included in the final delivery report.
 
 No homelab contact, SSH, production provider credentials, runtime GitHub calls,
 deployment, production approval authorization, legacy edits, or M7 work occurred.
@@ -166,6 +167,11 @@ The dedicated empty PostgreSQL password file uses mode 0600 on Unix.
 The remaining Linux keyboard-test focus race was resolved by fitting the graph,
 bringing the node into view, asserting focus, and sending the key to that node.
 The exact movement, drag, publication and accessibility assertions remain intact.
+Final-tip verification exposed shared-database test pollution: earlier crash
+fixtures could retain live leases and consume the M5 service tests' global
+capacity on faster runners. Those tests now expire pre-existing fixture leases
+before creating their own runs; all bounded-capacity, takeover, no-duplicate-effect
+and graceful-drain assertions remain unchanged. Production lease behavior is unchanged.
 The post-review linked-retry correction also passed all three affected control
 integration tests plus strict types/lint. Cold SSE replay retains authorization
 for every frame; browser acceptance allows at most 30 seconds to catch up to the

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import pytest
-from sqlalchemy import func, select
+import pytest_asyncio
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from uuid6 import uuid7
 
@@ -26,6 +27,20 @@ from tests.unit.test_m4_workflows_compiler import (
 )
 
 pytestmark = pytest.mark.integration
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def isolate_global_lease_capacity(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    # The shared integration database retains earlier tests' crash fixtures.
+    # Those leases must not consume this test's global concurrency budget.
+    async with session_factory.begin() as session:
+        await session.execute(
+            update(RunLeaseModel)
+            .where(RunLeaseModel.released_at.is_(None))
+            .values(expires_at=datetime.now(UTC) - timedelta(seconds=1))
+        )
 
 
 class DelayedAdapter(DeterministicAdapter):
