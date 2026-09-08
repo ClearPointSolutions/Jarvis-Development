@@ -1,9 +1,26 @@
 # Jarvis V1 Status
 
 Last updated: 2026-09-07
-Current phase: M4 — locally complete; GitHub publication gate blocked
-Overall state: M4A/M4B and all local gates pass. GitHub write authentication is unavailable. NOT READY FOR M5; M5 is not started.
+Current phase: M5 — prerequisite verified; system review in progress
+Overall state: M4 complete and READY FOR M5. Exact-commit GitHub verify succeeded. M5 implementation and acceptance gates remain pending.
 
+## Active M5 criteria
+
+Base/main: `4367599eeed256d345296dff8f85c52cdc87d38a`, fetched and confirmed on 2026-09-07.
+M4 exact-commit [verify run 34171942359](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34171942359) completed successfully.
+Branch: `codex/m5-durable-orchestrator`. Earlier M4 publication blockers below are historical and superseded by this evidence.
+
+- [ ] Complete current-system and read-only legacy review.
+- [ ] Dedicated bounded orchestrator, ordered PostgreSQL queue, renewable fenced leases.
+- [ ] Durable enqueue and ordered authenticated/idempotent control APIs and functional UI.
+- [ ] Compiled M4 graph, PostgresSaver, node/effect middleware and safe reconciliation.
+- [ ] Cooperative pause/resume/cancel, class-specific retry budgets and durable backoff.
+- [ ] Recovery, graceful drain, authoritative event-backed projections.
+- [ ] RUN-001 through RUN-009, applicable FAIL tests, two-instance and crash-window tests.
+- [ ] Full PostgreSQL/Python/frontend/browser/accessibility/security/verify gates.
+- [ ] Completion documentation, coherent commits, branch push and exact-commit green CI.
+
+M5 only: no homelab contact, real provider credentials, deployment, legacy edits, or M6 work.
 ## Active M4 criteria
 
 Fetched main/base: `940cd631d54ba4bcc976b9175dd42b1fedd7386f`.
