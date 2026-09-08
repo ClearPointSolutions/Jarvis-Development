@@ -134,6 +134,18 @@ test("M6 real demo, retry, durable decision, restart, artifacts and history", as
   await expect(
     page.getByRole("region", { name: "Retry history" }),
   ).toContainText("code.test_failure: 1/2");
+  // Task completion precedes the durable approval checkpoint. Wait for that
+  // authoritative transition before testing whether the UI permits a decision.
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async (path) => {
+          const result = await fetch(`/api/v1${path}`);
+          return (await result.json()).status;
+        }, new URL(runUrl).pathname),
+      { timeout: 60000 },
+    )
+    .toBe("approval_required");
   await expect(
     page.getByRole("button", { name: "Approve demo publication" }),
   ).toBeEnabled();

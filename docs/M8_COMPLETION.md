@@ -169,6 +169,11 @@ was corrected. M8 browser downloads use Chromium's authenticated fetch so the
 test exercises its Secure/HttpOnly loopback cookie behavior, rather than the
 separate Node HTTP client's different Secure-cookie rules. No assertion or gate
 was weakened.
+The M6 browser also explicitly waits for the API's durable `approval_required`
+state after task completion, before asserting that its decision button is enabled.
+This removes an assumption that task completion and approval checkpointing happen
+within the same five-second UI assertion window. The complete four-run scenario
+passes with this additional authoritative-state assertion.
 
 The live npm advisory feed subsequently reported
 [GHSA-2883-xcg3-v3hh](https://github.com/advisories/GHSA-2883-xcg3-v3hh)
