@@ -1,8 +1,8 @@
 # Jarvis V1 Status
 
 Last updated: 2026-09-08
-Current phase: M6 — local verification complete; branch publication/CI pending
-Overall state: M5 COMPLETE and READY FOR M6; M6 is not yet ready for M7.
+Current phase: M6 — COMPLETE; branch published and exact-commit CI green
+Overall state: READY FOR M7. Stop for review; M7 has not started and M6 is unmerged.
 
 ## Active M6 criteria
 
@@ -22,7 +22,7 @@ These verified results supersede the historical M5 pending-publication entries b
 - [x] Authenticated objective/start, live graph/feed/progress and persistent history UI.
 - [x] Network-denied canonical browser E2E, secondary failures, restart/reconnect and determinism.
 - [x] Full PostgreSQL, Python, frontend, browser, accessibility, security and script gates.
-- [ ] Completion evidence, clean committed branch, push and exact-commit green CI.
+- [x] Completion evidence, clean committed branch, push and exact-commit green CI.
 
 M6 only. No homelab, real runtime credentials, deployment, legacy edits or M7 work.
 
@@ -31,7 +31,11 @@ M6 local evidence: 593 Python tests, 88.82% combined coverage, 49 frontend tests
 serious console findings, clean dependency audit/secret scans, production build,
 and the complete PostgreSQL-enabled `scripts/verify.sh` pass. The final linked-run
 fixture preservation correction also passes all three affected control tests.
-See `docs/M6_COMPLETION.md`. Exact-commit branch CI is the remaining gate.
+Final implementation SHA: `42522847da6464d67fe07fe31bc2300c564fdac7`.
+[Exact-commit verify 34190353517](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34190353517)
+passed all gates: 593 Python tests at 88.74% combined coverage, 49 frontend tests,
+nine foundation browser tests and the four-run M6 acceptance, with no browser
+retries. See `docs/M6_COMPLETION.md` for architecture, limits and CI corrections.
 
 ## Historical M5 criteria (publication resolved above)
 
@@ -170,7 +174,7 @@ was used. M2 delivery evidence is recorded in `docs/M2_COMPLETION.md`.
 - [x] Prove a fresh local install can execute the empty/scaffold quality gates.
 - [x] Review M0; commit is the milestone boundary immediately following this status update.
 
-M4 is authorized. Remote staging/deployment and M5 remain out of scope.
+Historical M0 scope: M4 was authorized; staging/deployment and M5 were out of scope.
 
 ## Architecture milestone criteria
 
@@ -236,6 +240,12 @@ Chromium/API/PostgreSQL vertical test passes. Final full-gate and CI evidence is
 recorded below and in `docs/M2_COMPLETION.md`. Reference and legacy files remain
 unmodified. No deployment or homelab change has occurred.
 
+M3 adds immutable configuration, provider routing, health and usage accounting.
+M4 adds the WorkflowSpec compiler and Workflow Studio. M5 adds durable orchestration,
+fenced effects, controls and recovery. M6 now exercises that real system end to end
+with isolated deterministic adapters, persisted tasks/attempts, live run evidence,
+durable demo decisions, network-denied browser acceptance and restart recovery.
+
 ## Validation evidence
 
 Architecture validation on 2026-09-07:
@@ -279,7 +289,7 @@ documentation-only milestone; the M0 application gates are recorded above.
 
 ## Next milestone
 
-Finish M6 exact-commit GitHub CI, then stop for review. M7 has not started.
+M6 is complete. Stop for review; M7 has not started.
 Real worker/provider adapters and deployment remain later milestones.
 
 ## Open gates and risks

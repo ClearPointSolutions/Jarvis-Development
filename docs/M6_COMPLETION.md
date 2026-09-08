@@ -1,7 +1,7 @@
 # M6 deterministic demo vertical slice
 
-Status: local acceptance verification complete. Exact-commit
-branch CI is required before COMPLETE / READY FOR M7. M7 has not started.
+Status: COMPLETE / READY FOR M7. Local and exact-commit branch CI gates pass.
+The M6 branch remains unmerged. M7 has not started.
 
 ## Source and scope
 
@@ -10,8 +10,11 @@ M5 branch `9ad204ccaeeb3199c2cc30c2ab0c29264501048a` passed
 [verify 34180910635](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34180910635),
 [PR #2](https://github.com/ClearPointSolutions/Jarvis-Development/pull/2) merged,
 and main passed [verify 34181196662](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34181196662).
-M6 branch: `codex/m6-deterministic-demo`. Final source SHA and CI evidence are
-recorded when publication verification completes.
+M6 branch: `codex/m6-deterministic-demo`. Final implementation SHA:
+`42522847da6464d67fe07fe31bc2300c564fdac7`, verified by
+[verify 34190353517](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34190353517).
+The subsequent completion-record commit changes documentation only; its exact
+branch-tip SHA and verification result are included in the final delivery report.
 
 No homelab contact, SSH, production provider credentials, runtime GitHub calls,
 deployment, production approval authorization, legacy edits, or M7 work occurred.
@@ -143,7 +146,10 @@ It reports zero axe violations, serious console/page errors or external requests
 Visual review improved graph ordering, task/usage readability and activity-filter
 spacing. The complete PostgreSQL-enabled `scripts/verify.sh` passed, including
 all nine foundation browser tests and M6 acceptance (four runs; 2.9 minutes).
-Exact-commit GitHub CI remains the publication gate.
+Exact-commit Linux CI passed all 593 Python tests at 88.74% combined coverage,
+all 49 frontend tests, all nine foundation browser tests (42.5 seconds), and
+the four-run M6 browser acceptance (1.3 minutes). No browser retry was needed.
+The run ends with "All enabled verification gates passed."
 The first branch CI run (34187988596) passed all 593 Python tests at 88.89%
 combined coverage and the original 48 frontend tests, then exposed a Workflow
 Studio keyboard/layout race. Node position and viewport callbacks now use
@@ -157,6 +163,9 @@ announcement, while retaining native selection/deletion keys. The demo launcher
 allows three seconds of graceful shutdown before killing its own child process;
 this exercises durable crash recovery instead of waiting indefinitely for SSE.
 The dedicated empty PostgreSQL password file uses mode 0600 on Unix.
+The remaining Linux keyboard-test focus race was resolved by fitting the graph,
+bringing the node into view, asserting focus, and sending the key to that node.
+The exact movement, drag, publication and accessibility assertions remain intact.
 The post-review linked-retry correction also passed all three affected control
 integration tests plus strict types/lint. Cold SSE replay retains authorization
 for every frame; browser acceptance allows at most 30 seconds to catch up to the
