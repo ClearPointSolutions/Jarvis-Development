@@ -255,8 +255,11 @@ test("WF-001 / WF-004 canonical editor, validation, publication, immutable histo
     .click();
   const oldX = Number(await page.getByLabel("Position x").inputValue());
   await expect(workerNode).toHaveClass(/selected/);
+  await page.getByRole("button", { name: "Fit View", exact: true }).click();
+  await workerNode.scrollIntoViewIfNeeded();
   await workerNode.focus();
-  await page.keyboard.press("ArrowRight");
+  await expect(workerNode).toBeFocused();
+  await workerNode.press("ArrowRight");
   await expect(page.getByLabel("Position x")).toHaveValue(String(oldX + 5));
   await page.getByRole("button", { name: "Fit View", exact: true }).click();
   await workerNode.scrollIntoViewIfNeeded();
