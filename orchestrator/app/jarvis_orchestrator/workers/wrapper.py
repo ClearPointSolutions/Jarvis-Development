@@ -145,11 +145,9 @@ class InvocationStore:
         if not self.reserve(launch):
             return self.read(launch.prepared.request.invocation_id)
         argument = encoded_argument(launch, 131072)
-        creationflags = (
-            subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
-            if os.name == "nt"
-            else 0
-        )
+        creationflags = 0
+        if sys.platform == "win32":
+            creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
         # All three streams detach; a lost initiating SSH does not own this process.
         subprocess.Popen(
             [
