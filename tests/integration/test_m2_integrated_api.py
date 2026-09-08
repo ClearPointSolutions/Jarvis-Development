@@ -104,7 +104,7 @@ async def test_actual_api_role_readiness_redacted_audit_and_rotated_logout_resta
     async with api.factory() as session:
         assert await session.scalar(text("SELECT current_user")) == "jarvis_v1_api"
         assert (
-            await session.scalar(text("SELECT version_num FROM public.alembic_version")) == "0005"
+            await session.scalar(text("SELECT version_num FROM public.alembic_version")) == "0006"
         )
     assert (await api.client.get("/api/v1/system/readiness")).status_code == 401
     first = await login(api)

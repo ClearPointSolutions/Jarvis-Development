@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
+import os
+import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from urllib.parse import quote, urlencode
 
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from psycopg import AsyncConnection
@@ -17,7 +21,11 @@ def psycopg_connection_string(database_url: str) -> str:
     """Remove SQLAlchemy's driver suffix without exposing or changing credentials."""
 
     url = make_url(database_url).set(drivername="postgresql")
-    return url.render_as_string(hide_password=False)
+    # SQLAlchemy uses form-style '+' for query spaces; libpq URI parsing requires
+    # percent encoding. Preserve literal '+' credentials and repeated query values.
+    base = url.set(query={}).render_as_string(hide_password=False)
+    query = urlencode(url.query, doseq=True, quote_via=quote)
+    return f"{base}?{query}" if query else base
 
 
 @asynccontextmanager
@@ -37,6 +45,25 @@ async def postgres_saver(
         saver = AsyncPostgresSaver(connection)
         if setup:
             await saver.setup()
+            await connection.execute(
+                "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA langgraph "
+                "TO jarvis_v1_orchestrator"
+            )
         yield saver
     finally:
         await connection.close()
+
+
+async def bootstrap() -> None:
+    """Explicit migration/bootstrap step; ordinary executors never perform DDL."""
+    async with postgres_saver(os.environ["DATABASE_URL"], setup=True):
+        pass
+    print("LangGraph checkpoint schema ready")
+
+
+if __name__ == "__main__":
+    if sys.platform == "win32":
+        with asyncio.Runner(loop_factory=asyncio.SelectorEventLoop) as runner:
+            runner.run(bootstrap())
+    else:
+        asyncio.run(bootstrap())

@@ -163,7 +163,7 @@ async def readiness(request: Request, _principal: CurrentPrincipal) -> Readiness
             "The service is not ready",
             details={"database": "unavailable"},
         ) from error
-    if revision != "0005":
+    if revision != "0006":
         raise ApiProblemError(
             503,
             "system.not_ready",

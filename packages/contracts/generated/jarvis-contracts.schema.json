@@ -513,6 +513,35 @@
       "title": "CircuitPolicy",
       "type": "object"
     },
+    "CommandPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/CommandView"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "next_after": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next After"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "CommandPage",
+      "type": "object"
+    },
     "CommandStatus": {
       "enum": [
         "pending",
@@ -523,6 +552,49 @@
       ],
       "title": "CommandStatus",
       "type": "string"
+    },
+    "CommandView": {
+      "additionalProperties": false,
+      "properties": {
+        "applied_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Applied At"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "sequence": {
+          "title": "Sequence",
+          "type": "integer"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "sequence",
+        "kind",
+        "status",
+        "applied_at"
+      ],
+      "title": "CommandView",
+      "type": "object"
     },
     "ConfigurationKind": {
       "enum": [
@@ -1514,6 +1586,82 @@
       "title": "Job",
       "type": "object"
     },
+    "JobCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 8,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]+$",
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "mode": {
+          "default": "demo",
+          "enum": [
+            "real",
+            "demo"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "objective": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Objective",
+          "type": "string"
+        },
+        "priority": {
+          "default": 0,
+          "maximum": 100,
+          "minimum": -100,
+          "title": "Priority",
+          "type": "integer"
+        },
+        "workflow_version_id": {
+          "format": "uuid",
+          "title": "Workflow Version Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "idempotency_key",
+        "workflow_version_id",
+        "objective"
+      ],
+      "title": "JobCreate",
+      "type": "object"
+    },
+    "JobPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/JobView"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "next_after": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next After"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "JobPage",
+      "type": "object"
+    },
     "JobStatus": {
       "enum": [
         "draft",
@@ -1527,6 +1675,37 @@
       ],
       "title": "JobStatus",
       "type": "string"
+    },
+    "JobView": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "objective": {
+          "title": "Objective",
+          "type": "string"
+        },
+        "project_id": {
+          "format": "uuid",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "objective",
+        "status"
+      ],
+      "title": "JobView",
+      "type": "object"
     },
     "JoinConfig": {
       "additionalProperties": false,
@@ -1929,6 +2108,36 @@
       "title": "NewEvent",
       "type": "object"
     },
+    "NodePage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/NodeView"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "next_after": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next After"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "NodePage",
+      "type": "object"
+    },
     "NodePolicy": {
       "additionalProperties": false,
       "properties": {
@@ -2122,6 +2331,88 @@
         "items"
       ],
       "title": "NodeTypePage",
+      "type": "object"
+    },
+    "NodeView": {
+      "additionalProperties": false,
+      "properties": {
+        "completed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Completed At"
+        },
+        "execution_number": {
+          "title": "Execution Number",
+          "type": "integer"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Started At"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "task_attempt_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Task Attempt Id"
+        },
+        "task_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Task Id"
+        },
+        "workflow_node_id": {
+          "title": "Workflow Node Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "workflow_node_id",
+        "execution_number",
+        "status",
+        "task_id",
+        "task_attempt_id",
+        "started_at",
+        "completed_at"
+      ],
+      "title": "NodeView",
       "type": "object"
     },
     "NormalizedEvent": {
@@ -2582,6 +2873,91 @@
         }
       },
       "title": "Pricing",
+      "type": "object"
+    },
+    "ProjectCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 8,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]+$",
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "slug": {
+          "pattern": "^[a-z0-9][a-z0-9-]{0,79}$",
+          "title": "Slug",
+          "type": "string"
+        }
+      },
+      "required": [
+        "idempotency_key",
+        "slug",
+        "name"
+      ],
+      "title": "ProjectCreate",
+      "type": "object"
+    },
+    "ProjectPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ProjectView"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "next_after": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next After"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "ProjectPage",
+      "type": "object"
+    },
+    "ProjectView": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "slug": {
+          "title": "Slug",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "slug",
+        "name"
+      ],
+      "title": "ProjectView",
       "type": "object"
     },
     "ProviderChunk": {
@@ -4172,6 +4548,47 @@
       "title": "RunConfigurationSnapshot",
       "type": "object"
     },
+    "RunControl": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_run_version": {
+          "minimum": 0,
+          "title": "Expected Run Version",
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 8,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]+$",
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "instruction": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Instruction"
+        },
+        "kind": {
+          "$ref": "#/$defs/RunCommandKind"
+        }
+      },
+      "required": [
+        "idempotency_key",
+        "expected_run_version",
+        "kind"
+      ],
+      "title": "RunControl",
+      "type": "object"
+    },
     "RunEventSnapshotResponse": {
       "additionalProperties": false,
       "properties": {
@@ -4225,6 +4642,36 @@
       "title": "RunEventSnapshotResponse",
       "type": "object"
     },
+    "RunPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/RunView"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "next_after": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next After"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "RunPage",
+      "type": "object"
+    },
     "RunStatus": {
       "enum": [
         "queued",
@@ -4241,6 +4688,166 @@
       ],
       "title": "RunStatus",
       "type": "string"
+    },
+    "RunView": {
+      "additionalProperties": false,
+      "properties": {
+        "claimable_at": {
+          "format": "date-time",
+          "title": "Claimable At",
+          "type": "string"
+        },
+        "completed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Completed At"
+        },
+        "current_node": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Current Node"
+        },
+        "desired_state": {
+          "title": "Desired State",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "job_id": {
+          "format": "uuid",
+          "title": "Job Id",
+          "type": "string"
+        },
+        "last_event_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Last Event At"
+        },
+        "last_event_position": {
+          "title": "Last Event Position",
+          "type": "integer"
+        },
+        "last_run_sequence": {
+          "title": "Last Run Sequence",
+          "type": "integer"
+        },
+        "mode": {
+          "title": "Mode",
+          "type": "string"
+        },
+        "project_id": {
+          "format": "uuid",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "recovering": {
+          "title": "Recovering",
+          "type": "boolean"
+        },
+        "result_summary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Result Summary"
+        },
+        "retry_of_run_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Retry Of Run Id"
+        },
+        "run_number": {
+          "title": "Run Number",
+          "type": "integer"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Started At"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "thread_id": {
+          "title": "Thread Id",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "integer"
+        },
+        "workflow_version_id": {
+          "format": "uuid",
+          "title": "Workflow Version Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "job_id",
+        "project_id",
+        "workflow_version_id",
+        "run_number",
+        "retry_of_run_id",
+        "thread_id",
+        "status",
+        "desired_state",
+        "mode",
+        "version",
+        "recovering",
+        "current_node",
+        "result_summary",
+        "claimable_at",
+        "started_at",
+        "completed_at",
+        "last_event_position",
+        "last_run_sequence",
+        "last_event_at"
+      ],
+      "title": "RunView",
+      "type": "object"
     },
     "SessionResponse": {
       "additionalProperties": false,
@@ -6048,6 +6655,28 @@
       ],
       "default": null
     },
+    "job_create": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/JobCreate"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "job_page": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/JobPage"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "lease": {
       "anyOf": [
         {
@@ -6107,6 +6736,28 @@
       "anyOf": [
         {
           "$ref": "#/$defs/NormalizedEvent"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "project_create": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ProjectCreate"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "project_page": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ProjectPage"
         },
         {
           "type": "null"
@@ -6279,6 +6930,17 @@
       ],
       "default": null
     },
+    "run_control": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RunControl"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "run_event_snapshot": {
       "anyOf": [
         {
@@ -6289,6 +6951,23 @@
         }
       ],
       "default": null
+    },
+    "run_page": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RunPage"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "runtime_commands": {
+      "$ref": "#/$defs/CommandPage"
+    },
+    "runtime_nodes": {
+      "$ref": "#/$defs/NodePage"
     },
     "session_response": {
       "anyOf": [
@@ -6537,6 +7216,10 @@
       "default": null
     }
   },
+  "required": [
+    "runtime_commands",
+    "runtime_nodes"
+  ],
   "title": "JarvisContractBundle",
   "type": "object"
 }

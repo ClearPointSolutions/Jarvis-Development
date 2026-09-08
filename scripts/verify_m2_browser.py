@@ -22,6 +22,7 @@ from sqlalchemy.engine import make_url
 from tests.integration.support import seed_run
 
 from jarvis_api.auth.bootstrap import bootstrap_owner
+from jarvis_persistence.checkpoints import postgres_saver
 from jarvis_persistence.database import create_async_database_engine, create_async_session_factory
 from jarvis_persistence.models import ProjectModel
 
@@ -29,6 +30,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 async def seed(url: str, password: str) -> str:
+    async with postgres_saver(url, setup=True):
+        pass
     engine = create_async_database_engine(url)
     factory = create_async_session_factory(engine)
     try:
@@ -53,6 +56,7 @@ def main() -> int:
     admin = create_engine(parsed.set(database="postgres"), isolation_level="AUTOCOMMIT")
     url = parsed.set(database=name).render_as_string(hide_password=False)
     api: subprocess.Popen[bytes] | None = None
+    orchestrator: subprocess.Popen[bytes] | None = None
     try:
         with admin.connect() as connection:
             connection.execute(text(f'CREATE DATABASE "{name}"'))
@@ -87,6 +91,18 @@ def main() -> int:
                 "JARVIS_SSE_POLL_SECONDS": "0.1",
             }
             with (Path(directory) / "api.log").open("wb") as log:
+                orchestrator = subprocess.Popen(
+                    [sys.executable, "-m", "scripts.m5_browser_runtime"],
+                    cwd=ROOT,
+                    env={
+                        **env,
+                        "DATABASE_URL": parsed.set(database=name)
+                        .update_query_dict({"options": "-c role=jarvis_v1_orchestrator"})
+                        .render_as_string(hide_password=False),
+                    },
+                    stdout=log,
+                    stderr=log,
+                )
                 api = subprocess.Popen(
                     [sys.executable, "-m", "jarvis_api.main"],
                     cwd=ROOT,
@@ -121,6 +137,9 @@ def main() -> int:
                 api.terminate()
                 api.wait(timeout=15)
                 api = None
+                orchestrator.terminate()
+                orchestrator.wait(timeout=15)
+                orchestrator = None
             content = (Path(directory) / "api.log").read_text(errors="replace")
             if result.returncode:
                 for line in content.splitlines():
@@ -136,6 +155,9 @@ def main() -> int:
             print("M2 browser bundle secret canaries: absent")
             return result.returncode
     finally:
+        if orchestrator is not None:
+            orchestrator.terminate()
+            orchestrator.wait(timeout=15)
         if api is not None:
             api.terminate()
             api.wait(timeout=15)

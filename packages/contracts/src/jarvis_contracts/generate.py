@@ -49,6 +49,16 @@ from jarvis_contracts.registry import (
     RouteResolution,
     ValidationReport,
 )
+from jarvis_contracts.runtime_api import (
+    CommandPage,
+    JobCreate,
+    JobPage,
+    NodePage,
+    ProjectCreate,
+    ProjectPage,
+    RunControl,
+    RunPage,
+)
 from jarvis_contracts.workflow import WorkflowSpec, WorkflowVersionContract
 from jarvis_contracts.workflow_api import (
     WorkflowArchiveRequest,
@@ -82,6 +92,14 @@ from jarvis_contracts.workflow_nodes import (
 
 
 class JarvisContractBundle(ContractModel):
+    runtime_commands: CommandPage
+    runtime_nodes: NodePage
+    project_create: ProjectCreate | None = None
+    project_page: ProjectPage | None = None
+    job_create: JobCreate | None = None
+    job_page: JobPage | None = None
+    run_control: RunControl | None = None
+    run_page: RunPage | None = None
     workflow_create: WorkflowCreateRequest | None = None
     workflow_command: WorkflowCommand | None = None
     workflow_draft_write: WorkflowDraftWrite | None = None

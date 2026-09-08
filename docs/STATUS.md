@@ -1,8 +1,8 @@
 # Jarvis V1 Status
 
-Last updated: 2026-09-07
-Current phase: M5 — prerequisite verified; system review in progress
-Overall state: M4 complete and READY FOR M5. Exact-commit GitHub verify succeeded. M5 implementation and acceptance gates remain pending.
+Last updated: 2026-09-08
+Current phase: M5 — local implementation and quality gates complete; publication gate pending
+Overall state: M4 complete and READY FOR M5. M5 is NOT READY FOR M6 until the complete local and exact-commit CI gates pass.
 
 ## Active M5 criteria
 
@@ -10,23 +10,26 @@ Base/main: `4367599eeed256d345296dff8f85c52cdc87d38a`, fetched and confirmed on 
 M4 exact-commit [verify run 34171942359](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34171942359) completed successfully.
 Branch: `codex/m5-durable-orchestrator`. Earlier M4 publication blockers below are historical and superseded by this evidence.
 
-- [ ] Complete current-system and read-only legacy review.
-- [ ] Dedicated bounded orchestrator, ordered PostgreSQL queue, renewable fenced leases.
-- [ ] Durable enqueue and ordered authenticated/idempotent control APIs and functional UI.
-- [ ] Compiled M4 graph, PostgresSaver, node/effect middleware and safe reconciliation.
-- [ ] Cooperative pause/resume/cancel, class-specific retry budgets and durable backoff.
-- [ ] Recovery, graceful drain, authoritative event-backed projections.
-- [ ] RUN-001 through RUN-009, applicable FAIL tests, two-instance and crash-window tests.
-- [ ] Full PostgreSQL/Python/frontend/browser/accessibility/security/verify gates.
+- [x] Complete current-system and read-only legacy review.
+- [x] Dedicated bounded orchestrator, ordered PostgreSQL queue, renewable fenced leases.
+- [x] Durable enqueue and ordered authenticated/idempotent control APIs and functional UI.
+- [x] Compiled M4 graph, PostgresSaver, node/effect middleware and safe reconciliation.
+- [x] Cooperative pause/resume/cancel, class-specific retry budgets and durable backoff.
+- [x] Recovery, graceful drain, authoritative event-backed projections.
+- [x] RUN-001 through RUN-009, applicable FAIL tests, two-instance and crash-window tests.
+- [x] Full PostgreSQL/Python/frontend/browser/accessibility/security/verify gates.
 - [ ] Completion documentation, coherent commits, branch push and exact-commit green CI.
 
 M5 only: no homelab contact, real provider credentials, deployment, legacy edits, or M6 work.
-## Active M4 criteria
+
+Current M5 evidence: **570 Python tests**, **88.50% combined line/branch coverage** (78.18% branch-only), **47 frontend tests**, and **9 Playwright tests** pass. RUN-001-009, FAIL-001-007, two-instance concurrency/recovery, all eight crash boundaries, backoff pause/resume, migration roundtrip/drift/roles and API security checks pass. Desktop/mobile axe and serious-console checks report zero findings. Generated contracts, strict types, lint, clean npm install/audit, production build, secret scans and the complete PostgreSQL-enabled `scripts/verify.sh` pass. Diff and visual review are complete. Exact-commit GitHub CI is the remaining gate. See `docs/M5_COMPLETION.md`.
+
+## Historical M4 criteria (publication resolved above)
 
 Fetched main/base: `940cd631d54ba4bcc976b9175dd42b1fedd7386f`.
 GitHub verify run [34167362184](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34167362184)
 completed successfully for that exact SHA. The prior M3 publication blocker is historical.
-Integration branch: `codex/m4-workflow-system`. M5 is not started.
+Integration branch: `codex/m4-workflow-system`. This section records the prior milestone.
 
 - [x] Pin authoritative workflow/config/API contracts and regenerate schema/TypeScript before parallel implementation (`20dd880ccb724116a77af4055df2320f887fa215`).
 - [x] Implement static registry, safe validation/routing, bounded loops, deterministic reducers/join, LangGraph compilation and PostgreSQL reconstruction tests.
@@ -34,7 +37,7 @@ Integration branch: `codex/m4-workflow-system`. M5 is not started.
 - [x] Implement Workflow Studio using the same contract, typed inspectors, real M3 references, validation, layout and version history.
 - [x] Pass WF-001–005, security, PostgreSQL migrations, complete backend/frontend/browser/accessibility/build and scripts/verify.sh gates.
 - [x] Review secrets/diff, fix integration findings, record M4 completion evidence and commit the local milestone coherently.
-- [ ] Push the authorized branch and verify exact-commit GitHub CI. Do not merge main or begin M5.
+- [x] Publication and exact-commit GitHub verify confirmed at main `4367599eeed256d345296dff8f85c52cdc87d38a`.
 
 Final local evidence: **524 Python tests**, **88.68% combined line/branch coverage**
 (branch-only: 78.68% overall, 86.19% workflow API/compiler), **41 frontend tests**,
@@ -45,7 +48,7 @@ scanner and full `scripts/verify.sh` pass. Compiler: `1e71dcb`; editor: `636869e
 code integration: `943a179`. See [`M4_COMPLETION.md`](M4_COMPLETION.md) for exact
 SHAs, merge order, schema/compiler versions, controls, limits and evidence.
 
-External blocker: native GitHub HTTPS credentials return invalid username/token
+Historical publication blocker (resolved by the verified main/CI evidence above): native GitHub HTTPS credentials returned invalid username/token
 (HTTP 401 preflight); connected GitHub repository writes return HTTP 403
 `Resource not accessible by integration`. No M4 branch or CI was published.
 The final native push exited 128 because no usable saved GitHub credential was
@@ -247,13 +250,12 @@ documentation-only milestone; the M0 application gates are recorded above.
 
 ## Next milestone
 
-M3 is fully complete and READY FOR M4. Complete M4 definition/compiler/editor and
-its local and GitHub CI gates, then stop. Runtime scheduling, Worker-01 and
-deployment require later milestones.
+Finish M5 local verification and exact-commit GitHub CI, then stop. M6 has not
+started. Real worker/provider adapters and deployment remain later milestones.
 
 ## Open gates and risks
 
-The unresolved spikes in `docs/DECISIONS.md` remain implementation gates, especially legacy runner idempotency/worktree compatibility, SSE proxy behavior, deployed Ollama capabilities, GitHub credential form, and safe narrow health collection. LangGraph/checkpointer API/schema compatibility is resolved for M1 by ADR-023 and the pinned tests; pending-write crash injection remains an M5 runtime-node concern. Real Worker-01, GitHub, and restart tests remain Prompt 03 gates; side-by-side deployment remains Prompt 04.
+The unresolved spikes in `docs/DECISIONS.md` remain implementation gates, especially legacy runner idempotency/worktree compatibility, SSE proxy behavior, deployed Ollama capabilities, GitHub credential form, and safe narrow health collection. LangGraph/checkpointer API/schema compatibility is resolved for M1 by ADR-023 and the pinned tests; M5 now covers fenced pending writes and injected checkpoint/effect crash windows. Real Worker-01, GitHub, and restart tests remain Prompt 03 gates; side-by-side deployment remains Prompt 04.
 
 Historical M3 publication review (superseded by confirmed main/CI above): the final push was rejected before Git executed by automatic
 approval review. It requires explicit approval to export the private M3 source

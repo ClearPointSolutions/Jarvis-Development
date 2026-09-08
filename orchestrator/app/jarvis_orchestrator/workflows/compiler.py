@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from collections.abc import Hashable, Mapping
+from collections.abc import Awaitable, Callable, Hashable, Mapping
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, cast
@@ -27,6 +27,7 @@ from jarvis_contracts.workflow_api import WorkflowResolvedSnapshot, WorkflowVali
 from jarvis_contracts.workflow_nodes import NODE_DEFINITIONS
 from jarvis_orchestrator.workflows.factories import (
     NODE_FACTORIES,
+    NodeCallable,
     NodeContext,
     NodeHandler,
     child_id,
@@ -46,6 +47,8 @@ from jarvis_orchestrator.workflows.validation import (
 )
 
 CompiledWorkflow = CompiledStateGraph[WorkflowStateV1, None, WorkflowStateV1, Any]
+NodeMiddleware = Callable[[NodeContext, NodeCallable], NodeCallable]
+RouteObserver = Callable[[NodeContext, WorkflowStateV1, WorkflowStateV1], Awaitable[None]]
 
 
 class WorkflowCompilationError(ValueError):
@@ -227,6 +230,8 @@ def compile_workflow(
     handlers: Mapping[str, NodeHandler] | None = None,
     cache: CompileCache | None = None,
     interrupt_before: list[str] | None = None,
+    middleware: NodeMiddleware | None = None,
+    route_observer: RouteObserver | None = None,
 ) -> CompiledWorkflow:
     """Compile one isolated snapshot; missing external handlers fail on invocation."""
     report = validate_workflow(spec, snapshot)
@@ -253,6 +258,8 @@ def compile_workflow(
         tuple(interrupt_before or []),
     )
     if cache is not None:
+        if middleware is not None or route_observer is not None:
+            raise ValueError("Run-scoped middleware cannot use the shared compile cache")
         existing = cache._get(cache_key)
         if existing is not None:
             return existing
@@ -276,13 +283,18 @@ def compile_workflow(
         builder: StateGraph[WorkflowStateV1, None, WorkflowStateV1, Any], node: WorkflowNode
     ) -> None:
         factory = NODE_FACTORIES[node.type]
+        context = NodeContext(node, effective_policy(normalized, node), bound_snapshot, "")
         execute = factory(
-            NodeContext(node, effective_policy(normalized, node), bound_snapshot, ""),
+            context,
             bound_handlers.get(node.id),
         )
+        if middleware is not None:
+            execute = middleware(context, execute)
 
         async def invoke(state: WorkflowStateV1, config: RunnableConfig) -> WorkflowStateV1:
             update = await execute(state, config)
+            if update.get("cancelled"):
+                return update
             edges = outgoing[node.id]
             if edges and node.type is not WorkflowNodeType.FANOUT:
                 target, counters = _choose_route(
@@ -290,12 +302,14 @@ def compile_workflow(
                 )
                 update["_route"] = target
                 update["counters"] = {**update.get("counters", {}), **counters}
+            if route_observer is not None:
+                await route_observer(context, state, update)
             return update
 
         builder.add_node(node.id, invoke)
 
     def route(state: WorkflowStateV1) -> str:
-        return state["_route"]
+        return END if state.get("cancelled") else state["_route"]
 
     def wire(
         builder: StateGraph[WorkflowStateV1, None, WorkflowStateV1, Any],
@@ -305,14 +319,12 @@ def compile_workflow(
         edges = outgoing[node.id]
         if not edges:
             builder.add_edge(node.id, END)
-        elif len(edges) == 1 and edges[0].kind is WorkflowEdgeKind.ALWAYS:
-            target = edges[0].target
-            builder.add_edge(node.id, "__complete__" if target == boundary else target)
         else:
             destinations: dict[Hashable, str] = {
                 edge.target: "__complete__" if edge.target == boundary else edge.target
                 for edge in edges
             }
+            destinations[END] = END
             builder.add_conditional_edges(node.id, route, destinations)
 
     builder = StateGraph(WorkflowStateV1)
@@ -353,7 +365,11 @@ def compile_workflow(
             continue
         if node.type is WorkflowNodeType.FANOUT:
 
-            def fanout_route(state: WorkflowStateV1, fanout: WorkflowNode = node) -> list[Send]:
+            def fanout_route(
+                state: WorkflowStateV1, fanout: WorkflowNode = node
+            ) -> list[Send] | str:
+                if state.get("cancelled"):
+                    return END
                 visit = state.get("counters", {}).get(invocation_key(state, fanout.id), 0)
                 children = cast(list[str], fanout.config["children"])
                 if not children or len(children) > cast(int, fanout.config["max_fanout"]):
@@ -366,7 +382,7 @@ def compile_workflow(
                     for child in children
                 ]
 
-            builder.add_conditional_edges(node.id, fanout_route, list(regions[node.id]))
+            builder.add_conditional_edges(node.id, fanout_route, [*regions[node.id], END])
         else:
             wire(builder, node)
     builder.add_edge(START, normalized.entrypoint)

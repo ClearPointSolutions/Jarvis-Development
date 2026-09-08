@@ -1,9 +1,21 @@
 # Jarvis V1 / Mission Control
 
 Jarvis V1 is the durable human control plane for a LangGraph-based development
-system. M3 adds versioned worker/provider/model/policy registries, deterministic
-routing and provider/accounting foundations to the durable M2 auth/event shell.
-Workflow execution remains a later milestone; the legacy prototype is unchanged.
+system. M5 adds a dedicated PostgreSQL queue consumer, fenced LangGraph execution,
+durable pause/resume/cancel commands, effect reconciliation and retry scheduling
+to the M2–M4 authentication, events, configuration and workflow foundations.
+Only internal nodes and explicitly injected deterministic adapters execute in M5.
+The legacy prototype is unchanged.
+
+The API enqueues work and returns 202. Run `python -m jarvis_orchestrator.main`
+as a separate process with its own `DATABASE_URL` and the
+`jarvis_v1_orchestrator` database role after migrations. Run
+`python -m jarvis_persistence.checkpoints` once with the migration/bootstrap
+database identity to create the package-owned checkpoint tables and grants.
+The orchestrator has no HTTP listener and performs no schema DDL.
+`JARVIS_ORCHESTRATOR_MAX_CONCURRENCY`, `GLOBAL_CONCURRENCY`, `LEASE_SECONDS`, `POLL_SECONDS`, and
+`GRACE_SECONDS` (each with the same `JARVIS_ORCHESTRATOR_` prefix) configure
+capacity and shutdown. See `docs/M5_COMPLETION.md` for runtime semantics and gates.
 
 ## Supported toolchain
 
@@ -68,10 +80,10 @@ credentials should assume the least-privilege `jarvis_v1_api` role; migrations a
 owner bootstrap use the separate local administrative identity. No infrastructure
 credential belongs in web configuration.
 
-The `/runs` screen accepts an existing run ID and displays its authorized event
-projection and replayable feed. M2 deliberately provides no run-creation or
-execution endpoint. Worker, provider, model, routing and policy screens provide
-real configuration management. Other route shells explain their upcoming milestone.
+The `/runs` screen creates projects, enqueues published workflows and displays
+authorized run history. Individual runs show actual/desired state, command
+acknowledgements and the replayable event feed, with durable M5 controls. Worker,
+provider, model, routing and policy screens provide configuration management.
 
 With `TEST_DATABASE_URL` configured, `scripts/verify.sh` creates a fresh disposable
 browser-test database, starts the actual API, exercises Chromium through the same-

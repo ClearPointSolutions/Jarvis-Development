@@ -3,6 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
+  workers: process.env.JARVIS_BROWSER_RUN_ID ? 1 : undefined,
   retries: process.env.CI ? 2 : 0,
   reporter: "line",
   use: {

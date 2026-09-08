@@ -183,15 +183,26 @@ export type JobStatus = "draft" | "queued" | "active" | "waiting" | "completed" 
 export type ThreadId1 = string | null;
 export type UpdatedAt1 = string;
 export type Version = number;
+export type IdempotencyKey2 = string;
+export type Mode = "real" | "demo";
+export type Objective1 = string;
+export type Priority = number;
+export type WorkflowVersionId = string;
+export type Id6 = string;
+export type Objective2 = string;
+export type ProjectId3 = string;
+export type Status2 = string;
+export type Items2 = JobView[];
+export type NextAfter2 = string | null;
 export type AcquiredAt = string;
 export type ExpiresAt = string;
 export type Generation = number;
-export type Id6 = string;
+export type Id7 = string;
 export type OwnerInstanceId = string;
 export type ReleasedAt = string | null;
 export type RunId4 = string;
 export type Service = "jarvis-api";
-export type Status2 = "ok";
+export type Status3 = "ok";
 export type Version1 = "0.1.0";
 export type Password = string;
 export type Username = string;
@@ -199,11 +210,19 @@ export type Revoked = boolean;
 export type ArtifactRefs1 = ArtifactReference[];
 export type CausationEventId1 = string | null;
 export type CorrelationId2 = string;
-export type IdempotencyKey2 = string | null;
+export type IdempotencyKey3 = string | null;
 export type Message2 = string;
 export type OccurredAt1 = string;
 export type SchemaVersion2 = "1.0";
 export type Type1 = string;
+export type IdempotencyKey4 = string;
+export type Name1 = string;
+export type Slug = string;
+export type Id8 = string;
+export type Name2 = string;
+export type Slug1 = string;
+export type Items3 = ProjectView[];
+export type NextAfter3 = string | null;
 export type Demo1 = boolean;
 export type Index = number;
 export type Demo2 = boolean;
@@ -223,15 +242,15 @@ export type Structured = {
   [k: string]: JsonValue;
 } | null;
 export type Text = string;
-export type Id7 = string;
-export type Name1 = string;
+export type Id9 = string;
+export type Name3 = string;
 export type ToolCalls = ProviderToolCall[];
 export type Text1 = string;
 export type CorrelationId3 = string;
 export type DataClassification = "public" | "internal" | "confidential" | "restricted";
 export type NodeId1 = string | null;
 export type OutputTokens1 = number;
-export type ProjectId3 = string | null;
+export type ProjectId4 = string | null;
 export type Purpose = string;
 export type RunId5 = string | null;
 export type StructuredSchema = {
@@ -240,13 +259,13 @@ export type StructuredSchema = {
 export type TaskId2 = string | null;
 export type Text2 = string;
 export type Description = string;
-export type Name2 = string;
+export type Name4 = string;
 /**
  * @maxItems 32
  */
 export type Tools = ProviderTool[];
 export type Database = "ready" | "unavailable" | "migration_required";
-export type Status3 = "ready" | "not_ready";
+export type Status4 = "ready" | "not_ready";
 export type Archived = boolean;
 export type CircuitState = "closed" | "open" | "half_open";
 export type ContentHash1 = string;
@@ -256,7 +275,7 @@ export type Description1 = string;
 export type DisplayName = string;
 export type Enabled = boolean;
 export type Health = "healthy" | "degraded" | "unavailable" | "misconfigured" | "unknown";
-export type Id8 = string;
+export type Id10 = string;
 export type Key2 = string;
 export type Revision1 = number;
 export type RevisionId = string;
@@ -277,7 +296,7 @@ export type MaxConcurrency = number;
  * @maxItems 100
  */
 export type AllowedProfileRevisionIds = string[];
-export type Mode = "none" | "control_plane" | "worker_managed";
+export type Mode1 = "none" | "control_plane" | "worker_managed";
 export type ConnectSeconds = number;
 export type HeartbeatSeconds = number;
 export type RunSeconds = number;
@@ -319,7 +338,7 @@ export type AllowedData1 = ("public" | "internal" | "confidential" | "restricted
  * @maxItems 32
  */
 export type Candidates = [RouteCandidate, ...RouteCandidate[]];
-export type Priority = number;
+export type Priority1 = number;
 export type ProfileRevisionId2 = string;
 export type FailoverClasses = FailureClass[];
 export type Kind6 = "route_policy";
@@ -361,8 +380,8 @@ export type Shell = "allow" | "deny" | "require_approval";
 export type UnknownAction = "deny" | "require_approval";
 export type UpdatedAt2 = string;
 export type Version2 = number;
-export type Items2 = RegistryRecord[];
-export type NextAfter2 = string | null;
+export type Items4 = RegistryRecord[];
+export type NextAfter4 = string | null;
 export type Archived1 = boolean;
 export type ClearSecret = boolean;
 export type DeploymentRef = string | null;
@@ -370,7 +389,7 @@ export type Description2 = string;
 export type DisplayName1 = string;
 export type Enabled1 = boolean;
 export type ExpectedVersion = number;
-export type IdempotencyKey3 = string;
+export type IdempotencyKey5 = string;
 export type Key3 = string;
 export type SecretRef = string | null;
 export type Spec2 =
@@ -400,7 +419,7 @@ export type ClaimableAt = string;
 export type ConfigSnapshotId = string;
 export type CreatedAt6 = string;
 export type DesiredRunState = "running" | "paused" | "cancelled";
-export type Id9 = string;
+export type Id11 = string;
 export type JobId1 = string;
 export type LanggraphThreadId = string;
 export type RunNumber = number;
@@ -418,10 +437,10 @@ export type RunStatus =
   | "cancelled";
 export type UpdatedAt3 = string;
 export type Version3 = number;
-export type WorkflowVersionId = string;
+export type WorkflowVersionId1 = string;
 export type CreatedAt7 = string;
-export type Id10 = string;
-export type IdempotencyKey4 = string;
+export type Id12 = string;
+export type IdempotencyKey6 = string;
 export type RunCommandKind = "pause" | "resume" | "cancel" | "instruction" | "retry";
 export type RequestDigest2 = string;
 export type RunId6 = string;
@@ -434,11 +453,11 @@ export type RunId7 = string;
 export type SchemaVersion5 = "1.0";
 export type Sequence1 = number;
 export type ExpectedRunVersion = number | null;
-export type IdempotencyKey5 = string;
+export type IdempotencyKey7 = string;
 export type RunId8 = string;
 export type SchemaVersion6 = "1.0";
 export type CreatedAt8 = string;
-export type Id11 = string;
+export type Id13 = string;
 export type ContentHash2 = string;
 export type Key4 = string;
 export type RevisionId1 = string;
@@ -446,22 +465,64 @@ export type ResolvedRevisions = ResolvedRevision[];
 export type SchemaVersion7 = "1.0";
 export type SnapshotHash1 = string;
 export type WorkflowContentHash = string;
-export type WorkflowVersionId1 = string;
+export type WorkflowVersionId2 = string;
+export type ExpectedRunVersion1 = number;
+export type IdempotencyKey8 = string;
+export type Instruction = string | null;
 export type LastEventAt = string | null;
 export type LastEventPosition = number;
 export type LastRunSequence = number;
 export type ReadCursor = number;
 export type RunId9 = string;
-export type Status4 = string;
+export type Status5 = string;
+export type ClaimableAt1 = string;
+export type CompletedAt = string | null;
+export type CurrentNode = string | null;
+export type DesiredState = string;
+export type Id14 = string;
+export type JobId2 = string;
+export type LastEventAt1 = string | null;
+export type LastEventPosition1 = number;
+export type LastRunSequence1 = number;
+export type Mode2 = string;
+export type ProjectId5 = string;
+export type Recovering = boolean;
+export type ResultSummary = string | null;
+export type RetryOfRunId = string | null;
+export type RunNumber1 = number;
+export type StartedAt = string | null;
+export type Status6 = string;
+export type ThreadId2 = string;
+export type Version4 = number;
+export type WorkflowVersionId3 = string;
+export type Items5 = RunView[];
+export type NextAfter5 = string | null;
+export type AppliedAt = string | null;
+export type Id15 = string;
+export type Kind9 = string;
+export type Sequence2 = number;
+export type Status7 = string;
+export type Items6 = CommandView[];
+export type NextAfter6 = number | null;
+export type CompletedAt1 = string | null;
+export type ExecutionNumber = number;
+export type Id16 = string;
+export type StartedAt1 = string | null;
+export type Status8 = string;
+export type TaskAttemptId3 = string | null;
+export type TaskId3 = string | null;
+export type WorkflowNodeId1 = string;
+export type Items7 = NodeView[];
+export type NextAfter7 = string | null;
 export type AbsoluteExpiresAt = string;
 export type CsrfToken = string;
 export type IdleExpiresAt = string;
-export type Id12 = string;
+export type Id17 = string;
 export type Role = "owner";
 export type Username1 = string;
 export type AcceptanceCriteria = string[];
 export type CreatedAt9 = string;
-export type Id13 = string;
+export type Id18 = string;
 export type Key5 = string;
 export type RunId10 = string;
 export type TaskStatus =
@@ -477,17 +538,17 @@ export type TaskStatus =
   | "skipped";
 export type Title = string;
 export type UpdatedAt4 = string;
-export type Version4 = number;
+export type Version5 = number;
 export type Weight = number;
 export type AttemptNumber = number;
 export type BaseSha = string | null;
-export type CompletedAt = string | null;
-export type Id14 = string;
+export type CompletedAt2 = string | null;
+export type Id19 = string;
 export type ResultSha = string | null;
-export type StartedAt = string | null;
+export type StartedAt2 = string | null;
 export type AttemptStatus =
   "queued" | "running" | "verifying" | "reviewing" | "succeeded" | "failed" | "cancelled" | "unknown";
-export type TaskId3 = string;
+export type TaskId4 = string;
 export type Demo4 = boolean;
 export type Health1 = "healthy" | "degraded" | "unavailable" | "misconfigured" | "unknown";
 export type Issues = string[];
@@ -495,27 +556,27 @@ export type NetworkChecked = boolean;
 export type Valid = boolean;
 export type Archived2 = boolean;
 export type ExpectedVersion1 = number;
-export type IdempotencyKey6 = string;
+export type IdempotencyKey9 = string;
 export type ExpectedVersion2 = number;
-export type IdempotencyKey7 = string;
+export type IdempotencyKey10 = string;
 export type Description3 = string;
-export type IdempotencyKey8 = string;
+export type IdempotencyKey11 = string;
 export type Key6 = string;
-export type Name3 = string;
+export type Name5 = string;
 export type Archived3 = boolean;
 export type CreatedAt10 = string;
 export type CurrentDraftVersionId = string | null;
 export type CurrentPublishedVersionId = string | null;
 export type Description4 = string;
-export type Id15 = string;
+export type Id20 = string;
 export type Key7 = string;
-export type Name4 = string;
+export type Name6 = string;
 export type UpdatedAt5 = string;
-export type Version5 = number;
+export type Version6 = number;
 export type CompilerVersion = string;
 export type ContentHash3 = string;
 export type CreatedAt11 = string;
-export type Id16 = string;
+export type Id21 = string;
 export type X = number;
 export type Y = number;
 export type X1 = number;
@@ -543,11 +604,11 @@ export type RevisionId2 = string;
 export type Description5 = string;
 export type Fallback = boolean;
 export type From = string;
-export type Id17 = string;
+export type Id22 = string;
 export type IterationKey = string | null;
 export type WorkflowEdgeKind = "always" | "on_result" | "retry" | "iterate" | "on_failure";
 export type MaxIterations = number | null;
-export type Priority1 = number;
+export type Priority2 = number;
 export type ProgressPath = string | null;
 export type To = string;
 /**
@@ -562,13 +623,13 @@ export type Path = string | null;
 export type Edges = WorkflowEdge[];
 export type Entrypoint = string;
 export type Key8 = string;
-export type Name5 = string;
+export type Name7 = string;
 /**
  * @minItems 1
  * @maxItems 500
  */
 export type Nodes1 = [WorkflowNode, ...WorkflowNode[]];
-export type Id18 = string;
+export type Id23 = string;
 export type Label = string;
 export type NodeVersion = "1.0";
 export type WorkflowNodeType =
@@ -588,12 +649,12 @@ export type WorkflowNodeType =
 export type ResultPath = string;
 export type SpecVersion = "1.0" | "1.1";
 export type StateSchema = "jarvis.workflow_state.v1";
-export type Version6 = number;
+export type Version7 = number;
 export type WorkflowTemplateId = string;
 export type ExpectedVersion3 = number;
-export type IdempotencyKey9 = string;
+export type IdempotencyKey12 = string;
 export type ExpectedVersion4 = number;
-export type IdempotencyKey10 = string;
+export type IdempotencyKey13 = string;
 export type SourceVersionId = string | null;
 export type WorkflowNodeConfigs =
   | OrganizerConfig
@@ -639,7 +700,7 @@ export type ExternalBehavior = boolean;
 export type InputChannels = string[];
 export type OutputChannels = string[];
 export type RequiredCapabilities1 = string[];
-export type Items3 = NodeTypeDefinition[];
+export type Items8 = NodeTypeDefinition[];
 export type CompilerVersion1 = "1.0.0";
 export type Archived4 = boolean;
 export type ConfigurationId1 = string;
@@ -654,10 +715,10 @@ export type Spec3 =
   WorkerSpec | ProviderSpec | ModelProfileSpec | RoutePolicySpec | RetryRegistrySpec | PermissionPolicySpec;
 export type Revisions = WorkflowResolvedRevision[];
 export type WorkflowContentHash1 = string;
-export type Items4 = WorkflowTemplateRecord[];
-export type NextAfter3 = string | null;
+export type Items9 = WorkflowTemplateRecord[];
+export type NextAfter8 = string | null;
 export type ExpectedVersion5 = number;
-export type IdempotencyKey11 = string;
+export type IdempotencyKey14 = string;
 export type ContentHash5 = string | null;
 export type Code4 = string;
 export type EdgeId = string | null;
@@ -669,13 +730,13 @@ export type SnapshotHash3 = string | null;
 export type Valid1 = boolean;
 export type CompilerVersion2 = string;
 export type ContentHash6 = string;
-export type Id19 = string;
+export type Id24 = string;
 export type Published1 = boolean;
 export type SpecVersion1 = "1.0" | "1.1";
-export type Version7 = number;
+export type Version8 = number;
 export type WorkflowTemplateId1 = string;
-export type Items5 = WorkflowVersionRecord[];
-export type NextAfter4 = string | null;
+export type Items10 = WorkflowVersionRecord[];
+export type NextAfter9 = string | null;
 
 export interface JarvisContractBundle {
   accounting_page?: AccountingPage | null;
@@ -690,12 +751,16 @@ export interface JarvisContractBundle {
   failure_record?: FailureRecord | null;
   idempotency?: IdempotencyContract | null;
   job?: Job | null;
+  job_create?: JobCreate | null;
+  job_page?: JobPage | null;
   lease?: Lease | null;
   liveness_response?: LivenessResponse | null;
   login_request?: LoginRequest | null;
   logout_response?: LogoutResponse | null;
   new_event?: NewEvent | null;
   normalized_event?: NormalizedEvent | null;
+  project_create?: ProjectCreate | null;
+  project_page?: ProjectPage | null;
   provider_chunk?: ProviderChunk | null;
   provider_request?: ProviderRequest | null;
   provider_result?: ProviderResult | null;
@@ -711,7 +776,11 @@ export interface JarvisContractBundle {
   run_command_receipt?: RunCommandReceipt | null;
   run_command_request?: RunCommandRequest | null;
   run_configuration_snapshot?: RunConfigurationSnapshot | null;
+  run_control?: RunControl | null;
   run_event_snapshot?: RunEventSnapshotResponse | null;
+  run_page?: RunPage | null;
+  runtime_commands: CommandPage;
+  runtime_nodes: NodePage;
   session_response?: SessionResponse | null;
   task?: Task | null;
   task_attempt?: TaskAttempt | null;
@@ -930,18 +999,35 @@ export interface Job {
   updated_at: UpdatedAt1;
   version: Version;
 }
+export interface JobCreate {
+  idempotency_key: IdempotencyKey2;
+  mode?: Mode;
+  objective: Objective1;
+  priority?: Priority;
+  workflow_version_id: WorkflowVersionId;
+}
+export interface JobPage {
+  items: Items2;
+  next_after?: NextAfter2;
+}
+export interface JobView {
+  id: Id6;
+  objective: Objective2;
+  project_id: ProjectId3;
+  status: Status2;
+}
 export interface Lease {
   acquired_at: AcquiredAt;
   expires_at: ExpiresAt;
   generation: Generation;
-  id: Id6;
+  id: Id7;
   owner_instance_id: OwnerInstanceId;
   released_at?: ReleasedAt;
   run_id: RunId4;
 }
 export interface LivenessResponse {
   service?: Service;
-  status?: Status2;
+  status?: Status3;
   version?: Version1;
 }
 export interface LoginRequest {
@@ -960,7 +1046,7 @@ export interface NewEvent {
   causation_event_id?: CausationEventId1;
   correlation_id: CorrelationId2;
   data: Data1;
-  idempotency_key?: IdempotencyKey2;
+  idempotency_key?: IdempotencyKey3;
   message: Message2;
   mode: EventMode;
   occurred_at: OccurredAt1;
@@ -974,6 +1060,20 @@ export interface NewEvent {
 }
 export interface Data1 {
   [k: string]: JsonValue;
+}
+export interface ProjectCreate {
+  idempotency_key: IdempotencyKey4;
+  name: Name1;
+  slug: Slug;
+}
+export interface ProjectPage {
+  items: Items3;
+  next_after?: NextAfter3;
+}
+export interface ProjectView {
+  id: Id8;
+  name: Name2;
+  slug: Slug1;
 }
 export interface ProviderChunk {
   demo?: Demo1;
@@ -1006,8 +1106,8 @@ export interface ProviderFailure {
 }
 export interface ProviderToolCall {
   arguments: Arguments;
-  id: Id7;
-  name: Name1;
+  id: Id9;
+  name: Name3;
 }
 export interface Arguments {
   [k: string]: JsonValue;
@@ -1017,7 +1117,7 @@ export interface ProviderRequest {
   data_classification?: DataClassification;
   node_id?: NodeId1;
   output_tokens: OutputTokens1;
-  project_id?: ProjectId3;
+  project_id?: ProjectId4;
   purpose: Purpose;
   run_id?: RunId5;
   structured_schema?: StructuredSchema;
@@ -1027,7 +1127,7 @@ export interface ProviderRequest {
 }
 export interface ProviderTool {
   description?: Description;
-  name: Name2;
+  name: Name4;
   parameters: Parameters;
 }
 export interface Parameters {
@@ -1035,11 +1135,11 @@ export interface Parameters {
 }
 export interface ReadinessResponse {
   database: Database;
-  status: Status3;
+  status: Status4;
 }
 export interface RegistryPage {
-  items: Items2;
-  next_after?: NextAfter2;
+  items: Items4;
+  next_after?: NextAfter4;
 }
 export interface RegistryRecord {
   archived: Archived;
@@ -1051,7 +1151,7 @@ export interface RegistryRecord {
   display_name: DisplayName;
   enabled: Enabled;
   health?: Health;
-  id: Id8;
+  id: Id10;
   key: Key2;
   revision: Revision1;
   revision_id: RevisionId;
@@ -1081,7 +1181,7 @@ export interface Labels {
 }
 export interface ModelBinding {
   allowed_profile_revision_ids?: AllowedProfileRevisionIds;
-  mode?: Mode;
+  mode?: Mode1;
 }
 export interface TimeoutPolicy {
   connect_seconds?: ConnectSeconds;
@@ -1139,7 +1239,7 @@ export interface RoutePolicySpec {
   spend?: SpendPolicy;
 }
 export interface RouteCandidate {
-  priority?: Priority;
+  priority?: Priority1;
   profile_revision_id: ProfileRevisionId2;
 }
 export interface SpendPolicy {
@@ -1189,7 +1289,7 @@ export interface RegistryWrite {
   display_name: DisplayName1;
   enabled?: Enabled1;
   expected_version?: ExpectedVersion;
-  idempotency_key: IdempotencyKey3;
+  idempotency_key: IdempotencyKey5;
   key: Key3;
   secret_ref?: SecretRef;
   spec: Spec2;
@@ -1232,19 +1332,19 @@ export interface Run {
   config_snapshot_id: ConfigSnapshotId;
   created_at: CreatedAt6;
   desired_state: DesiredRunState;
-  id: Id9;
+  id: Id11;
   job_id: JobId1;
   langgraph_thread_id: LanggraphThreadId;
   run_number: RunNumber;
   status: RunStatus;
   updated_at: UpdatedAt3;
   version: Version3;
-  workflow_version_id: WorkflowVersionId;
+  workflow_version_id: WorkflowVersionId1;
 }
 export interface RunCommand {
   created_at: CreatedAt7;
-  id: Id10;
-  idempotency_key: IdempotencyKey4;
+  id: Id12;
+  idempotency_key: IdempotencyKey6;
   kind: RunCommandKind;
   payload: Payload;
   request_digest: RequestDigest2;
@@ -1266,7 +1366,7 @@ export interface RunCommandReceipt {
 }
 export interface RunCommandRequest {
   expected_run_version?: ExpectedRunVersion;
-  idempotency_key: IdempotencyKey5;
+  idempotency_key: IdempotencyKey7;
   kind: RunCommandKind;
   payload?: Payload1;
   run_id: RunId8;
@@ -1278,12 +1378,12 @@ export interface Payload1 {
 export interface RunConfigurationSnapshot {
   created_at: CreatedAt8;
   effective_spec: EffectiveSpec;
-  id: Id11;
+  id: Id13;
   resolved_revisions: ResolvedRevisions;
   schema_version?: SchemaVersion7;
   snapshot_hash: SnapshotHash1;
   workflow_content_hash: WorkflowContentHash;
-  workflow_version_id: WorkflowVersionId1;
+  workflow_version_id: WorkflowVersionId2;
 }
 export interface EffectiveSpec {
   [k: string]: JsonValue;
@@ -1294,13 +1394,70 @@ export interface ResolvedRevision {
   kind: ConfigurationKind;
   revision_id: RevisionId1;
 }
+export interface RunControl {
+  expected_run_version: ExpectedRunVersion1;
+  idempotency_key: IdempotencyKey8;
+  instruction?: Instruction;
+  kind: RunCommandKind;
+}
 export interface RunEventSnapshotResponse {
   last_event_at: LastEventAt;
   last_event_position: LastEventPosition;
   last_run_sequence: LastRunSequence;
   read_cursor: ReadCursor;
   run_id: RunId9;
-  status: Status4;
+  status: Status5;
+}
+export interface RunPage {
+  items: Items5;
+  next_after?: NextAfter5;
+}
+export interface RunView {
+  claimable_at: ClaimableAt1;
+  completed_at: CompletedAt;
+  current_node: CurrentNode;
+  desired_state: DesiredState;
+  id: Id14;
+  job_id: JobId2;
+  last_event_at: LastEventAt1;
+  last_event_position: LastEventPosition1;
+  last_run_sequence: LastRunSequence1;
+  mode: Mode2;
+  project_id: ProjectId5;
+  recovering: Recovering;
+  result_summary: ResultSummary;
+  retry_of_run_id: RetryOfRunId;
+  run_number: RunNumber1;
+  started_at: StartedAt;
+  status: Status6;
+  thread_id: ThreadId2;
+  version: Version4;
+  workflow_version_id: WorkflowVersionId3;
+}
+export interface CommandPage {
+  items: Items6;
+  next_after?: NextAfter6;
+}
+export interface CommandView {
+  applied_at: AppliedAt;
+  id: Id15;
+  kind: Kind9;
+  sequence: Sequence2;
+  status: Status7;
+}
+export interface NodePage {
+  items: Items7;
+  next_after?: NextAfter7;
+}
+export interface NodeView {
+  completed_at: CompletedAt1;
+  execution_number: ExecutionNumber;
+  id: Id16;
+  started_at: StartedAt1;
+  status: Status8;
+  task_attempt_id: TaskAttemptId3;
+  task_id: TaskId3;
+  workflow_node_id: WorkflowNodeId1;
 }
 export interface SessionResponse {
   absolute_expires_at: AbsoluteExpiresAt;
@@ -1309,21 +1466,21 @@ export interface SessionResponse {
   user: SessionUser;
 }
 export interface SessionUser {
-  id: Id12;
+  id: Id17;
   role?: Role;
   username: Username1;
 }
 export interface Task {
   acceptance_criteria: AcceptanceCriteria;
   created_at: CreatedAt9;
-  id: Id13;
+  id: Id18;
   key: Key5;
   run_id: RunId10;
   status: TaskStatus;
   title: Title;
   updated_at: UpdatedAt4;
   verification: Verification;
-  version: Version4;
+  version: Version5;
   weight?: Weight;
 }
 export interface Verification {
@@ -1332,12 +1489,12 @@ export interface Verification {
 export interface TaskAttempt {
   attempt_number: AttemptNumber;
   base_sha?: BaseSha;
-  completed_at?: CompletedAt;
-  id: Id14;
+  completed_at?: CompletedAt2;
+  id: Id19;
   result_sha?: ResultSha;
-  started_at?: StartedAt;
+  started_at?: StartedAt2;
   status: AttemptStatus;
-  task_id: TaskId3;
+  task_id: TaskId4;
 }
 export interface ValidationReport {
   demo?: Demo4;
@@ -1349,17 +1506,17 @@ export interface ValidationReport {
 export interface WorkflowArchiveRequest {
   archived: Archived2;
   expected_version: ExpectedVersion1;
-  idempotency_key: IdempotencyKey6;
+  idempotency_key: IdempotencyKey9;
 }
 export interface WorkflowCommand {
   expected_version: ExpectedVersion2;
-  idempotency_key: IdempotencyKey7;
+  idempotency_key: IdempotencyKey10;
 }
 export interface WorkflowCreateRequest {
   description?: Description3;
-  idempotency_key: IdempotencyKey8;
+  idempotency_key: IdempotencyKey11;
   key: Key6;
-  name: Name3;
+  name: Name5;
 }
 export interface WorkflowDocument {
   template: WorkflowTemplateRecord;
@@ -1371,23 +1528,23 @@ export interface WorkflowTemplateRecord {
   current_draft_version_id?: CurrentDraftVersionId;
   current_published_version_id?: CurrentPublishedVersionId;
   description: Description4;
-  id: Id15;
+  id: Id20;
   key: Key7;
-  name: Name4;
+  name: Name6;
   updated_at: UpdatedAt5;
-  version: Version5;
+  version: Version6;
 }
 export interface WorkflowVersionRecord {
   compiler_version: CompilerVersion;
   content_hash: ContentHash3;
   created_at: CreatedAt11;
-  id: Id16;
+  id: Id21;
   layout: WorkflowLayout;
   published: Published;
   published_at?: PublishedAt;
   snapshot_hash?: SnapshotHash2;
   spec: WorkflowSpec;
-  version: Version6;
+  version: Version7;
   workflow_template_id: WorkflowTemplateId;
 }
 export interface WorkflowLayout {
@@ -1412,7 +1569,7 @@ export interface WorkflowSpec {
   edges: Edges;
   entrypoint: Entrypoint;
   key: Key8;
-  name: Name5;
+  name: Name7;
   nodes: Nodes1;
   outputs: WorkflowOutputs;
   reducers?: Reducers;
@@ -1446,11 +1603,11 @@ export interface WorkerSelector {
 export interface WorkflowEdge {
   fallback?: Fallback;
   from: From;
-  id: Id17;
+  id: Id22;
   iteration_key?: IterationKey;
   kind: WorkflowEdgeKind;
   max_iterations?: MaxIterations;
-  priority?: Priority1;
+  priority?: Priority2;
   progress_path?: ProgressPath;
   retry_class?: FailureClass | null;
   to: To;
@@ -1464,7 +1621,7 @@ export interface Predicate {
 }
 export interface WorkflowNode {
   config: Config;
-  id: Id18;
+  id: Id23;
   label: Label;
   node_version?: NodeVersion;
   policy?: NodePolicy;
@@ -1481,13 +1638,13 @@ export interface Reducers {
 }
 export interface WorkflowDraftWrite {
   expected_version: ExpectedVersion3;
-  idempotency_key: IdempotencyKey9;
+  idempotency_key: IdempotencyKey12;
   layout?: WorkflowLayout;
   spec: WorkflowSpec;
 }
 export interface WorkflowNewDraft {
   expected_version: ExpectedVersion4;
-  idempotency_key: IdempotencyKey10;
+  idempotency_key: IdempotencyKey13;
   source_version_id?: SourceVersionId;
 }
 export interface OrganizerConfig {
@@ -1538,7 +1695,7 @@ export interface FinalizeConfig {
   outcome?: Outcome1;
 }
 export interface NodeTypePage {
-  items: Items3;
+  items: Items8;
 }
 export interface NodeTypeDefinition {
   config_schema: ConfigSchema;
@@ -1577,12 +1734,12 @@ export interface WorkflowResolvedRevision {
   spec: Spec3;
 }
 export interface WorkflowTemplatePage {
-  items: Items4;
-  next_after?: NextAfter3;
+  items: Items9;
+  next_after?: NextAfter8;
 }
 export interface WorkflowValidateRequest {
   expected_version: ExpectedVersion5;
-  idempotency_key: IdempotencyKey11;
+  idempotency_key: IdempotencyKey14;
   layout?: Layout;
   spec: Spec4;
 }
@@ -1608,18 +1765,18 @@ export interface WorkflowIssue {
 export interface WorkflowVersionContract {
   compiler_version: CompilerVersion2;
   content_hash: ContentHash6;
-  id: Id19;
+  id: Id24;
   layout: Layout1;
   published: Published1;
   spec: WorkflowSpec;
   spec_version?: SpecVersion1;
-  version: Version7;
+  version: Version8;
   workflow_template_id: WorkflowTemplateId1;
 }
 export interface Layout1 {
   [k: string]: JsonValue;
 }
 export interface WorkflowVersionPage {
-  items: Items5;
-  next_after?: NextAfter4;
+  items: Items10;
+  next_after?: NextAfter9;
 }

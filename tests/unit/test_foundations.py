@@ -7,7 +7,7 @@ from jarvis_api.config import get_settings
 from jarvis_api.main import create_app
 from jarvis_contracts import __version__ as contracts_version
 from jarvis_orchestrator import __version__ as orchestrator_version
-from jarvis_orchestrator.main import run, serve
+from jarvis_orchestrator.main import OrchestratorSettings, run, serve
 
 
 def test_api_health_is_stable_and_minimal() -> None:
@@ -34,14 +34,23 @@ def test_settings_have_loopback_defaults() -> None:
 
 
 def test_orchestrator_serve_waits_for_shutdown() -> None:
-    event = AsyncMock()
-    with patch("jarvis_orchestrator.main.asyncio.Event", return_value=event):
+    service = AsyncMock()
+    with (
+        patch(
+            "jarvis_orchestrator.main.OrchestratorSettings",
+            return_value=OrchestratorSettings(DATABASE_URL="postgresql+psycopg://localhost/test"),
+        ),
+        patch("jarvis_orchestrator.main.OrchestratorService", return_value=service),
+    ):
         asyncio.run(serve())
-    event.wait.assert_awaited_once()
+    service.serve.assert_awaited_once()
 
 
 def test_orchestrator_entrypoint_uses_asyncio_runner() -> None:
-    with patch("jarvis_orchestrator.main.asyncio.run") as asyncio_run:
+    with (
+        patch("jarvis_orchestrator.main.sys.platform", "linux"),
+        patch("jarvis_orchestrator.main.asyncio.run") as asyncio_run,
+    ):
         run()
     asyncio_run.assert_called_once()
     asyncio_run.call_args.args[0].close()
