@@ -81,6 +81,8 @@ project.created
 config.validated failure.classified file.created file.deleted file.read file.snapshot_created
 file.write_completed file.write_started git.branch_created git.ci_updated git.commit_created
 git.integration_completed git.integration_conflict git.integration_started git.pr_created
+git.integration_lease_acquired git.integration_lease_renewed git.integration_lease_released
+command.normalized
 git.push_completed git.push_started graph.checkpointed graph.compile_failed graph.compiled
 graph.fanout_started graph.join_completed graph.route_selected instruction.applied
 instruction.queued job.blocked job.cancelled job.completed job.created job.failed job.status_changed

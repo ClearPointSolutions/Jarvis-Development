@@ -478,7 +478,7 @@ function RecordDetails({ record }: { record: RegistryRecord }) {
         ) : null}
       </dl>
       {"capabilities" in spec ? (
-        <div className="capability-list" aria-label="Capabilities">
+        <div className="capability-list" role="group" aria-label="Capabilities">
           {spec.capabilities?.length ? (
             spec.capabilities.map((capability) => (
               <span className="status-label" key={capability}>
@@ -491,7 +491,11 @@ function RecordDetails({ record }: { record: RegistryRecord }) {
         </div>
       ) : null}
       {spec.kind === "route_policy" ? (
-        <div className="capability-list" aria-label="Required capabilities">
+        <div
+          className="capability-list"
+          role="group"
+          aria-label="Required capabilities"
+        >
           {spec.required_capabilities?.map((capability) => (
             <span className="status-label" key={capability}>
               {capability}

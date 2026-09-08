@@ -1,5 +1,6 @@
 """M6 real PostgreSQL/API/compiler/effect/retry/decision vertical acceptance."""
 
+import asyncio
 from datetime import timedelta
 from pathlib import Path
 
@@ -9,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from uuid6 import uuid7
 
 from jarvis_orchestrator.demo.bootstrap import bootstrap_demo
+from jarvis_orchestrator.runtime.ownership import RunFence
 from jarvis_orchestrator.runtime.service import OrchestratorService
 from jarvis_persistence.checkpoints import postgres_saver
 from jarvis_persistence.models import EventModel, ModelCallModel, RunLeaseModel, RunModel
@@ -18,6 +20,23 @@ from tests.integration.test_m5_effects import InjectedCrash
 from tests.integration.test_m5_runtime import acquire
 
 pytestmark = pytest.mark.integration
+
+
+async def execute_with_renewal(service: OrchestratorService, fence: RunFence) -> None:
+    """Mirror serve/tick lease renewal while preserving direct exception assertions."""
+    pending = asyncio.create_task(service._execute(fence))
+    try:
+        while not pending.done():
+            done, _ = await asyncio.wait(
+                {pending}, timeout=service.ownership.ttl.total_seconds() / 3
+            )
+            if not done:
+                await service.ownership.renew(fence)
+        await pending
+    finally:
+        if not pending.done():
+            pending.cancel()
+            await asyncio.gather(pending, return_exceptions=True)
 
 
 async def execute_fixture(
@@ -90,8 +109,8 @@ async def execute_fixture(
             assert lease is not None
             lease.expires_at = owner.clock.now() - timedelta(seconds=1)
         owner, fence = await acquire(session_factory, run_id)
-    await OrchestratorService(database_url, owner, demo=True, artifact_root=tmp_path)._execute(
-        fence
+    await execute_with_renewal(
+        OrchestratorService(database_url, owner, demo=True, artifact_root=tmp_path), fence
     )
     view = (await api.client.get(f"/api/v1/runs/{run_id}")).json()
     assert view["status"] == "approval_required", view
@@ -125,9 +144,10 @@ async def execute_fixture(
     )
     assert decided.status_code == 202, decided.text
     replacement, resumed_fence = await acquire(session_factory, run_id)
-    await OrchestratorService(
-        database_url, replacement, demo=True, artifact_root=tmp_path
-    )._execute(resumed_fence)
+    await execute_with_renewal(
+        OrchestratorService(database_url, replacement, demo=True, artifact_root=tmp_path),
+        resumed_fence,
+    )
     async with session_factory() as session:
         run = await session.get(RunModel, run_id)
         assert run is not None and run.status == (

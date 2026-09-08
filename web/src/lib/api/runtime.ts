@@ -14,6 +14,7 @@ import type {
   DemoDecision,
   DemoDecisionView,
   EventPage,
+  IntegrationHeadPage,
 } from "@jarvis/contracts";
 import { ApiRequestError } from "./client";
 
@@ -44,6 +45,10 @@ export function createRuntimeClient(csrfToken?: string) {
     return response.json() as Promise<T>;
   }
   return {
+    integrationHeads: (id: string) =>
+      request<IntegrationHeadPage>(
+        `/runs/${encodeURIComponent(id)}/integration-heads`,
+      ),
     evidence: (id: string) =>
       request<EventPage>(`/runs/${encodeURIComponent(id)}/events?limit=1000`),
     tasks: (id: string) =>

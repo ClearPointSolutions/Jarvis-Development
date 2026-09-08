@@ -70,6 +70,12 @@ export function RunExperience({ runId }: { runId: string }) {
     enabled,
   });
   const events = { data: evidence.data?.items ?? [] };
+  const integration = useQuery({
+    queryKey: ["runtime-integration", runId],
+    queryFn: () => client.integrationHeads(runId),
+    enabled,
+    refetchInterval: 5000,
+  });
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const items = tasks.data?.items ?? [];
@@ -185,6 +191,104 @@ export function RunExperience({ runId }: { runId: string }) {
         </ul>
         {tasks.error && <p role="alert">Task history could not be loaded.</p>}
       </section>
+      <section
+        className="content-card run-experience-card"
+        aria-label="Repository verification and review"
+      >
+        <h2>Repository verification and review</h2>
+        <p>
+          Each review applies to its recorded candidate SHA. Integration
+          requires separate combined gates.
+        </p>
+        <ul>
+          {events.data
+            .filter((event) =>
+              /^(test\.|review\.|file\.snapshot_created|git\.integration_)/.test(
+                event.type,
+              ),
+            )
+            .map((event) => (
+              <li key={event.event_id}>
+                <details>
+                  <summary>
+                    {event.type} ·{" "}
+                    {String(
+                      event.data.summary ??
+                        event.data.head_sha ??
+                        event.data.source_sha ??
+                        "Recorded evidence",
+                    )}
+                  </summary>
+                  <dl>
+                    {Object.entries(event.data)
+                      .filter(
+                        ([key, value]) =>
+                          !key.endsWith("artifact_id") &&
+                          (typeof value === "string" ||
+                            typeof value === "number" ||
+                            typeof value === "boolean"),
+                      )
+                      .map(([key, value]) => (
+                        <div key={key}>
+                          <dt>{key.replaceAll("_", " ")}</dt>
+                          <dd>
+                            <code>{String(value)}</code>
+                          </dd>
+                        </div>
+                      ))}
+                  </dl>
+                  {Object.entries(event.data)
+                    .filter(
+                      ([key, value]) =>
+                        key.endsWith("artifact_id") &&
+                        typeof value === "string" &&
+                        /^[0-9a-f-]{36}$/.test(value),
+                    )
+                    .map(([key, value]) => (
+                      <p key={key}>
+                        <a href={`/api/v1/artifacts/${String(value)}`}>
+                          {key.replaceAll("_", " ")}
+                        </a>
+                      </p>
+                    ))}
+                </details>
+              </li>
+            ))}
+        </ul>
+        <h3>Authoritative integration HEAD</h3>
+        {(integration.data?.items ?? []).map((head) => (
+          <div key={head.repository_id}>
+            <p>
+              Branch: <code>{head.branch}</code>
+            </p>
+            <p>
+              Base: <code>{head.base_sha}</code>
+            </p>
+            <p>
+              Current HEAD: <code>{head.head_sha}</code>
+            </p>
+            <p>
+              Lease generation {head.generation} ·{" "}
+              {head.released_at
+                ? "released"
+                : head.lease_owner
+                  ? "acquired"
+                  : "not acquired"}
+            </p>
+            {head.snapshot_artifact_id && (
+              <a href={`/api/v1/artifacts/${head.snapshot_artifact_id}`}>
+                Sealed integration snapshot
+              </a>
+            )}
+          </div>
+        ))}
+        {!integration.data?.items.length && (
+          <p>No integration HEAD has been recorded.</p>
+        )}
+        {integration.error && (
+          <p role="alert">Integration state could not be loaded.</p>
+        )}
+      </section>
       {decision.data && (
         <section
           className="content-card run-experience-card"
@@ -221,7 +325,11 @@ export function RunExperience({ runId }: { runId: string }) {
         className="content-card run-experience-card"
         aria-label="Retry history"
       >
-        <h2>DEMO dependency health</h2>
+        <h2>
+          {run.data?.mode === "demo"
+            ? "DEMO dependency health"
+            : "Dependency health"}
+        </h2>
         <ul>
           {events.data
             .filter((e) => e.type === "service.health_changed")
@@ -250,7 +358,10 @@ export function RunExperience({ runId }: { runId: string }) {
         <h2>Model usage</h2>
         <p>
           {events.data.filter((e) => e.type === "model.usage_recorded").length}{" "}
-          durable model calls · token estimates are DEMO fixture values.
+          durable model calls
+          {run.data?.mode === "demo"
+            ? " · token estimates are DEMO fixture values."
+            : "."}
         </p>
         <ul>
           {events.data

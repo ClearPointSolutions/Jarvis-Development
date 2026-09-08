@@ -304,6 +304,29 @@ when published and excluded from the execution hash. Schema/backend/frontend
 consume one authority. External runtime services are injected and fail closed
 when unavailable; no M5 queue, M9 approval execution or external effect is enabled.
 
+### ADR-027 — Sealed integration generations
+
+**Decision:** Local M8 integration creates a separate candidate branch/worktree
+for each integration lease generation. It merges the reviewed candidate with
+`git merge --no-ff --no-edit` against the currently selected integration SHA.
+Task branches are never rebased or deleted. Conflicts abort only that candidate
+operation. After combined gates, the candidate is sealed. A fenced PostgreSQL
+transaction selects its branch/SHA/snapshot as the authoritative integration HEAD.
+
+**Why:** Git and PostgreSQL cannot participate in one atomic commit. Selecting
+an already created, verified Git generation in PostgreSQL avoids updating a shared
+Git ref before a database commit that could subsequently roll back. A stale
+executor can leave an unselected diagnostic generation, but cannot select it.
+
+**Consequences:** The selected Git branch and SHA, immutable artifact evidence,
+and run/repository selection row together define current integration state.
+No shared integration checkout is mutated. Recovery revalidates the selected
+branch/SHA and current fence; abandoned generations remain diagnostic. Cleanup
+and remote publication remain out of scope. M8 evidence bodies reuse immutable
+artifacts and append-only events; migration 0008 adds only the mutable selection
+and repository lease projection. Existing effect identities govern queue order
+and recovery, and LangGraph remains the only workflow engine.
+
 ## Unresolved rework risks and required spikes
 
 These do not block architecture, but they are explicit gates:

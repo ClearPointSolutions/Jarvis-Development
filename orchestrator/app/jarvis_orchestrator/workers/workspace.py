@@ -52,7 +52,9 @@ class WorktreeManager:
     async def _git_native(self, cwd: Path, *argv: str) -> tuple[bytes, bool]:
         local_contained(self.root, cwd)
         environment = {
-            key: value for key, value in os.environ.items() if not key.startswith("GIT_")
+            key: value
+            for key, value in os.environ.items()
+            if key.upper() in {"PATH", "SYSTEMROOT", "TEMP", "TMP"}
         }
         environment.update(
             {
@@ -108,6 +110,7 @@ class WorktreeManager:
         if not re.fullmatch(r"[a-f0-9]{40}", base_sha):
             raise WorkerBoundaryError("invalid_base_sha")
         repository = local_contained(self.root, repository)
+        await self.require_safe_config(repository)
         actual_root = Path(await self.scalar(repository, "rev-parse", "--show-toplevel")).resolve()
         if actual_root != repository:
             raise WorkerBoundaryError("repository_root_mismatch")
@@ -138,6 +141,7 @@ class WorktreeManager:
     ) -> WorkerRepositorySnapshot:
         validate_branch(branch)
         workspace = local_contained(self.root, workspace)
+        await self.require_safe_config(workspace)
         actual_root = Path(await self.scalar(workspace, "rev-parse", "--show-toplevel")).resolve()
         if actual_root != workspace:
             raise WorkerBoundaryError("repository_root_mismatch")
@@ -170,3 +174,22 @@ class WorktreeManager:
             diff_digest=digest(diff),
             metadata_truncated=status_truncated or manifest_truncated or diff_truncated,
         )
+
+    async def require_safe_config(self, workspace: Path) -> None:
+        # Repository-local filters and merge drivers are executable hooks too.
+        # Global configuration is disabled; reject local execution extensions
+        # before checkout, inspection or integration can invoke them.
+        configuration, truncated = await self.git(
+            workspace, "config", "--local", "--null", "--list"
+        )
+        if truncated:
+            raise WorkerBoundaryError("repository_configuration_oversized")
+        for item in configuration.split(b"\x00"):
+            key = item.split(b"\n", 1)[0].lower()
+            if (
+                key.startswith(b"filter.")
+                or (key.startswith(b"merge.") and key.endswith(b".driver"))
+                or key.startswith(b"include.")
+                or key.startswith(b"includeif.")
+            ):
+                raise WorkerBoundaryError("repository_execution_extension_denied")

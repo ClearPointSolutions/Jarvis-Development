@@ -1,6 +1,7 @@
 """M7 PostgreSQL queue -> compiled workflow -> M5 -> fake SSH acceptance."""
 
 from datetime import timedelta
+from itertools import pairwise
 from pathlib import Path
 from uuid import UUID
 
@@ -12,9 +13,20 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from uuid6 import uuid7
 
 from jarvis_api.registry.service import RegistryService
-from jarvis_contracts.registry import ModelProfileSpec, ProviderSpec, WorkerSpec
+from jarvis_contracts.base import sha256_digest
+from jarvis_contracts.enums import FailureClass
+from jarvis_contracts.failures import RetryRule
+from jarvis_contracts.registry import (
+    ModelProfileSpec,
+    ProviderSpec,
+    RetryRegistrySpec,
+    RouteCandidate,
+    RoutePolicySpec,
+    WorkerSpec,
+)
 from jarvis_contracts.workers import WorkerInvocationRequest
-from jarvis_contracts.workflow import WorkerSelector
+from jarvis_contracts.workflow import VerificationPolicy, WorkerSelector
+from jarvis_contracts.workflow_api import WorkflowResolvedRevision
 from jarvis_orchestrator.runtime.ownership import RunOwnership, StaleExecutorError
 from jarvis_orchestrator.runtime.service import OrchestratorService
 from jarvis_orchestrator.workers.configuration import configured_worker_registry
@@ -53,6 +65,8 @@ pytestmark = pytest.mark.integration
 
 async def setup_worker_run(
     factory: async_sessionmaker[AsyncSession],
+    *,
+    m8: bool = False,
 ) -> tuple[UUID, WorkerInvocationRequest, WorkerSpec]:
     request = worker_request()
     provider = resolved_revision(ProviderSpec(provider_kind="demo"))
@@ -60,29 +74,120 @@ async def setup_worker_run(
         ModelProfileSpec(
             provider_revision_id=provider.revision_id,
             model_identifier="local-worker-managed-fixture",
-            purposes=("developer",),
+            purposes=("developer", "architect", "reviewer") if m8 else ("developer",),
             context_limit=8192,
             output_limit=1024,
         )
     )
     request = request.model_copy(update={"model_profile_revision_id": profile.revision_id})
     worker = worker_spec(request)
+    if m8:
+        worker = worker.model_copy(update={"capabilities": ("code", "git", "tests")})
     policy, defaults = external_defaults()
     revision = resolved_revision(worker)
     policy = policy.model_copy(
         update={
             "worker_selector": WorkerSelector(revision_id=revision.revision_id),
-            "timeout_seconds": 30,
+            "timeout_seconds": 300 if m8 else 30,
         }
     )
+    extra: tuple[WorkflowResolvedRevision, ...] = ()
+    if m8:
+        retry = resolved_revision(
+            RetryRegistrySpec(
+                rules=tuple(
+                    RetryRule(failure_class=kind, max_retries=1, exhaustion_action="fail")
+                    for kind in (FailureClass.CODE_TEST_FAILURE, FailureClass.CODE_REVIEW_FAILURE)
+                )
+            )
+        )
+        defaults = (retry, *defaults[1:])
+        route = resolved_revision(
+            RoutePolicySpec(
+                candidates=(RouteCandidate(profile_revision_id=profile.revision_id),),
+                purposes=("developer", "architect", "reviewer"),
+                allow_unknown_health=True,
+            )
+        )
+        extra = (route,)
+        policy = policy.model_copy(
+            update={
+                "model_route_ref": route.revision_id,
+                "verification": VerificationPolicy(),
+                "retry_policy_ref": retry.revision_id,
+            }
+        )
+    nodes = (
+        (
+            node("plan", "architect"),
+            node("dispatch", "task_dispatch"),
+            node("worker", "worker"),
+            node("verify", "verify"),
+            node("review", "reviewer"),
+            node("integrate", "integrate"),
+            node("finish", "finalize"),
+            node("failed", "finalize", config={"outcome": "failed"}),
+        )
+        if m8
+        else (node("worker", "worker"), node("finish", "finalize"))
+    )
+    connections = tuple(edge(left.id, right.id) for left, right in pairwise(nodes))
+    if m8:
+        connections = tuple(
+            edge(left.id, right.id)
+            for left, right in pairwise(nodes[:7])
+            if left.id not in {"verify", "review"}
+        )
+        for source, target, failure in (
+            ("verify", "review", "code.test_failure"),
+            ("review", "integrate", "code.review_failure"),
+        ):
+            connections += (
+                edge(source, "worker", kind="retry", retry_class=failure, priority=0),
+                edge(
+                    source,
+                    target,
+                    kind="on_result",
+                    priority=1,
+                    when={"path": "$.outcome.status", "op": "eq", "value": "succeeded"},
+                ),
+                edge(source, "failed", kind="on_result", fallback=True, priority=2),
+            )
     spec = spec_for(
-        (node("worker", "worker"), node("finish", "finalize")),
-        (edge("worker", "finish"),),
+        nodes,
+        connections,
         defaults=policy,
     )
-    run_id = await prepare_run(
-        factory, spec, snapshot_for(spec, *defaults[:2], revision, profile, provider)
-    )
+    closure = (*defaults[:2], revision, profile, provider, *extra)
+    if m8:
+        unique = []
+        for item in closure:
+            key = f"{item.key}-{item.configuration_id.hex}"
+            unique.append(
+                item.model_copy(
+                    update={
+                        "key": key,
+                        "content_hash": sha256_digest(
+                            {
+                                "kind": item.spec.kind,
+                                "key": key,
+                                "revision": item.revision,
+                                "schema_version": "1.0",
+                                "spec": {
+                                    "spec": item.spec.model_dump(mode="json"),
+                                    "display_name": item.display_name,
+                                    "description": item.description,
+                                    "enabled": item.enabled,
+                                    "archived": item.archived,
+                                },
+                            }
+                        ),
+                    }
+                )
+            )
+        closure = tuple(unique)
+        revision = next(item for item in closure if item.revision_id == revision.revision_id)
+    run_id = await prepare_run(factory, spec, snapshot_for(spec, *closure))
     request = request.model_copy(
         update={
             "run_id": run_id,
@@ -98,8 +203,8 @@ async def setup_worker_run(
             ConfigurationModel(
                 id=revision.configuration_id,
                 kind="worker",
-                key=str(revision.configuration_id),
-                display_name="Local fake worker",
+                key=revision.key if m8 else str(revision.configuration_id),
+                display_name=revision.display_name if m8 else "Local fake worker",
             )
         )
         await session.flush()
@@ -111,8 +216,8 @@ async def setup_worker_run(
                 schema_version="1.0",
                 spec_json={
                     "spec": worker.model_dump(mode="json"),
-                    "display_name": "Local fake worker",
-                    "description": "M7 fixture",
+                    "display_name": revision.display_name if m8 else "Local fake worker",
+                    "description": revision.description if m8 else "M7 fixture",
                     "enabled": True,
                     "archived": False,
                 },

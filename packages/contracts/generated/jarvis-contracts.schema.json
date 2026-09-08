@@ -1700,6 +1700,125 @@
       "title": "IntegrateConfig",
       "type": "object"
     },
+    "IntegrationHeadPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/IntegrationHeadView"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "next_after": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Next After"
+        }
+      },
+      "required": [
+        "items",
+        "next_after"
+      ],
+      "title": "IntegrationHeadPage",
+      "type": "object"
+    },
+    "IntegrationHeadView": {
+      "additionalProperties": false,
+      "properties": {
+        "base_sha": {
+          "pattern": "^[a-f0-9]{40}$",
+          "title": "Base Sha",
+          "type": "string"
+        },
+        "branch": {
+          "title": "Branch",
+          "type": "string"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Expires At"
+        },
+        "generation": {
+          "title": "Generation",
+          "type": "integer"
+        },
+        "head_sha": {
+          "pattern": "^[a-f0-9]{40}$",
+          "title": "Head Sha",
+          "type": "string"
+        },
+        "lease_owner": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Lease Owner"
+        },
+        "released_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Released At"
+        },
+        "repository_id": {
+          "format": "uuid",
+          "title": "Repository Id",
+          "type": "string"
+        },
+        "snapshot_artifact_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Snapshot Artifact Id"
+        }
+      },
+      "required": [
+        "repository_id",
+        "base_sha",
+        "head_sha",
+        "branch",
+        "snapshot_artifact_id",
+        "generation",
+        "lease_owner",
+        "expires_at",
+        "released_at"
+      ],
+      "title": "IntegrationHeadView",
+      "type": "object"
+    },
     "Job": {
       "additionalProperties": false,
       "properties": {
@@ -2766,6 +2885,97 @@
         }
       },
       "title": "OrganizerConfig",
+      "type": "object"
+    },
+    "ParsedVerification": {
+      "additionalProperties": false,
+      "properties": {
+        "confidence": {
+          "enum": [
+            "summary",
+            "exit_code"
+          ],
+          "title": "Confidence",
+          "type": "string"
+        },
+        "errors": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Errors"
+        },
+        "failed": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Failed"
+        },
+        "parser": {
+          "enum": [
+            "exit_code",
+            "pytest",
+            "vitest",
+            "typescript",
+            "next",
+            "eslint",
+            "ruff",
+            "mypy"
+          ],
+          "title": "Parser",
+          "type": "string"
+        },
+        "passed": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Passed"
+        },
+        "skipped": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Skipped"
+        },
+        "summary": {
+          "maxLength": 1000,
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "parser",
+        "confidence",
+        "summary"
+      ],
+      "title": "ParsedVerification",
       "type": "object"
     },
     "PermissionPolicySpec": {
@@ -4181,6 +4391,222 @@
       "title": "RetryRule",
       "type": "object"
     },
+    "ReviewDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "findings": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ReviewFinding"
+          },
+          "maxItems": 64,
+          "title": "Findings",
+          "type": "array"
+        },
+        "finished_at": {
+          "format": "date-time",
+          "title": "Finished At",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "reviewed_head_sha": {
+          "pattern": "^[a-f0-9]{40}$",
+          "title": "Reviewed Head Sha",
+          "type": "string"
+        },
+        "reviewed_snapshot_id": {
+          "format": "uuid",
+          "title": "Reviewed Snapshot Id",
+          "type": "string"
+        },
+        "reviewer_revision": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Reviewer Revision",
+          "type": "string"
+        },
+        "snapshot_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Snapshot Digest",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        },
+        "task_attempt_id": {
+          "format": "uuid",
+          "title": "Task Attempt Id",
+          "type": "string"
+        },
+        "task_id": {
+          "format": "uuid",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "verdict": {
+          "enum": [
+            "PASS",
+            "FAIL"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "task_id",
+        "task_attempt_id",
+        "reviewed_snapshot_id",
+        "reviewed_head_sha",
+        "snapshot_digest",
+        "verdict",
+        "summary",
+        "reviewer_revision",
+        "started_at",
+        "finished_at"
+      ],
+      "title": "ReviewDecision",
+      "type": "object"
+    },
+    "ReviewEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "acceptance_criteria": {
+          "items": {
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "title": "Acceptance Criteria",
+          "type": "array"
+        },
+        "architecture_artifact_ids": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Architecture Artifact Ids",
+          "type": "array"
+        },
+        "config_snapshot_id": {
+          "format": "uuid",
+          "title": "Config Snapshot Id",
+          "type": "string"
+        },
+        "failure_history_artifact_id": {
+          "format": "uuid",
+          "title": "Failure History Artifact Id",
+          "type": "string"
+        },
+        "objective": {
+          "maxLength": 16000,
+          "title": "Objective",
+          "type": "string"
+        },
+        "prior_feedback_artifact_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Prior Feedback Artifact Ids",
+          "type": "array"
+        },
+        "snapshot": {
+          "$ref": "#/$defs/SealedRepositorySnapshot"
+        },
+        "task_attempt_id": {
+          "format": "uuid",
+          "title": "Task Attempt Id",
+          "type": "string"
+        },
+        "task_id": {
+          "format": "uuid",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "task_title": {
+          "maxLength": 240,
+          "title": "Task Title",
+          "type": "string"
+        },
+        "verification_artifact_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "title": "Verification Artifact Ids",
+          "type": "array"
+        },
+        "workflow_version_id": {
+          "format": "uuid",
+          "title": "Workflow Version Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "objective",
+        "workflow_version_id",
+        "config_snapshot_id",
+        "task_id",
+        "task_attempt_id",
+        "task_title",
+        "acceptance_criteria",
+        "snapshot",
+        "verification_artifact_ids",
+        "prior_feedback_artifact_ids",
+        "failure_history_artifact_id"
+      ],
+      "title": "ReviewEvidence",
+      "type": "object"
+    },
+    "ReviewFinding": {
+      "additionalProperties": false,
+      "properties": {
+        "criterion_index": {
+          "maximum": 63,
+          "minimum": 0,
+          "title": "Criterion Index",
+          "type": "integer"
+        },
+        "source_path": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "title": "Source Path",
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "criterion_index",
+        "summary",
+        "source_path"
+      ],
+      "title": "ReviewFinding",
+      "type": "object"
+    },
     "ReviewerConfig": {
       "additionalProperties": false,
       "properties": {
@@ -5101,6 +5527,137 @@
       "title": "RunView",
       "type": "object"
     },
+    "SealedRepositorySnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "base_sha": {
+          "pattern": "^[a-f0-9]{40}$",
+          "title": "Base Sha",
+          "type": "string"
+        },
+        "branch": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Branch",
+          "type": "string"
+        },
+        "content_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "cumulative_diff_artifact_id": {
+          "format": "uuid",
+          "title": "Cumulative Diff Artifact Id",
+          "type": "string"
+        },
+        "file_count": {
+          "maximum": 10000,
+          "minimum": 0,
+          "title": "File Count",
+          "type": "integer"
+        },
+        "git_status": {
+          "const": "clean",
+          "default": "clean",
+          "title": "Git Status",
+          "type": "string"
+        },
+        "head_sha": {
+          "pattern": "^[a-f0-9]{40}$",
+          "title": "Head Sha",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "latest_base_sha": {
+          "pattern": "^[a-f0-9]{40}$",
+          "title": "Latest Base Sha",
+          "type": "string"
+        },
+        "latest_diff_artifact_id": {
+          "format": "uuid",
+          "title": "Latest Diff Artifact Id",
+          "type": "string"
+        },
+        "lfs": {
+          "const": "absent",
+          "default": "absent",
+          "title": "Lfs",
+          "type": "string"
+        },
+        "manifest_artifact_id": {
+          "format": "uuid",
+          "title": "Manifest Artifact Id",
+          "type": "string"
+        },
+        "repository_id": {
+          "format": "uuid",
+          "title": "Repository Id",
+          "type": "string"
+        },
+        "run_id": {
+          "format": "uuid",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "source_artifact_id": {
+          "format": "uuid",
+          "title": "Source Artifact Id",
+          "type": "string"
+        },
+        "submodules": {
+          "const": "absent",
+          "default": "absent",
+          "title": "Submodules",
+          "type": "string"
+        },
+        "task_attempt_id": {
+          "format": "uuid",
+          "title": "Task Attempt Id",
+          "type": "string"
+        },
+        "tree_sha": {
+          "pattern": "^[a-f0-9]{40}$",
+          "title": "Tree Sha",
+          "type": "string"
+        },
+        "worker_result_id": {
+          "format": "uuid",
+          "title": "Worker Result Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "repository_id",
+        "run_id",
+        "task_attempt_id",
+        "worker_result_id",
+        "branch",
+        "head_sha",
+        "base_sha",
+        "latest_base_sha",
+        "tree_sha",
+        "content_digest",
+        "file_count",
+        "manifest_artifact_id",
+        "source_artifact_id",
+        "cumulative_diff_artifact_id",
+        "latest_diff_artifact_id",
+        "created_at"
+      ],
+      "title": "SealedRepositorySnapshot",
+      "type": "object"
+    },
     "SessionResponse": {
       "additionalProperties": false,
       "properties": {
@@ -5632,6 +6189,274 @@
         "valid"
       ],
       "title": "ValidationReport",
+      "type": "object"
+    },
+    "VerificationCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "argv": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "title": "Argv",
+          "type": "array"
+        },
+        "environment": {
+          "additionalProperties": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "maxProperties": 5,
+          "propertyNames": {
+            "enum": [
+              "CI",
+              "NO_COLOR",
+              "FORCE_COLOR",
+              "TZ",
+              "PYTHONDONTWRITEBYTECODE"
+            ]
+          },
+          "title": "Environment",
+          "type": "object"
+        },
+        "expected_exit_codes": {
+          "default": [
+            0
+          ],
+          "items": {
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Expected Exit Codes",
+          "type": "array"
+        },
+        "kind": {
+          "const": "argv",
+          "default": "argv",
+          "title": "Kind",
+          "type": "string"
+        },
+        "max_output_bytes": {
+          "default": 1048576,
+          "maximum": 1048576,
+          "minimum": 1024,
+          "title": "Max Output Bytes",
+          "type": "integer"
+        },
+        "parser": {
+          "default": "exit_code",
+          "enum": [
+            "exit_code",
+            "pytest",
+            "vitest",
+            "typescript",
+            "next",
+            "eslint",
+            "ruff",
+            "mypy"
+          ],
+          "title": "Parser",
+          "type": "string"
+        },
+        "timeout_seconds": {
+          "default": 1200,
+          "maximum": 86400,
+          "minimum": 1,
+          "title": "Timeout Seconds",
+          "type": "integer"
+        },
+        "working_root_policy": {
+          "const": "adapter_confirmed_root",
+          "default": "adapter_confirmed_root",
+          "title": "Working Root Policy",
+          "type": "string"
+        }
+      },
+      "required": [
+        "argv"
+      ],
+      "title": "VerificationCommand",
+      "type": "object"
+    },
+    "VerificationExecution": {
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "$ref": "#/$defs/VerificationCommand"
+        },
+        "cwd": {
+          "maxLength": 2048,
+          "title": "Cwd",
+          "type": "string"
+        },
+        "environment_keys": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Environment Keys",
+          "type": "array"
+        },
+        "exit_code": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Exit Code"
+        },
+        "failure_class": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Failure Class"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finished At"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "parsed": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ParsedVerification"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "phase": {
+          "default": "task",
+          "enum": [
+            "task",
+            "integration"
+          ],
+          "title": "Phase",
+          "type": "string"
+        },
+        "run_id": {
+          "format": "uuid",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "snapshot_id": {
+          "format": "uuid",
+          "title": "Snapshot Id",
+          "type": "string"
+        },
+        "source_sha": {
+          "pattern": "^[a-f0-9]{40}$",
+          "title": "Source Sha",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "started",
+            "passed",
+            "failed",
+            "timed_out",
+            "unknown"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "stderr_artifact_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stderr Artifact Id"
+        },
+        "stderr_truncated": {
+          "default": false,
+          "title": "Stderr Truncated",
+          "type": "boolean"
+        },
+        "stdout_artifact_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stdout Artifact Id"
+        },
+        "stdout_truncated": {
+          "default": false,
+          "title": "Stdout Truncated",
+          "type": "boolean"
+        },
+        "task_attempt_id": {
+          "format": "uuid",
+          "title": "Task Attempt Id",
+          "type": "string"
+        },
+        "task_id": {
+          "format": "uuid",
+          "title": "Task Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "run_id",
+        "task_id",
+        "task_attempt_id",
+        "snapshot_id",
+        "source_sha",
+        "command",
+        "cwd",
+        "environment_keys",
+        "started_at",
+        "status"
+      ],
+      "title": "VerificationExecution",
       "type": "object"
     },
     "VerificationPolicy": {
@@ -6544,6 +7369,7 @@
     },
     "WorkerVerification": {
       "additionalProperties": false,
+      "description": "M7-compatible name for the authoritative verification command contract.",
       "properties": {
         "argv": {
           "items": {
@@ -6554,10 +7380,64 @@
           "title": "Argv",
           "type": "array"
         },
+        "environment": {
+          "additionalProperties": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "maxProperties": 5,
+          "propertyNames": {
+            "enum": [
+              "CI",
+              "NO_COLOR",
+              "FORCE_COLOR",
+              "TZ",
+              "PYTHONDONTWRITEBYTECODE"
+            ]
+          },
+          "title": "Environment",
+          "type": "object"
+        },
+        "expected_exit_codes": {
+          "default": [
+            0
+          ],
+          "items": {
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Expected Exit Codes",
+          "type": "array"
+        },
         "kind": {
           "const": "argv",
           "default": "argv",
           "title": "Kind",
+          "type": "string"
+        },
+        "max_output_bytes": {
+          "default": 1048576,
+          "maximum": 1048576,
+          "minimum": 1024,
+          "title": "Max Output Bytes",
+          "type": "integer"
+        },
+        "parser": {
+          "default": "exit_code",
+          "enum": [
+            "exit_code",
+            "pytest",
+            "vitest",
+            "typescript",
+            "next",
+            "eslint",
+            "ruff",
+            "mypy"
+          ],
+          "title": "Parser",
           "type": "string"
         },
         "timeout_seconds": {
@@ -6566,6 +7446,12 @@
           "minimum": 1,
           "title": "Timeout Seconds",
           "type": "integer"
+        },
+        "working_root_policy": {
+          "const": "adapter_confirmed_root",
+          "default": "adapter_confirmed_root",
+          "title": "Working Root Policy",
+          "type": "string"
         }
       },
       "required": [
@@ -7782,6 +8668,9 @@
       ],
       "default": null
     },
+    "integration_heads": {
+      "$ref": "#/$defs/IntegrationHeadPage"
+    },
     "job": {
       "anyOf": [
         {
@@ -7991,6 +8880,12 @@
       ],
       "default": null
     },
+    "review_decision": {
+      "$ref": "#/$defs/ReviewDecision"
+    },
+    "review_evidence": {
+      "$ref": "#/$defs/ReviewEvidence"
+    },
     "route_preview": {
       "anyOf": [
         {
@@ -8153,6 +9048,9 @@
         }
       ],
       "default": null
+    },
+    "verification_execution": {
+      "$ref": "#/$defs/VerificationExecution"
     },
     "worker_cancel": {
       "$ref": "#/$defs/CancelResult"
@@ -8388,6 +9286,10 @@
     }
   },
   "required": [
+    "integration_heads",
+    "verification_execution",
+    "review_evidence",
+    "review_decision",
     "worker_invocation_request",
     "worker_prepared",
     "worker_handle",

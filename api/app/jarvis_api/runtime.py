@@ -37,10 +37,12 @@ from jarvis_contracts.runtime_api import (
     RunPage,
     RunView,
 )
+from jarvis_contracts.verification import IntegrationHeadPage, IntegrationHeadView
 from jarvis_contracts.workflow import WorkflowSpec
 from jarvis_orchestrator.demo.safety import validate_demo_snapshot
 from jarvis_orchestrator.runtime.ownership import RunOwnership, lock_events, runtime_writer
 from jarvis_persistence.models import (
+    IntegrationHeadModel,
     JobModel,
     NodeExecutionModel,
     ProjectModel,
@@ -72,6 +74,43 @@ async def run_workflow(request: Request, run_id: UUID, principal: CurrentPrincip
         if version is None:
             raise missing()
         return WorkflowSpec.model_validate(version.spec_json)
+
+
+@router.get("/runs/{run_id}/integration-heads", response_model=IntegrationHeadPage)
+async def integration_heads(
+    request: Request,
+    run_id: UUID,
+    principal: CurrentPrincipal,
+    after: UUID | None = None,
+    limit: Limit = 50,
+) -> IntegrationHeadPage:
+    await get_run(request, run_id, principal)
+    async with sessions(request, principal)() as session:
+        query = select(IntegrationHeadModel).where(IntegrationHeadModel.run_id == run_id)
+        if after:
+            query = query.where(IntegrationHeadModel.repository_id > after)
+        rows = (
+            await session.scalars(
+                query.order_by(IntegrationHeadModel.repository_id).limit(limit + 1)
+            )
+        ).all()
+        return IntegrationHeadPage(
+            items=tuple(
+                IntegrationHeadView(
+                    repository_id=row.repository_id,
+                    base_sha=row.base_sha,
+                    head_sha=row.head_sha,
+                    branch=row.branch,
+                    snapshot_artifact_id=row.snapshot_artifact_id,
+                    generation=row.generation,
+                    lease_owner=row.lease_owner,
+                    expires_at=row.expires_at,
+                    released_at=row.released_at,
+                )
+                for row in rows[:limit]
+            ),
+            next_after=rows[limit - 1].repository_id if len(rows) > limit else None,
+        )
 
 
 @router.get("/runs/{run_id}/tasks", response_model=TaskPage)

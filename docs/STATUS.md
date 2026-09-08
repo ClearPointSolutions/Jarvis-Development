@@ -1,8 +1,35 @@
 # Jarvis V1 Status
 
 Last updated: 2026-09-08
-Current phase: M7 — COMPLETE (local adapter/protocol/workspace proof only)
-Overall state: M7 COMPLETE / READY FOR M8. M8 has not started.
+Current phase: M8 — IN PROGRESS (local verification/review/Git scope)
+Overall state: M7 COMPLETE. M8 implementation and acceptance pending. M9 not started.
+
+## Active M8 criteria
+
+Base: `e62b7e8a44a6af99d54c6e6c760eaaf2657f2250`.
+Branch: `codex/m8-verification-review-git`.
+
+- [x] Fetch clean main and verify exact M7 branch and post-merge CI; record closure.
+- [x] Structured bounded verification at adapter-confirmed root; explicit legacy correction.
+- [x] Deterministic parsers and immutable artifact-backed execution evidence.
+- [x] Sealed cumulative source snapshots and separate latest-attempt diffs.
+- [x] Authoritative current-task Reviewer evidence, SHA binding and invalidation.
+- [x] Correct verification/review retry classes and durable feedback.
+- [x] Isolated attempts, durable integration HEAD, serialized queue and fenced leases.
+- [x] Deterministic local merge/conflict policy, combined gates and integration snapshots.
+- [x] Authenticated evidence API and real Mission Control evidence panels.
+- [x] PostgreSQL/M5/M7 local E2E, adversarial acceptance and crash recovery.
+- [ ] Full unchanged Python/database/contracts/frontend/browser/security gates.
+- [ ] Completion report, clean committed branch, push and exact-commit green CI.
+
+M8 only: no homelab/Worker-01 contact, production runtime credentials, deployment,
+M9 authorization or M10 dashboard/publication implementation.
+
+Progress evidence is recorded in [M8_COMPLETION.md](M8_COMPLETION.md). Focused
+local Git/PostgreSQL, Reviewer and eight crash-boundary tests passed (78 focused
+tests). The 42 verification security/unit tests and ten foundation/M8 browser tests
+also passed. Frontend format/lint/types, 49 tests and production build passed.
+Full gate and exact branch CI remain pending; M8 is not complete.
 
 ## M7 formal merge closure
 
@@ -15,7 +42,7 @@ The exact post-merge main passed
 M7 COMPLETE / READY FOR M8. M8 branch `codex/m8-verification-review-git`
 starts from that verified merge. M8 implementation and gates remain pending.
 
-## Active M7 criteria
+## Historical M7 criteria (complete)
 
 Base: fetched clean main `bb6646210e9f6a96f0d165aa3b13ac96fc0f60ed`.
 Branch: `codex/m7-worker-adapter`.
@@ -47,7 +74,7 @@ and its exact CI are verified before handoff.
 
 No homelab contact, worker SSH, wrapper deployment or M8 work is authorized here.
 
-## Active M6 criteria
+## Historical M6 criteria (complete)
 
 Fetched clean main/base: `26fcdc5694f73adaf864227dd21579b3a61f6033`.
 Branch: `codex/m6-deterministic-demo`. M5 branch commit
@@ -332,8 +359,8 @@ documentation-only milestone; the M0 application gates are recorded above.
 
 ## Next milestone
 
-M6 is complete. Stop for review; M7 has not started.
-Real worker/provider adapters and deployment remain later milestones.
+M8 remains the active milestone until its full local and exact-commit branch CI
+gates pass. M9 has not started. No automatic main merge or deployment is authorized.
 
 ## Open gates and risks
 

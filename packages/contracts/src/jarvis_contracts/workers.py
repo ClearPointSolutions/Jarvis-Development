@@ -10,6 +10,7 @@ from pydantic import AwareDatetime, Field, field_validator, model_validator
 
 from jarvis_contracts.base import ContractModel
 from jarvis_contracts.registry import Capability, HealthStatus
+from jarvis_contracts.verification import VerificationCommand
 
 Sha = Annotated[str, Field(pattern=r"^[a-f0-9]{40}$")]
 Digest = Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
@@ -52,17 +53,8 @@ class WorkerSlotFence(ContractModel):
     expires_at: AwareDatetime
 
 
-class WorkerVerification(ContractModel):
-    kind: Literal["argv"] = "argv"
-    argv: tuple[str, ...] = Field(min_length=1, max_length=64)
-    timeout_seconds: int = Field(default=1200, ge=1, le=86400)
-
-    @field_validator("argv")
-    @classmethod
-    def bounded_argv(cls, value: tuple[str, ...]) -> tuple[str, ...]:
-        if any(not item or len(item) > 1024 or "\x00" in item for item in value):
-            raise ValueError("invalid bounded argv")
-        return value
+class WorkerVerification(VerificationCommand):
+    """M7-compatible name for the authoritative verification command contract."""
 
 
 class WorkerTask(ContractModel):

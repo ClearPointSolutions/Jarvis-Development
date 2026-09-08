@@ -60,6 +60,12 @@ from jarvis_contracts.runtime_api import (
     RunControl,
     RunPage,
 )
+from jarvis_contracts.verification import (
+    IntegrationHeadPage,
+    ReviewDecision,
+    ReviewEvidence,
+    VerificationExecution,
+)
 from jarvis_contracts.workers import (
     CancelResult,
     PreparedInvocation,
@@ -105,6 +111,10 @@ from jarvis_contracts.workflow_nodes import (
 
 
 class JarvisContractBundle(ContractModel):
+    integration_heads: IntegrationHeadPage
+    verification_execution: VerificationExecution
+    review_evidence: ReviewEvidence
+    review_decision: ReviewDecision
     worker_invocation_request: WorkerInvocationRequest
     worker_prepared: PreparedInvocation
     worker_handle: WorkerInvocationHandle

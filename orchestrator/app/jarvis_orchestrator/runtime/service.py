@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from contextlib import suppress
 from pathlib import Path
 from typing import cast
@@ -46,6 +46,7 @@ class OrchestratorService:
         demo: bool = False,
         artifact_root: Path = Path("var/artifacts"),
         worker_registry: WorkerRuntimeRegistry | None = None,
+        verification_factory: Callable[[RunOwnership, RunFence], EffectAdapter] | None = None,
     ) -> None:
         if (
             not 1 <= max_concurrency <= 64
@@ -64,6 +65,7 @@ class OrchestratorService:
         self.demo = demo
         self.artifact_root = artifact_root
         self.worker_registry = worker_registry
+        self.verification_factory = verification_factory
         self.commands = CommandProcessor(ownership)
         self.active: dict[RunFence, asyncio.Task[None]] = {}
 
@@ -274,6 +276,14 @@ class OrchestratorService:
                 adapters[workflow_node.id] = worker_registry.resolve(
                     revision.revision_id, revision.spec, self.ownership, fence, demo=self.demo
                 )
+        if self.verification_factory is not None:
+            if self.demo:
+                raise ValueError("local repository verification cannot replace DEMO fixtures")
+            verification_adapter = self.verification_factory(self.ownership, fence)
+            adapters = dict(adapters)
+            for workflow_node in spec.nodes:
+                if workflow_node.type.value in {"verify", "reviewer", "integrate"}:
+                    adapters[workflow_node.id] = verification_adapter
         if cancelling:
             await ledger.cancel_pending(adapters)
         async with fenced_saver(self.database_url, fence) as saver:

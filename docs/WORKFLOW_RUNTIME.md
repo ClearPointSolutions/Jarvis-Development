@@ -1,5 +1,14 @@
 # Jarvis V1 Workflow Runtime
 
+M8 uses the M5 effect ledger for verification, review and integration. Local
+bindings pin published workflow identity and command configuration; recorded
+configuration digests reject changed bindings on recovery. Task workspaces start
+from the durable selected integration HEAD. Integration generations follow
+ADR-027: separate local worktree, non-rewriting merge, combined gates, sealing,
+then fenced atomic selection. Uncertain dispatched verification/review blocks
+for reconciliation; persisted results are reusable after SHA revalidation.
+See [M8_COMPLETION.md](M8_COMPLETION.md) for limits and acceptance evidence.
+
 Status: normative compilation and execution design
 
 ## 1. Purpose

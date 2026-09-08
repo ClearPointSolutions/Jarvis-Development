@@ -68,6 +68,9 @@ def main() -> int:
         password = secrets.token_urlsafe(32)
         run_id = asyncio.run(seed(url, password))
         with tempfile.TemporaryDirectory(prefix="jarvis-m2-browser-") as directory:
+            from scripts.m8_browser_seed import seed_m8
+
+            m8_run_id = asyncio.run(seed_m8(url, Path(directory)))
             key = Path(directory) / "csrf.key"
             key.write_bytes(secrets.token_urlsafe(48).encode())
             env = {
@@ -86,6 +89,7 @@ def main() -> int:
                 "JARVIS_BROWSER_DATABASE_URL": url,
                 "JARVIS_BROWSER_PASSWORD": password,
                 "JARVIS_BROWSER_RUN_ID": run_id,
+                "JARVIS_M8_RUN_ID": m8_run_id,
                 "JARVIS_BROWSER_PYTHON": sys.executable,
                 "JARVIS_ARTIFACT_ROOT": str(Path(directory) / "artifacts"),
                 "JARVIS_SSE_POLL_SECONDS": "0.1",

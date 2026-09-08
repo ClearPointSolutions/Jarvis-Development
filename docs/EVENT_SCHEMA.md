@@ -1,5 +1,13 @@
 # Jarvis V1 Normalized Event Schema
 
+M8 adds `command.normalized` and `git.integration_lease_acquired`,
+`git.integration_lease_renewed`, `git.integration_lease_released` to the normalized
+registry. They expose bounded identities, generations, timestamps and artifact
+references. Verification/review/snapshot/integration evidence uses existing test,
+review, file, git and artifact events. No source bodies, large logs, secret
+environment values or hidden reasoning are embedded in these payloads.
+See [M8_COMPLETION.md](M8_COMPLETION.md).
+
 Status: normative V1 contract
 Transport: persisted PostgreSQL rows, JSON API, and SSE
 

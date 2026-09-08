@@ -349,6 +349,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/runs/{run_id}/integration-heads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Integration Heads */
+        get: operations["integration_heads_api_v1_runs__run_id__integration_heads_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runs/{run_id}/nodes": {
         parameters: {
             query?: never;
@@ -950,6 +967,37 @@ export interface components {
          * @enum {string}
          */
         FailureClass: "code.build_failure" | "infrastructure.timeout" | "unknown" | "code.implementation_failure" | "code.test_failure" | "code.review_failure" | "code.git_conflict" | "infrastructure.worker_unavailable" | "infrastructure.worker_transport" | "infrastructure.service_unavailable" | "provider.rate_limited" | "provider.transient" | "provider.contract_failure" | "configuration.invalid" | "security.policy_denied" | "approval.rejected" | "orchestration.runtime_error" | "user.cancelled";
+        /** IntegrationHeadPage */
+        IntegrationHeadPage: {
+            /** Items */
+            items: components["schemas"]["IntegrationHeadView"][];
+            /** Next After */
+            next_after: string | null;
+        };
+        /** IntegrationHeadView */
+        IntegrationHeadView: {
+            /** Base Sha */
+            base_sha: string;
+            /** Branch */
+            branch: string;
+            /** Expires At */
+            expires_at: string | null;
+            /** Generation */
+            generation: number;
+            /** Head Sha */
+            head_sha: string;
+            /** Lease Owner */
+            lease_owner: string | null;
+            /** Released At */
+            released_at: string | null;
+            /**
+             * Repository Id
+             * Format: uuid
+             */
+            repository_id: string;
+            /** Snapshot Artifact Id */
+            snapshot_artifact_id: string | null;
+        };
         /** JobCreate */
         JobCreate: {
             demo_fixture?: components["schemas"]["DemoFixture"] | null;
@@ -5613,6 +5661,130 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    integration_heads_api_v1_runs__run_id__integration_heads_get: {
+        parameters: {
+            query?: {
+                after?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationHeadPage"];
                 };
             };
             /** @description Bad Request */

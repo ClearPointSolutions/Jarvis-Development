@@ -816,6 +816,35 @@ class RetryCounterModel(MutableRow, Base):
     maximum: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
+class IntegrationHeadModel(Base):
+    """Selects a sealed Git generation; run fencing also guards every mutation."""
+
+    __tablename__ = "integration_heads"
+    __table_args__ = (
+        CheckConstraint("generation >= 0", name="generation"),
+        CheckConstraint("char_length(head_sha) = 40 AND char_length(base_sha) = 40", name="sha"),
+        {"schema": CONTROL_SCHEMA},
+    )
+    run_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.runs.id", ondelete="RESTRICT"), primary_key=True
+    )
+    repository_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
+    base_sha: Mapped[str] = mapped_column(String(40), nullable=False)
+    head_sha: Mapped[str] = mapped_column(String(40), nullable=False)
+    branch: Mapped[str] = mapped_column(String(200), nullable=False)
+    snapshot_artifact_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.artifacts.id", ondelete="RESTRICT")
+    )
+    generation: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    lease_owner: Mapped[UUID | None] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.effects.id", ondelete="RESTRICT")
+    )
+    acquired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    renewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class ArtifactModel(Base):
     __tablename__ = "artifacts"
     __table_args__ = (

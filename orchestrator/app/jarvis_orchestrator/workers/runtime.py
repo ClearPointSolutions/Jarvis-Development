@@ -31,6 +31,7 @@ from jarvis_orchestrator.workflows.factories import NodeContext
 from jarvis_orchestrator.workflows.state import WorkflowStateV1
 from jarvis_persistence.models import (
     EffectModel,
+    EventModel,
     TaskAttemptModel,
     WorkerHealthModel,
     WorkerInvocationModel,
@@ -103,6 +104,37 @@ class WorkerEffectAdapter:
                     selected_profile
                 ):
                     raise WorkerBoundaryError("incompatible_model_binding")
+                # Current-task review feedback follows the next durable attempt
+                # even if a worker request source omitted it. Only persisted
+                # server events supply these artifact identities.
+                async with self.ownership.fenced(self.fence) as (session, run):
+                    feedback = (
+                        await session.scalars(
+                            select(EventModel)
+                            .where(
+                                EventModel.run_id == run.id,
+                                EventModel.type == "review.failed",
+                                EventModel.data_json["task_id"].astext == str(request.task_id),
+                            )
+                            .order_by(EventModel.global_position.desc())
+                            .limit(32)
+                        )
+                    ).all()
+                from uuid import UUID
+
+                feedback_ids = tuple(
+                    dict.fromkeys(
+                        (
+                            *request.feedback_artifact_ids,
+                            *(
+                                UUID(event.data_json["feedback_artifact_id"])
+                                for event in feedback
+                                if "feedback_artifact_id" in event.data_json
+                            ),
+                        )
+                    )
+                )[:32]
+                request = request.model_copy(update={"feedback_artifact_ids": feedback_ids})
                 public = request.model_dump(mode="json")
                 if RecursiveRedactor().redact(public).value != public:
                     raise WorkerBoundaryError("credential_in_worker_request")

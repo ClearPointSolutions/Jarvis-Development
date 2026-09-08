@@ -1,5 +1,9 @@
 # Jarvis V1 Worker Protocol
 
+M8 implementation and acceptance evidence: [M8_COMPLETION.md](M8_COMPLETION.md).
+Structured verification types are authoritative in `jarvis_contracts.verification`;
+the compatible `WorkerVerification` type shares that contract.
+
 Status: normative adapter contract and initial OpenHands SSH mapping
 
 ## M7 implemented boundary
