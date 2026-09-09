@@ -89,3 +89,10 @@ CI `34314724943` at `fd8bf0c`: all 749 backend tests passed (no skips),
 The next contract drift gate found missing generated approval/usage API types.
 Regenerated from the unchanged authoritative OpenAPI; contract check and Node
 20.19 TypeScript passed. Full frontend/browser CI remains pending the follow-up.
+
+Local full PostgreSQL run: 748 passed / 1 failed, 84.99% coverage; both normal
+entrypoint variants passed. The remaining Windows wrapper fixture stopped on a
+transient unknown heartbeat during instrumented startup; durable status later
+proved that same invocation succeeded. Polling now waits for a terminal result
+within the existing bound without relaunch or guard changes. All five wrapper
+tests pass with subprocess coverage (49.8s). CI for `9d65e94` is still running.
