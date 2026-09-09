@@ -1,12 +1,13 @@
 # M8 verification, review, artifacts and Git integration
 
-Status: IN PROGRESS. Final local gates and exact-commit CI are pending.
-M9 has not started. This is not yet a completion claim.
+Status: **M8 COMPLETE / READY FOR M9**. Stop at the M8 boundary.
+M9 has not started in this M8 task. No automatic merge or deployment is authorized.
 
 ## Baseline
 
 Fetched clean main: `e62b7e8a44a6af99d54c6e6c760eaaf2657f2250`.
 Branch: `codex/m8-verification-review-git`.
+Final implementation SHA: `c701fcb397b4469ee115b509d8d026f3b26bb356`.
 M7 exact branch `01f64fe360e1055824f4fa08dcdface82b18961f` passed
 [34232277520](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34232277520).
 The exact post-merge main passed
@@ -82,7 +83,7 @@ task/event/artifact APIs expose evidence. Mission Control displays verification,
 review, invalidation, snapshot/integration events, artifact downloads, selected
 branch/base/HEAD and lease generation.
 
-## Validation so far
+## Validation results
 
 - Real local Git/PostgreSQL: unrelated divergent branches integrate both changes;
   conflicts preserve both candidates and HEAD; failed combined gates preserve HEAD.
@@ -97,12 +98,31 @@ branch/base/HEAD and lease generation.
   test runs separately under its dedicated demo harness.
 - All 42 verification unit/security cases passed, including a filename containing
   shell metacharacters that is passed literally through argv.
-- The first complete Python run passed 713 tests at 86.39% coverage. Contract
-  drift then caught a missing generated API path update; that file was regenerated
-  from the authoritative OpenAPI and drift now passes. A complete rerun includes
-  the additional filename security case (714 collected tests).
-- Final Python/frontend/browser/migration/security totals, coverage,
-  scripts/verify.sh and exact-commit GitHub CI: pending.
+
+| Gate | Final local result |
+| --- | --- |
+| `pip check`, Ruff format/lint, strict mypy | Passed; Linux-targeted mypy also passed |
+| Complete PostgreSQL-enabled pytest, integration and compatibility suites | **714 passed** |
+| Combined branch coverage | **86.32%**, above the unchanged 80% gate |
+| Migration upgrade, supported downgrade/upgrade, metadata drift, logical roles | Passed, including migration 0008 |
+| Python JSON Schema, OpenAPI, generated TypeScript/API paths | Deterministic drift checks passed |
+| Clean `npm ci`, dependency tree, high-severity audit | Passed; **zero vulnerabilities** |
+| Prettier, ESLint, TypeScript | Passed |
+| Vitest 4.1.11 | **49 tests / 13 files passed** |
+| Next production build | Passed |
+| Foundation/M8 Playwright | **10 passed**; M6 is selected by its separate harness |
+| Dedicated M6 Playwright | **1 passed**, exercising four runs, restart and exact event determinism |
+| Accessibility and serious console checks | Passed; zero axe violations / serious console findings |
+| Secret scanner and synthetic canaries | Passed; canaries absent from API logs and browser bundles |
+| Full PostgreSQL-enabled `scripts/verify.sh` | **Passed**, exit 0, all enabled gates |
+
+The exact implementation commit passed
+[GitHub verify 34300629060](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34300629060):
+714 Python tests, **85.70% Linux coverage**, 49 frontend tests, ten foundation/M8
+browser tests, the dedicated four-run M6 browser scenario, zero audit
+vulnerabilities and the complete verification script. The documentation-only
+completion commit is also checked by exact-commit CI before the final handoff;
+its resolved SHA and run link are supplied with that handoff.
 
 ## Behavioral acceptance evidence
 
@@ -125,7 +145,7 @@ PostgreSQL rather than browser mocks for runtime facts.
 | 21: cumulative final repository contains both successful tasks | `test_m8_evidence.py`, `unrelated` case |
 | 22: durable review/test/artifact history and recovery (RUN-006/007) | `test_m8_runtime.py` crash matrix; `test_m8_review.py` persisted decision reuse |
 | 23: M6/M7 safety regression | full existing demo/worker suites plus focused regression run |
-| Authenticated read-only API, real UI, accessibility (AUTH-004, WEB-002) | `test_m8_api.py`, `m8-evidence.spec.ts`; full browser gate pending |
+| Authenticated read-only API, real UI, accessibility (AUTH-004, WEB-002) | `test_m8_api.py`, `m8-evidence.spec.ts`; full browser gate passed |
 | Command/environment/process security (SEC-001/002, WRK-005/006) | `test_m8_verification.py`; existing M7 traversal and artifact redaction tests |
 
 ## Restart and crash matrix
@@ -191,6 +211,10 @@ The clean install reports zero vulnerabilities. The audit threshold is unchanged
 ## Scope
 
 No homelab/Worker-01 contact, production provider/runtime GitHub credentials,
-deployment, M9 authorization, remote publication or M10 dashboard work occurred.
-Final commit, complete acceptance matrix, exact branch CI and clean-tree
-confirmation are pending. NOT READY FOR M9.
+deployment, production M9 authorization, runtime remote publication or M10
+dashboard work occurred. GitHub access was for authorized software development.
+All 23 requested behavioral acceptance items and local/CI gates passed.
+M8 completion documentation is maintained in an
+isolated M8 worktree so concurrent, separately authorized MVP edits in the shared
+checkout are preserved and excluded from this branch. The M8 worktree is committed
+and clean at handoff. No automatic merge occurs. **READY FOR M9; M9 not started.**
