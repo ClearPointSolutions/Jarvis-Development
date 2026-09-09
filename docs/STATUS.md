@@ -34,8 +34,21 @@ infrastructure classes. It also refuses a `github_publish` node: V1 has no
 publication handler, so publication is excluded truthfully rather than failing
 late after real spend.
 
+Migration `0010` also moved the Alembic head while the readiness endpoint still
+pinned `0009`, so a correctly migrated deployment would have reported itself
+permanently unready. The full gate caught it; `1039cdd` fixes the pin and adds a
+unit test comparing it to the actual head.
+
+Exact commit `1039cddd7cb6a02d9b45481bf9b991bf0f8272d4` passed
+[verify 34410979797](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34410979797)
+with every step green, including mandatory real-entrypoint worker provisioning
+and the complete unchanged `scripts/verify.sh`. The earlier `f4f6355` failure was
+the external `npx playwright install` browser-dependency step, not a repository
+defect.
+
 No OpenAI endpoint, GitHub repository or homelab host was contacted. Paid
-execution and publication remain unproven by design. No readiness claim.
+execution and publication remain unproven by design. Rows D-F, H-J and L-Q of the
+hardening matrix are open, so this is a gate result, not a readiness claim.
 
 ## Active integration and hardening (2026-09-09)
 

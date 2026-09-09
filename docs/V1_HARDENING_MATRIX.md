@@ -4,6 +4,9 @@ Authoritative active checklist, 2026-09-09. Branch `codex/v1-integration-hardeni
 Baseline: fetched main `1c61e70dcc6e526ebb0f0d7076e62a1909a91022`; exact
 [CI 34309805401](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34309805401)
 rechecked and failed. Historical milestone passes are not current validation.
+The branch head now passes its own exact-commit CI; see the CI evidence section
+below. That is a gate result, not a product-completeness claim: rows D-F, H-J
+and L-Q below remain open.
 The acceptance/product inventories in LOCAL_MVP_MATRIX.md remain required; this
 matrix owns current work and evidence, superseding its historical progress table.
 
@@ -77,6 +80,40 @@ no OpenAI endpoint and no GitHub repository was contacted.
 - K publication: real composition refuses a `github_publish` node up front. The
   node already failed closed at invocation, but only after planning, worker
   dispatch, verification and integration had already spent real time and money.
+
+### Exact-commit CI evidence (2026-09-09, later session)
+
+`1039cddd7cb6a02d9b45481bf9b991bf0f8272d4` on
+`codex/v1-integration-hardening` passed
+[verify 34410979797](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34410979797),
+every step green, including the mandatory real-entrypoint protocol worker
+provisioning and the complete unchanged `scripts/verify.sh`. A second run,
+[34410976173](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34410976173),
+also succeeded on the same SHA.
+
+The two preceding results explain the branch history and supersede the failing
+baseline recorded at the top of this document:
+
+- `f4f6355` failed at step 9, `npx playwright install --with-deps chromium`.
+  That is the external browser-dependency failure, not a repository defect, and
+  it no longer reproduces.
+- `2787db7` failed at step 12, `scripts/verify.sh`. Migration `0010` moved the
+  Alembic head while the readiness endpoint still pinned `0009`, so readiness
+  returned 503 `migration_required`. Local and CI agreed on exactly the two
+  failures. `1039cdd` fixes the pin and adds `tests/unit/test_schema_pin.py`,
+  which compares the pin to the actual single head so the next migration fails
+  in a unit test rather than at a deployment's readiness probe.
+
+Local Windows runs of the same gate reached 798 passed / 4 skipped at 85.4-85.6%
+coverage, with Playwright 10 passed and the production build. Two local stages
+needed operator setup rather than code changes: the canonical demo refuses a
+database not named `jarvis_demo_*`, `jarvis_m2_browser_*` or `jarvis_v1_test*`,
+and only `TMPDIR` may be redirected. Python's `tempfile` reads `TMPDIR` first, so
+that alone gives the short path. `TEMP`/`TMP` must keep their Windows values:
+overriding them with a forward-slash path, or unsetting them, leaves the Windows
+Playwright process without a usable temp directory and it writes a literal
+`web/undefined/` transform cache into the repository, which then fails the
+Prettier gate on the next run. CI on Linux is unaffected by both.
 
 ### Windows long-path acceptance constraint (2026-09-09, later session)
 

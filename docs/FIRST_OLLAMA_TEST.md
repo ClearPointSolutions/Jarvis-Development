@@ -1,8 +1,10 @@
-# Controlled first Ollama test (implementation acceptance in progress)
+# Controlled first Ollama test
 
-This is not yet a passing deployment runbook. The normal-entrypoint protocol
-acceptance and complete local verification gate must pass before target use.
-No exact homelab target has been supplied or contacted in this session.
+The complete local verification gate and the exact-commit CI both pass, and a
+live local Ollama has been exercised through the real planning and review
+contracts. This is still not a deployment runbook: no homelab target has been
+supplied or contacted, live paid-provider execution is untested, and GitHub
+publication is excluded from this MVP.
 
 ## Authoritative configuration
 
@@ -133,8 +135,14 @@ Export a genuinely short root before the run:
 
 ```sh
 mkdir -p /c/jv/t
-export TMPDIR=C:/jv/t TEMP=$TMPDIR TMP=$TMPDIR
+export TMPDIR=C:/jv/t
 ```
+
+Set `TMPDIR` only. Python's `tempfile` reads it first, so that is enough. Leave
+`TEMP` and `TMP` at their Windows values: overriding them with a forward-slash
+path, or unsetting them, leaves the Windows Playwright process without a usable
+temp directory, and it writes a literal `web/undefined/` transform cache into the
+repository that fails the Prettier gate on the next run.
 
 The same class of failure is recorded in `V1_HARDENING_MATRIX.md` as Git for
 Windows `fatal: '$GIT_DIR' too big` during the M8 work. CI is unaffected: it runs
