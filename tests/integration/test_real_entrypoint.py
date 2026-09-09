@@ -1,0 +1,354 @@
+"""Normal process startup and authenticated enqueue against local protocol transports."""
+
+import asyncio
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import threading
+from http.server import ThreadingHTTPServer
+from pathlib import Path
+from typing import Any
+
+import pytest
+from sqlalchemy import select
+from uuid6 import uuid7
+
+from jarvis_api.registry.service import RegistryService
+from jarvis_api.workflows.service import WorkflowService
+from jarvis_contracts.registry import RegistryWrite
+from jarvis_contracts.workflow import WorkflowSpec
+from jarvis_contracts.workflow_api import WorkflowCommand, WorkflowCreateRequest, WorkflowDraftWrite
+from jarvis_orchestrator.demo.bootstrap import canonical_workflow
+from jarvis_persistence.models import EventModel
+from tests.integration.test_m2_integrated_api import IntegratedApi, login
+from tests.integration.test_m2_integrated_api import integrated_api as integrated_api
+from tests.runtime_protocol_server import ProtocolHandler
+
+pytestmark = pytest.mark.integration
+
+
+async def test_normal_real_entrypoint(
+    integrated_api: IntegratedApi, session_factory: Any, database_url: str, tmp_path: Path
+) -> None:
+    fixture = os.environ.get("JARVIS_TEST_SSH_DIRECTORY")
+    if not fixture:
+        pytest.skip(
+            "requires explicitly started disposable SSH fixture and JARVIS_TEST_SSH_DIRECTORY"
+        )
+    keys = Path(fixture).resolve()
+    api = integrated_api
+    server = ThreadingHTTPServer(("127.0.0.1", 0), ProtocolHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    endpoint = f"http://127.0.0.1:{server.server_port}"
+    namespace = "real-" + uuid7().hex
+    # A fresh private checkout makes this acceptance repeatable without resetting
+    # an earlier candidate or its durable invocation evidence.
+    worker_root = "/workspaces/" + namespace
+    base = (keys / "base-sha.txt").read_text().strip()
+    for args in (
+        ["git", "clone", "--no-checkout", "/workspaces/fixture", worker_root],
+        ["git", "-C", worker_root, "checkout", "-B", "main", base],
+        ["git", "-C", worker_root, "config", "user.name", "Fixture"],
+        ["git", "-C", worker_root, "config", "user.email", "fixture@localhost"],
+    ):
+        await asyncio.to_thread(
+            subprocess.run,
+            ["docker", "exec", "--user", "10001:10001", "jarvis-v1-mvp-test-worker", *args],
+            check=True,
+            capture_output=True,
+            timeout=30,
+        )
+    registry = RegistryService(api.factory, allowed_endpoints=(endpoint,))
+    refs: dict[str, str] = {}
+
+    async def record(key: str, spec: dict[str, Any]) -> None:
+        body = RegistryWrite.model_validate(
+            {
+                "key": namespace + "-" + key,
+                "display_name": "Protocol fixture " + key,
+                "spec": spec,
+                "idempotency_key": namespace + key,
+            }
+        )
+        result = await registry.write(
+            body.spec.kind, body, actor_id=api.owner_id, correlation_id=namespace
+        )
+        refs[key] = str(result.revision_id)
+
+    try:
+        await record(
+            "provider",
+            {"kind": "provider_connection", "provider_kind": "ollama", "base_url": endpoint},
+        )
+        for key, purposes in (
+            ("profile", ["organizer", "architect", "reviewer"]),
+            ("developer", ["developer"]),
+        ):
+            await record(
+                key,
+                {
+                    "kind": "model_profile",
+                    "provider_revision_id": refs["provider"],
+                    "model_identifier": "protocol-fixture:1",
+                    "purposes": purposes,
+                    "capabilities": ["chat", "structured_json"],
+                    "structured_json": True,
+                    "context_limit": 65536,
+                    "output_limit": 4096,
+                },
+            )
+        await record(
+            "worker",
+            {
+                "kind": "worker",
+                "adapter_kind": "openhands_ssh_v1",
+                "execution_host_label": "Disposable loopback fixture",
+                "capabilities": ["code", "git", "tests"],
+                "model_binding": {
+                    "mode": "worker_managed",
+                    "allowed_profile_revision_ids": [refs["developer"]],
+                },
+                "deployment_configured": True,
+            },
+        )
+        await record(
+            "retry",
+            {
+                "kind": "retry_policy",
+                "rules": [
+                    {
+                        "failure_class": value,
+                        "max_retries": 2,
+                        "initial_delay_ms": 0,
+                        "max_delay_ms": 0,
+                        "jitter": "none",
+                        "exhaustion_action": "fail",
+                    }
+                    for value in [
+                        "code.test_failure",
+                        "code.review_failure",
+                        "infrastructure.worker_transport",
+                        "provider.transient",
+                    ]
+                ],
+            },
+        )
+        await record(
+            "permission",
+            {
+                "kind": "permission_policy",
+                "allowed_capabilities": ["code", "git", "tests"],
+                "git": "allow",
+                "shell": "allow",
+            },
+        )
+        await record(
+            "route",
+            {
+                "kind": "route_policy",
+                "purposes": ["organizer", "architect", "reviewer"],
+                "allow_unknown_health": True,
+                "candidates": [{"profile_revision_id": refs["profile"]}],
+            },
+        )
+        await record(
+            "worker_route",
+            {
+                "kind": "route_policy",
+                "purposes": ["developer"],
+                "allow_unknown_health": True,
+                "candidates": [{"profile_revision_id": refs["developer"]}],
+            },
+        )
+        # The local-only graph ends after the serialized integration gates.
+        raw = canonical_workflow(refs).model_dump(mode="json", by_alias=True)
+        removed = {"final_verify", "final_review", "decision", "publish", "rejected"}
+        raw["nodes"] = [n for n in raw["nodes"] if n["id"] not in removed]
+        raw["edges"] = [
+            e for e in raw["edges"] if e["from"] not in removed and e["to"] not in removed
+        ]
+        raw["edges"].append(
+            {
+                "id": "all-done",
+                "from": "dispatch",
+                "to": "finish",
+                "kind": "on_result",
+                "fallback": True,
+                "priority": 1,
+            }
+        )
+        raw["defaults"]["timeout_seconds"] = 120
+        raw["key"], raw["name"] = namespace, "Real local protocol acceptance"
+        for n in raw["nodes"]:
+            n["label"] = n["id"]
+            if n["id"] == "developer":
+                n["policy"]["model_route_ref"] = refs["worker_route"]
+        workflow = WorkflowService(api.factory, registry)
+        doc = await workflow.create(
+            WorkflowCreateRequest(
+                key=namespace, name="Real local acceptance", idempotency_key=namespace
+            ),
+            api.owner_id,
+            namespace,
+        )
+        doc = await workflow.save(
+            doc.template.id,
+            WorkflowDraftWrite(
+                expected_version=doc.template.version,
+                idempotency_key=namespace + "-save",
+                spec=WorkflowSpec.model_validate(raw),
+            ),
+            api.owner_id,
+            namespace,
+        )
+        doc = await workflow.publish(
+            doc.template.id,
+            WorkflowCommand(
+                expected_version=doc.template.version, idempotency_key=namespace + "-publish"
+            ),
+            api.owner_id,
+            namespace,
+        )
+        headers = {"x-csrf-token": (await login(api)).json()["csrf_token"]}
+        project = await api.client.post(
+            "/api/v1/projects",
+            headers=headers,
+            json={
+                "slug": namespace,
+                "name": "Real process acceptance",
+                "idempotency_key": namespace,
+            },
+        )
+        assert project.status_code == 201, project.text
+        manifest = {
+            "providers": {"allowed_endpoints": [endpoint]},
+            "workers": {
+                refs["worker"]: {
+                    "host_alias": "127.0.0.1",
+                    "port": 22239,
+                    "user": "jarvis",
+                    "ssh_key_ref": "secret:fixture-key",
+                    "host_key_ref": "secret:fixture-pin",
+                    "workspace_root": "/workspaces",
+                    "invocation_root": "/invocations",
+                    "runner_path": "/fixture/runner.py",
+                    "venv_activate": "/usr/local/bin/python",
+                    "python_path": "/usr/local/bin/python",
+                    "runner_python_path": "/usr/local/bin/python",
+                    "wrapper_path": "/fixture/wrapper.py",
+                }
+            },
+            "credential_files": {
+                "secret:fixture-key": str(keys / "client_key"),
+                "secret:fixture-pin": str(keys / "known_hosts"),
+            },
+            "allowed_worker_hosts": ["127.0.0.1"],
+            "workflows": {
+                str(doc.version.id): {
+                    "worker_revision_id": refs["worker"],
+                    "project": {
+                        "project_id": project.json()["id"],
+                        "repository_id": str(uuid7()),
+                        "slug": namespace,
+                        "workspace_root": worker_root,
+                        "branch": "main",
+                        "base_sha": (keys / "base-sha.txt").read_text().strip(),
+                    },
+                    "combined_commands": [
+                        {
+                            "argv": ["python", "-m", "pytest", "-q"],
+                            "parser": "pytest",
+                            "timeout_seconds": 30,
+                        }
+                    ],
+                }
+            },
+            # Keep Git worktree paths within Windows' legacy path limit.
+            "source_root": tempfile.mkdtemp(prefix="jarvis-src-"),
+            "executables": {"python": [sys.executable]},
+            "executable_path": str(Path(sys.executable).parent),
+            "git_executable": shutil.which("git"),
+            "ssh_executable": shutil.which("ssh"),
+            "git_author_name": "Fixture",
+            "git_author_email": "fixture@localhost",
+        }
+        path = tmp_path / "runtime.json"
+        path.write_text(json.dumps(manifest))
+        env = {
+            **os.environ,
+            "DATABASE_URL": database_url,
+            "JARVIS_ORCHESTRATOR_RUNTIME_MODE": "real",
+            "JARVIS_ORCHESTRATOR_RUNTIME_FILE": str(path),
+            "JARVIS_ORCHESTRATOR_MAX_CONCURRENCY": "1",
+            "JARVIS_ORCHESTRATOR_GLOBAL_CONCURRENCY": "1",
+            "JARVIS_ARTIFACT_ROOT": str(api.settings.artifact_root),
+        }
+        queued = await api.client.post(
+            f"/api/v1/projects/{project.json()['id']}/jobs",
+            headers=headers,
+            json={
+                "workflow_version_id": str(doc.version.id),
+                "objective": "Implement answer 42 with passing pytest tests",
+                "mode": "real",
+                "idempotency_key": namespace,
+            },
+        )
+        assert queued.status_code == 202, queued.text
+        run_id = queued.json()["id"]
+        with (tmp_path / "orchestrator.log").open("wb") as log:
+            process = subprocess.Popen(
+                [sys.executable, "-m", "jarvis_orchestrator.main"],
+                env=env,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+            )
+            try:
+                for _ in range(300):
+                    await asyncio.sleep(1)
+                    run = (await api.client.get(f"/api/v1/runs/{run_id}")).json()
+                    if (
+                        run.get("status") in {"completed", "failed", "blocked", "cancelled"}
+                        or process.poll() is not None
+                    ):
+                        break
+                assert run.get("status") == "completed", (
+                    run,
+                    (tmp_path / "orchestrator.log").read_text()[-4000:],
+                )
+            finally:
+                process.terminate()
+                await asyncio.to_thread(process.wait, timeout=15)
+        async with session_factory() as session:
+            events = (
+                await session.scalars(select(EventModel).where(EventModel.run_id == run_id))
+            ).all()
+            types = [e.type for e in events]
+            assert "test.failed" in types
+            passing_reviews = [
+                event
+                for event in events
+                if event.type == "review.completed"
+                and event.data_json.get("verdict") == "PASS"
+                and event.data_json.get("valid") is True
+            ]
+            assert len(passing_reviews) == 1
+            assert "git.integration_completed" in types
+            failures = [event for event in events if event.type == "failure.classified"]
+            assert [event.data_json["class"] for event in failures] == ["code.test_failure"]
+            attempts = [event for event in events if event.type == "task.attempt_started"]
+            assert sorted(event.data_json["attempt"] for event in attempts) == [1, 2]
+            model_calls = [event for event in events if event.type == "model.call_completed"]
+            assert len(model_calls) == 3
+            assert all(
+                event.data_json["profile_revision_id"] == refs["profile"] for event in model_calls
+            )
+            assert refs["profile"] != refs["developer"]
+            assert "run.completed" in types
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)

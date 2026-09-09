@@ -1,4 +1,8 @@
 import type {
+  ApprovalPage,
+  ApprovalView,
+  ApprovalDecisionRequest,
+  RunUsage,
   CommandPage,
   JobCreate,
   ProjectCreate,
@@ -45,6 +49,15 @@ export function createRuntimeClient(csrfToken?: string) {
     return response.json() as Promise<T>;
   }
   return {
+    usage: (id: string) =>
+      request<RunUsage>(`/runs/${encodeURIComponent(id)}/usage`),
+    approvals: (id: string) =>
+      request<ApprovalPage>(`/runs/${encodeURIComponent(id)}/approvals`),
+    approve: (id: string, approvalId: string, body: ApprovalDecisionRequest) =>
+      request<ApprovalView>(
+        `/runs/${encodeURIComponent(id)}/approvals/${encodeURIComponent(approvalId)}/decisions`,
+        body,
+      ),
     integrationHeads: (id: string) =>
       request<IntegrationHeadPage>(
         `/runs/${encodeURIComponent(id)}/integration-heads`,

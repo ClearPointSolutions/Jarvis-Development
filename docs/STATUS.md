@@ -1,10 +1,14 @@
 # Jarvis V1 Status
 
 Last updated: 2026-09-08
-Current phase: M8 — IN PROGRESS (local verification/review/Git scope)
-Overall state: M7 COMPLETE. M8 implementation and acceptance pending. M9 not started.
+Current phase: local MVP runtime and M9–M11 implementation in progress.
+Overall state: M7 complete; M8 code is on main. Current changes are unverified as a whole.
 
-## Active M8 criteria
+Current authorization covers all remaining local implementation and hardening; historical
+milestone-only scope statements below do not limit this work. See
+[LOCAL_MVP_MATRIX.md](LOCAL_MVP_MATRIX.md) for current requirements and evidence.
+
+## Historical M8 criteria
 
 Base: `e62b7e8a44a6af99d54c6e6c760eaaf2657f2250`.
 Branch: `codex/m8-verification-review-git`.

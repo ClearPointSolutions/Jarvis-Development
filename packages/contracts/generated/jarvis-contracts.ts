@@ -35,20 +35,35 @@ export type Code = string;
 export type JsonValue = unknown;
 export type Message = string;
 export type RequestId1 = string;
+export type Decision = "approved" | "rejected";
+export type ExpectedRunVersion = number;
+export type IdempotencyKey = string;
+export type RequestDigest = string;
+export type ActionType = string;
+export type ActorId = string | null;
 export type CreatedAt1 = string;
+export type DecidedAt = string | null;
+export type Decision1 = "pending" | "approved" | "rejected" | "expired" | "cancelled";
+export type ExpiresAt = string | null;
 export type Id1 = string;
+export type NodeId1 = string;
+export type RequestDigest1 = string;
+export type RunId1 = string;
+export type Items1 = ApprovalView[];
+export type CreatedAt2 = string;
+export type Id2 = string;
 export type Kind = string;
 export type MediaType = string;
 export type RedactionClassification = "public" | "owner" | "sensitive" | "redacted";
-export type RunId1 = string | null;
+export type RunId2 = string | null;
 export type Sha256 = string;
 export type SizeBytes = number;
 export type StorageKey = string;
 export type TaskAttemptId = string | null;
 export type ConfigurationId = string;
 export type ContentHash = string;
-export type CreatedAt2 = string;
-export type Id2 = string;
+export type CreatedAt3 = string;
+export type Id3 = string;
 export type Key = string;
 export type ConfigurationKind =
   | "worker"
@@ -61,23 +76,23 @@ export type ConfigurationKind =
   | "project_settings";
 export type Revision = number;
 export type SchemaVersion = "1.0";
-export type Decision = "approved" | "rejected";
+export type Decision2 = "approved" | "rejected";
 export type DecisionId = string;
-export type ExpectedRunVersion = number;
-export type IdempotencyKey = string;
-export type Decision1 = string;
-export type Id3 = string;
-export type CreatedAt3 = string;
+export type ExpectedRunVersion1 = number;
+export type IdempotencyKey1 = string;
+export type Decision3 = string;
+export type Id4 = string;
+export type CreatedAt4 = string;
 export type ExternalId = string | null;
 export type FenceGeneration = number;
-export type Id4 = string;
-export type IdempotencyKey1 = string;
+export type Id5 = string;
+export type IdempotencyKey2 = string;
 export type Kind1 = string;
-export type RequestDigest = string;
+export type RequestDigest2 = string;
 export type Result = {
   [k: string]: JsonValue;
 } | null;
-export type RunId2 = string;
+export type RunId3 = string;
 export type EffectStatus =
   "prepared" | "dispatched" | "running" | "succeeded" | "failed" | "cancel_requested" | "cancelled" | "unknown";
 export type TaskAttemptId1 = string | null;
@@ -112,7 +127,7 @@ export type CausationEventId = string | null;
 export type CorrelationId1 = string;
 export type EventId = string;
 export type GlobalPosition = number;
-export type IdempotencyKey2 = string | null;
+export type IdempotencyKey3 = string | null;
 export type Message1 = string;
 export type EventMode = "real" | "demo";
 export type OccurredAt = string;
@@ -122,7 +137,7 @@ export type SchemaVersion1 = "1.0";
 export type JobId = string | null;
 export type NodeExecutionId = string | null;
 export type ProjectId1 = string | null;
-export type RunId3 = string | null;
+export type RunId4 = string | null;
 export type TaskAttemptId2 = string | null;
 export type TaskId1 = string | null;
 export type ThreadId = string | null;
@@ -137,7 +152,7 @@ export type SpanId = string;
 export type TraceId = string;
 export type Type = string;
 export type EventVisibility = "owner" | "operator" | "internal";
-export type Items1 = NormalizedEvent[];
+export type Items2 = NormalizedEvent[];
 export type NextAfter1 = number | null;
 export type EarliestPosition = number | null;
 export type LatestPosition = number | null;
@@ -175,25 +190,25 @@ export type UserCancelled = boolean;
 export type VerifierFailed = boolean;
 export type WorkerTransportFailed = boolean;
 export type DetailArtifactId = string | null;
-export type Id5 = string;
+export type Id6 = string;
 export type Key1 = string;
-export type RequestDigest1 = string;
+export type RequestDigest3 = string;
 export type ResponseStatus = number | null;
 export type Scope = string;
 export type State = "started" | "completed" | "failed";
 export type BaseSha = string;
 export type Branch = string;
-export type ExpiresAt = string | null;
+export type ExpiresAt1 = string | null;
 export type Generation = number;
 export type HeadSha = string;
 export type LeaseOwner = string | null;
 export type ReleasedAt = string | null;
 export type RepositoryId = string;
 export type SnapshotArtifactId = string | null;
-export type Items2 = IntegrationHeadView[];
+export type Items3 = IntegrationHeadView[];
 export type NextAfter2 = string | null;
-export type CreatedAt4 = string;
-export type Id6 = string;
+export type CreatedAt5 = string;
+export type Id7 = string;
 export type Objective = string;
 export type ProjectId2 = string;
 export type JobStatus = "draft" | "queued" | "active" | "waiting" | "completed" | "failed" | "blocked" | "cancelled";
@@ -206,24 +221,24 @@ export type DelaySeconds = number;
 export type Health = "healthy" | "degraded" | "unavailable" | "unknown";
 export type Scenario = "canonical" | "infrastructure" | "review" | "provider";
 export type Seed = number;
-export type IdempotencyKey3 = string;
+export type IdempotencyKey4 = string;
 export type Mode = "real" | "demo";
 export type Objective1 = string;
 export type Priority = number;
 export type WorkflowVersionId = string;
-export type Id7 = string;
+export type Id8 = string;
 export type Objective2 = string;
 export type ProjectId3 = string;
 export type Status2 = string;
-export type Items3 = JobView[];
+export type Items4 = JobView[];
 export type NextAfter3 = string | null;
 export type AcquiredAt = string;
-export type ExpiresAt1 = string;
+export type ExpiresAt2 = string;
 export type Generation1 = number;
-export type Id8 = string;
+export type Id9 = string;
 export type OwnerInstanceId = string;
 export type ReleasedAt1 = string | null;
-export type RunId4 = string;
+export type RunId5 = string;
 export type Service = "jarvis-api";
 export type Status3 = "ok";
 export type Version1 = "0.1.0";
@@ -233,18 +248,18 @@ export type Revoked = boolean;
 export type ArtifactRefs1 = ArtifactReference[];
 export type CausationEventId1 = string | null;
 export type CorrelationId2 = string;
-export type IdempotencyKey4 = string | null;
+export type IdempotencyKey5 = string | null;
 export type Message2 = string;
 export type OccurredAt1 = string;
 export type SchemaVersion2 = "1.0";
 export type Type1 = string;
-export type IdempotencyKey5 = string;
+export type IdempotencyKey6 = string;
 export type Name1 = string;
 export type Slug = string;
-export type Id9 = string;
+export type Id10 = string;
 export type Name2 = string;
 export type Slug1 = string;
-export type Items4 = ProjectView[];
+export type Items5 = ProjectView[];
 export type NextAfter4 = string | null;
 export type Demo1 = boolean;
 export type Index = number;
@@ -265,17 +280,17 @@ export type Structured = {
   [k: string]: JsonValue;
 } | null;
 export type Text = string;
-export type Id10 = string;
+export type Id11 = string;
 export type Name3 = string;
 export type ToolCalls = ProviderToolCall[];
 export type Text1 = string;
 export type CorrelationId3 = string;
 export type DataClassification = "public" | "internal" | "confidential" | "restricted";
-export type NodeId1 = string | null;
+export type NodeId2 = string | null;
 export type OutputTokens1 = number;
 export type ProjectId4 = string | null;
 export type Purpose = string;
-export type RunId5 = string | null;
+export type RunId6 = string | null;
 export type StructuredSchema = {
   [k: string]: JsonValue;
 } | null;
@@ -292,13 +307,13 @@ export type Status4 = "ready" | "not_ready";
 export type Archived = boolean;
 export type CircuitState = "closed" | "open" | "half_open";
 export type ContentHash1 = string;
-export type CreatedAt5 = string;
+export type CreatedAt6 = string;
 export type CreatedBy = string | null;
 export type Description1 = string;
 export type DisplayName = string;
 export type Enabled = boolean;
 export type Health1 = "healthy" | "degraded" | "unavailable" | "misconfigured" | "unknown";
-export type Id11 = string;
+export type Id12 = string;
 export type Key2 = string;
 export type Revision1 = number;
 export type RevisionId = string;
@@ -409,7 +424,7 @@ export type PossiblyStalled = boolean;
 export type SlotsInUse = number;
 export type ValidatedAt = string | null;
 export type ValidationIssues = string[];
-export type Items5 = RegistryRecord[];
+export type Items6 = RegistryRecord[];
 export type NextAfter5 = string | null;
 export type Archived1 = boolean;
 export type ClearSecret = boolean;
@@ -418,7 +433,7 @@ export type Description2 = string;
 export type DisplayName1 = string;
 export type Enabled1 = boolean;
 export type ExpectedVersion = number;
-export type IdempotencyKey6 = string;
+export type IdempotencyKey7 = string;
 export type Key3 = string;
 export type SecretRef = string | null;
 export type Spec2 =
@@ -433,7 +448,7 @@ export type Summary2 = string;
  */
 export type Findings = ReviewFinding[];
 export type FinishedAt = string;
-export type Id12 = string;
+export type Id13 = string;
 export type ReviewedHeadSha = string;
 export type ReviewedSnapshotId = string;
 export type ReviewerRevision = string;
@@ -462,18 +477,18 @@ export type PriorFeedbackArtifactIds = string[];
 export type BaseSha1 = string;
 export type Branch1 = string;
 export type ContentDigest = string;
-export type CreatedAt6 = string;
+export type CreatedAt7 = string;
 export type CumulativeDiffArtifactId = string;
 export type FileCount = number;
 export type GitStatus = "clean";
 export type HeadSha1 = string;
-export type Id13 = string;
+export type Id14 = string;
 export type LatestBaseSha = string;
 export type LatestDiffArtifactId = string;
 export type Lfs = "absent";
 export type ManifestArtifactId = string;
 export type RepositoryId1 = string;
-export type RunId6 = string;
+export type RunId7 = string;
 export type SourceArtifactId = string;
 export type Submodules = "absent";
 export type TaskAttemptId4 = string;
@@ -500,7 +515,7 @@ export type Eligible = boolean;
 export type ProfileRevisionId3 = string;
 export type Reasons = string[];
 export type Candidates1 = CandidateDecision[];
-export type Decision2 = "allow" | "deny" | "require_approval";
+export type Decision4 = "allow" | "deny" | "require_approval";
 export type Demo3 = boolean;
 export type Reasons1 = string[];
 export type RouteRevisionId2 = string;
@@ -509,9 +524,9 @@ export type SelectedProviderRevisionId = string | null;
 export type SnapshotHash = string;
 export type ClaimableAt = string;
 export type ConfigSnapshotId1 = string;
-export type CreatedAt7 = string;
+export type CreatedAt8 = string;
 export type DesiredRunState = "running" | "paused" | "cancelled";
-export type Id14 = string;
+export type Id15 = string;
 export type JobId1 = string;
 export type LanggraphThreadId = string;
 export type RunNumber = number;
@@ -530,26 +545,26 @@ export type RunStatus =
 export type UpdatedAt3 = string;
 export type Version3 = number;
 export type WorkflowVersionId2 = string;
-export type CreatedAt8 = string;
-export type Id15 = string;
-export type IdempotencyKey7 = string;
+export type CreatedAt9 = string;
+export type Id16 = string;
+export type IdempotencyKey8 = string;
 export type RunCommandKind = "pause" | "resume" | "cancel" | "instruction" | "retry";
-export type RequestDigest2 = string;
-export type RunId7 = string;
+export type RequestDigest4 = string;
+export type RunId8 = string;
 export type Sequence = number;
 export type CommandStatus = "pending" | "applying" | "applied" | "rejected" | "superseded";
 export type CommandId = string;
 export type Duplicate = boolean;
-export type RequestDigest3 = string;
-export type RunId8 = string;
+export type RequestDigest5 = string;
+export type RunId9 = string;
 export type SchemaVersion5 = "1.0";
 export type Sequence1 = number;
-export type ExpectedRunVersion1 = number | null;
-export type IdempotencyKey8 = string;
-export type RunId9 = string;
+export type ExpectedRunVersion2 = number | null;
+export type IdempotencyKey9 = string;
+export type RunId10 = string;
 export type SchemaVersion6 = "1.0";
-export type CreatedAt9 = string;
-export type Id16 = string;
+export type CreatedAt10 = string;
+export type Id17 = string;
 export type ContentHash2 = string;
 export type Key4 = string;
 export type RevisionId1 = string;
@@ -558,20 +573,20 @@ export type SchemaVersion7 = "1.0";
 export type SnapshotHash1 = string;
 export type WorkflowContentHash = string;
 export type WorkflowVersionId3 = string;
-export type ExpectedRunVersion2 = number;
-export type IdempotencyKey9 = string;
+export type ExpectedRunVersion3 = number;
+export type IdempotencyKey10 = string;
 export type Instruction = string | null;
 export type LastEventAt = string | null;
 export type LastEventPosition = number;
 export type LastRunSequence = number;
 export type ReadCursor = number;
-export type RunId10 = string;
+export type RunId11 = string;
 export type Status5 = string;
 export type ClaimableAt1 = string;
 export type CompletedAt = string | null;
 export type CurrentNode = string | null;
 export type DesiredState = string;
-export type Id17 = string;
+export type Id18 = string;
 export type JobId2 = string;
 export type LastEventAt1 = string | null;
 export type LastEventPosition1 = number;
@@ -587,49 +602,61 @@ export type Status6 = string;
 export type ThreadId2 = string;
 export type Version4 = number;
 export type WorkflowVersionId4 = string;
-export type Items6 = RunView[];
+export type Items7 = RunView[];
 export type NextAfter6 = string | null;
+export type Calls = number;
+export type Currency2 = string;
+export type KnownSubtotal = number | string;
+export type Status7 = "exact" | "estimated" | "unknown" | "not_applicable";
+export type Total = number | string | null;
+export type UnknownCalls = number;
+export type Currencies = CurrencyUsage[];
+export type KnownTokens = number;
+export type Provenance1 = "exact" | "estimated" | "unknown";
+export type TotalTokens1 = number | null;
+export type UnknownUsageCalls = number;
+export type WorkerUsage = "unavailable";
 export type AppliedAt = string | null;
-export type Id18 = string;
+export type Id19 = string;
 export type Kind9 = string;
 export type Sequence2 = number;
-export type Status7 = string;
-export type Items7 = CommandView[];
+export type Status8 = string;
+export type Items8 = CommandView[];
 export type NextAfter7 = number | null;
 export type CompletedAt1 = string | null;
 export type ExecutionNumber = number;
-export type Id19 = string;
+export type Id20 = string;
 export type StartedAt2 = string | null;
-export type Status8 = string;
+export type Status9 = string;
 export type TaskAttemptId6 = string | null;
 export type TaskId5 = string | null;
 export type WorkflowNodeId1 = string;
-export type Items8 = NodeView[];
+export type Items9 = NodeView[];
 export type NextAfter8 = string | null;
-export type Id20 = string;
+export type Id21 = string;
 export type Number = number;
 export type SnapshotDigest1 = string | null;
-export type Status9 = string;
+export type Status10 = string;
 export type Attempts = AttemptView[];
 export type Dependencies = string[];
-export type Id21 = string;
+export type Id22 = string;
 export type Key5 = string;
-export type Status10 = string;
+export type Status11 = string;
 export type Title = string;
 export type Weight = number;
-export type Items9 = TaskView[];
+export type Items10 = TaskView[];
 export type NextAfter9 = string | null;
 export type AbsoluteExpiresAt = string;
 export type CsrfToken = string;
 export type IdleExpiresAt = string;
-export type Id22 = string;
+export type Id23 = string;
 export type Role = "owner";
 export type Username1 = string;
 export type AcceptanceCriteria1 = string[];
-export type CreatedAt10 = string;
-export type Id23 = string;
+export type CreatedAt11 = string;
+export type Id24 = string;
 export type Key6 = string;
-export type RunId11 = string;
+export type RunId12 = string;
 export type TaskStatus =
   | "pending"
   | "ready"
@@ -648,7 +675,7 @@ export type Weight1 = number;
 export type AttemptNumber = number;
 export type BaseSha2 = string | null;
 export type CompletedAt2 = string | null;
-export type Id24 = string;
+export type Id25 = string;
 export type ResultSha = string | null;
 export type StartedAt3 = string | null;
 export type AttemptStatus =
@@ -740,7 +767,7 @@ export type EnvironmentKeys =
 export type ExitCode = number | null;
 export type FailureClass1 = string | null;
 export type FinishedAt1 = string | null;
-export type Id25 = string;
+export type Id26 = string;
 export type Confidence = "summary" | "exit_code";
 export type Errors = number | null;
 export type Failed = number | null;
@@ -749,11 +776,11 @@ export type Passed = number | null;
 export type Skipped = number | null;
 export type Summary4 = string;
 export type Phase = "task" | "integration";
-export type RunId12 = string;
+export type RunId13 = string;
 export type SnapshotId = string;
 export type SourceSha = string;
 export type StartedAt4 = string;
-export type Status11 = "started" | "passed" | "failed" | "timed_out" | "unknown";
+export type Status12 = "started" | "passed" | "failed" | "timed_out" | "unknown";
 export type StderrArtifactId = string | null;
 export type StderrTruncated = boolean;
 export type StdoutArtifactId = string | null;
@@ -761,7 +788,7 @@ export type StdoutTruncated = boolean;
 export type TaskAttemptId7 = string;
 export type TaskId7 = string;
 export type InvocationId = string;
-export type Status12 = "cancelled" | "unknown" | "already_terminal";
+export type Status13 = "cancelled" | "unknown" | "already_terminal";
 export type InvocationId1 = string;
 export type OccurredAt2 = string;
 export type SourceSequence1 = number;
@@ -774,21 +801,21 @@ export type Type2 =
   | "worker.cancelled";
 export type Generation2 = number;
 export type InvocationId2 = string;
-export type RequestDigest4 = string;
+export type RequestDigest6 = string;
 export type WorkerRevisionId = string;
 export type Capabilities3 = string[];
 export type Issues1 = string[];
 export type NetworkChecked1 = boolean;
 export type ObservedAt = string;
-export type Status13 = "healthy" | "degraded" | "unavailable" | "misconfigured" | "unknown";
+export type Status14 = "healthy" | "degraded" | "unavailable" | "misconfigured" | "unknown";
 export type ArchitectureArtifactId = string | null;
 /**
  * @maxItems 32
  */
 export type FeedbackArtifactIds = string[];
-export type IdempotencyKey10 = string;
+export type IdempotencyKey11 = string;
 export type InvocationId3 = string;
-export type ExpiresAt2 = string;
+export type ExpiresAt3 = string;
 export type Generation3 = number;
 export type LeaseId = string;
 export type RunGeneration = number;
@@ -810,7 +837,7 @@ export type ProtocolVersion = "1.0";
  * @maxItems 64
  */
 export type RequiredCapabilities1 = string[];
-export type RunId13 = string;
+export type RunId14 = string;
 /**
  * @minItems 1
  * @maxItems 64
@@ -849,7 +876,7 @@ export type Verification1 = WorkerVerification[];
 export type TaskAttemptId8 = string;
 export type TaskId8 = string;
 export type WorkerRevisionId2 = string;
-export type RequestDigest5 = string;
+export type RequestDigest7 = string;
 export type InvocationId4 = string;
 export type SafeToStart = boolean;
 export type State1 = "absent" | "starting" | "running" | "succeeded" | "failed" | "cancelled" | "unknown";
@@ -1010,11 +1037,11 @@ export type ManifestDigest = string;
 export type MetadataTruncated = boolean;
 export type StatusDigest = string;
 export type TreeDigest = string;
-export type RequestDigest6 = string;
+export type RequestDigest8 = string;
 export type SourceSequence2 = number;
 export type StartHead = string;
 export type StartedAt5 = string;
-export type Status14 = "succeeded" | "failed" | "cancelled" | "unknown";
+export type Status15 = "succeeded" | "failed" | "cancelled" | "unknown";
 export type Summary5 = string;
 export type TaskAttemptId9 = string;
 export type TaskId9 = string;
@@ -1028,27 +1055,27 @@ export type ExclusiveWorkspace1 = boolean;
 export type Valid1 = boolean;
 export type Archived2 = boolean;
 export type ExpectedVersion1 = number;
-export type IdempotencyKey11 = string;
-export type ExpectedVersion2 = number;
 export type IdempotencyKey12 = string;
-export type Description4 = string;
+export type ExpectedVersion2 = number;
 export type IdempotencyKey13 = string;
+export type Description4 = string;
+export type IdempotencyKey14 = string;
 export type Key8 = string;
 export type Name5 = string;
 export type Archived3 = boolean;
-export type CreatedAt11 = string;
+export type CreatedAt12 = string;
 export type CurrentDraftVersionId = string | null;
 export type CurrentPublishedVersionId = string | null;
 export type Description5 = string;
-export type Id26 = string;
+export type Id27 = string;
 export type Key9 = string;
 export type Name6 = string;
 export type UpdatedAt5 = string;
 export type Version6 = number;
 export type CompilerVersion = string;
 export type ContentHash3 = string;
-export type CreatedAt12 = string;
-export type Id27 = string;
+export type CreatedAt13 = string;
+export type Id28 = string;
 export type X = number;
 export type Y = number;
 export type X1 = number;
@@ -1058,7 +1085,7 @@ export type Published = boolean;
 export type PublishedAt = string | null;
 export type SnapshotHash2 = string | null;
 export type AcceptsRuntimeInstructions = boolean;
-export type ActionType = ("github.push_and_pr" | "git.integrate" | "worker.execute") | null;
+export type ActionType1 = ("github.push_and_pr" | "git.integrate" | "worker.execute") | null;
 export type ExpiresInSeconds = number | null;
 export type RequiredGrantFrom = string | null;
 export type MaxConcurrency1 = number | null;
@@ -1076,7 +1103,7 @@ export type RevisionId2 = string;
 export type Description6 = string;
 export type Fallback = boolean;
 export type From = string;
-export type Id28 = string;
+export type Id29 = string;
 export type IterationKey = string | null;
 export type WorkflowEdgeKind = "always" | "on_result" | "retry" | "iterate" | "on_failure";
 export type MaxIterations = number | null;
@@ -1101,7 +1128,7 @@ export type Name7 = string;
  * @maxItems 500
  */
 export type Nodes1 = [WorkflowNode, ...WorkflowNode[]];
-export type Id29 = string;
+export type Id30 = string;
 export type Label = string;
 export type NodeVersion = "1.0";
 export type WorkflowNodeType =
@@ -1124,9 +1151,9 @@ export type StateSchema = "jarvis.workflow_state.v1";
 export type Version7 = number;
 export type WorkflowTemplateId = string;
 export type ExpectedVersion3 = number;
-export type IdempotencyKey14 = string;
-export type ExpectedVersion4 = number;
 export type IdempotencyKey15 = string;
+export type ExpectedVersion4 = number;
+export type IdempotencyKey16 = string;
 export type SourceVersionId = string | null;
 export type WorkflowNodeConfigs =
   | OrganizerConfig
@@ -1163,7 +1190,7 @@ export type JoinId = string;
 export type MaxFanout = number;
 export type FanoutId = string;
 export type RequireAll = true;
-export type ActionType1 = "github.push_and_pr" | "git.integrate" | "worker.execute";
+export type ActionType2 = "github.push_and_pr" | "git.integrate" | "worker.execute";
 export type ExpiresInSeconds1 = number | null;
 export type RepositorySource1 = "project";
 export type WaitForCi = boolean;
@@ -1172,7 +1199,7 @@ export type ExternalBehavior = boolean;
 export type InputChannels = string[];
 export type OutputChannels = string[];
 export type RequiredCapabilities2 = string[];
-export type Items10 = NodeTypeDefinition[];
+export type Items11 = NodeTypeDefinition[];
 export type CompilerVersion1 = "1.0.0";
 export type Archived4 = boolean;
 export type ConfigurationId1 = string;
@@ -1187,32 +1214,34 @@ export type Spec3 =
   WorkerSpec | ProviderSpec | ModelProfileSpec | RoutePolicySpec | RetryRegistrySpec | PermissionPolicySpec;
 export type Revisions = WorkflowResolvedRevision[];
 export type WorkflowContentHash1 = string;
-export type Items11 = WorkflowTemplateRecord[];
+export type Items12 = WorkflowTemplateRecord[];
 export type NextAfter10 = string | null;
 export type ExpectedVersion5 = number;
-export type IdempotencyKey16 = string;
+export type IdempotencyKey17 = string;
 export type ContentHash5 = string | null;
 export type Code4 = string;
 export type EdgeId = string | null;
 export type Message4 = string;
-export type NodeId2 = string | null;
+export type NodeId3 = string | null;
 export type Path1 = string | null;
 export type Issues2 = WorkflowIssue[];
 export type SnapshotHash3 = string | null;
 export type Valid2 = boolean;
 export type CompilerVersion2 = string;
 export type ContentHash6 = string;
-export type Id30 = string;
+export type Id31 = string;
 export type Published1 = boolean;
 export type SpecVersion1 = "1.0" | "1.1";
 export type Version8 = number;
 export type WorkflowTemplateId1 = string;
-export type Items12 = WorkflowVersionRecord[];
+export type Items13 = WorkflowVersionRecord[];
 export type NextAfter11 = string | null;
 
 export interface JarvisContractBundle {
   accounting_page?: AccountingPage | null;
   api_error?: ApiErrorResponse | null;
+  approval_decision: ApprovalDecisionRequest;
+  approvals: ApprovalPage;
   artifact?: ArtifactMetadata | null;
   configuration_revision?: ConfigurationRevision | null;
   demo_decision: DemoDecision;
@@ -1256,6 +1285,7 @@ export interface JarvisContractBundle {
   run_control?: RunControl | null;
   run_event_snapshot?: RunEventSnapshotResponse | null;
   run_page?: RunPage | null;
+  run_usage: RunUsage;
   runtime_commands: CommandPage;
   runtime_nodes: NodePage;
   runtime_tasks: TaskPage;
@@ -1346,13 +1376,38 @@ export interface ApiErrorDetail {
 export interface Details {
   [k: string]: JsonValue;
 }
-export interface ArtifactMetadata {
+export interface ApprovalDecisionRequest {
+  decision: Decision;
+  expected_run_version: ExpectedRunVersion;
+  idempotency_key: IdempotencyKey;
+  request_digest: RequestDigest;
+}
+export interface ApprovalPage {
+  items: Items1;
+}
+export interface ApprovalView {
+  action_type: ActionType;
+  actor_id?: ActorId;
   created_at: CreatedAt1;
+  decided_at?: DecidedAt;
+  decision?: Decision1;
+  expires_at?: ExpiresAt;
   id: Id1;
+  node_id: NodeId1;
+  parameters: Parameters;
+  request_digest: RequestDigest1;
+  run_id: RunId1;
+}
+export interface Parameters {
+  [k: string]: JsonValue;
+}
+export interface ArtifactMetadata {
+  created_at: CreatedAt2;
+  id: Id2;
   kind: Kind;
   media_type: MediaType;
   redaction_classification: RedactionClassification;
-  run_id?: RunId1;
+  run_id?: RunId2;
   sha256: Sha256;
   size_bytes: SizeBytes;
   storage_key: StorageKey;
@@ -1361,8 +1416,8 @@ export interface ArtifactMetadata {
 export interface ConfigurationRevision {
   configuration_id: ConfigurationId;
   content_hash: ContentHash;
-  created_at: CreatedAt2;
-  id: Id2;
+  created_at: CreatedAt3;
+  id: Id3;
   key: Key;
   kind: ConfigurationKind;
   revision: Revision;
@@ -1373,25 +1428,25 @@ export interface Spec {
   [k: string]: JsonValue;
 }
 export interface DemoDecision {
-  decision: Decision;
+  decision: Decision2;
   decision_id: DecisionId;
-  expected_run_version: ExpectedRunVersion;
-  idempotency_key: IdempotencyKey;
+  expected_run_version: ExpectedRunVersion1;
+  idempotency_key: IdempotencyKey1;
 }
 export interface DemoDecisionView {
-  decision: Decision1;
-  id: Id3;
+  decision: Decision3;
+  id: Id4;
 }
 export interface Effect {
-  created_at: CreatedAt3;
+  created_at: CreatedAt4;
   external_id?: ExternalId;
   fence_generation: FenceGeneration;
-  id: Id4;
-  idempotency_key: IdempotencyKey1;
+  id: Id5;
+  idempotency_key: IdempotencyKey2;
   kind: Kind1;
-  request_digest: RequestDigest;
+  request_digest: RequestDigest2;
   result?: Result;
-  run_id: RunId2;
+  run_id: RunId3;
   status: EffectStatus;
   task_attempt_id?: TaskAttemptId1;
   updated_at: UpdatedAt;
@@ -1399,7 +1454,7 @@ export interface Effect {
 export interface EventPage {
   after: After;
   high_watermark: HighWatermark;
-  items: Items1;
+  items: Items2;
   next_after?: NextAfter1;
 }
 export interface NormalizedEvent {
@@ -1410,7 +1465,7 @@ export interface NormalizedEvent {
   data: Data;
   event_id: EventId;
   global_position: GlobalPosition;
-  idempotency_key?: IdempotencyKey2;
+  idempotency_key?: IdempotencyKey3;
   message: Message1;
   mode: EventMode;
   occurred_at: OccurredAt;
@@ -1435,7 +1490,7 @@ export interface EventScope {
   job_id?: JobId;
   node_execution_id?: NodeExecutionId;
   project_id?: ProjectId1;
-  run_id?: RunId3;
+  run_id?: RunId4;
   task_attempt_id?: TaskAttemptId2;
   task_id?: TaskId1;
   thread_id?: ThreadId;
@@ -1479,23 +1534,23 @@ export interface FailureEvidence {
 export interface FailureRecord {
   classification: FailureClassification;
   detail_artifact_id?: DetailArtifactId;
-  id: Id5;
+  id: Id6;
 }
 export interface IdempotencyContract {
   key: Key1;
-  request_digest: RequestDigest1;
+  request_digest: RequestDigest3;
   response_status?: ResponseStatus;
   scope: Scope;
   state: State;
 }
 export interface IntegrationHeadPage {
-  items: Items2;
+  items: Items3;
   next_after: NextAfter2;
 }
 export interface IntegrationHeadView {
   base_sha: BaseSha;
   branch: Branch;
-  expires_at: ExpiresAt;
+  expires_at: ExpiresAt1;
   generation: Generation;
   head_sha: HeadSha;
   lease_owner: LeaseOwner;
@@ -1504,8 +1559,8 @@ export interface IntegrationHeadView {
   snapshot_artifact_id: SnapshotArtifactId;
 }
 export interface Job {
-  created_at: CreatedAt4;
-  id: Id6;
+  created_at: CreatedAt5;
+  id: Id7;
   objective: Objective;
   project_id: ProjectId2;
   status: JobStatus;
@@ -1515,7 +1570,7 @@ export interface Job {
 }
 export interface JobCreate {
   demo_fixture?: DemoFixture | null;
-  idempotency_key: IdempotencyKey3;
+  idempotency_key: IdempotencyKey4;
   mode?: Mode;
   objective: Objective1;
   priority?: Priority;
@@ -1530,23 +1585,23 @@ export interface DemoFixture {
   seed?: Seed;
 }
 export interface JobPage {
-  items: Items3;
+  items: Items4;
   next_after?: NextAfter3;
 }
 export interface JobView {
-  id: Id7;
+  id: Id8;
   objective: Objective2;
   project_id: ProjectId3;
   status: Status2;
 }
 export interface Lease {
   acquired_at: AcquiredAt;
-  expires_at: ExpiresAt1;
+  expires_at: ExpiresAt2;
   generation: Generation1;
-  id: Id8;
+  id: Id9;
   owner_instance_id: OwnerInstanceId;
   released_at?: ReleasedAt1;
-  run_id: RunId4;
+  run_id: RunId5;
 }
 export interface LivenessResponse {
   service?: Service;
@@ -1569,7 +1624,7 @@ export interface NewEvent {
   causation_event_id?: CausationEventId1;
   correlation_id: CorrelationId2;
   data: Data1;
-  idempotency_key?: IdempotencyKey4;
+  idempotency_key?: IdempotencyKey5;
   message: Message2;
   mode: EventMode;
   occurred_at: OccurredAt1;
@@ -1585,16 +1640,16 @@ export interface Data1 {
   [k: string]: JsonValue;
 }
 export interface ProjectCreate {
-  idempotency_key: IdempotencyKey5;
+  idempotency_key: IdempotencyKey6;
   name: Name1;
   slug: Slug;
 }
 export interface ProjectPage {
-  items: Items4;
+  items: Items5;
   next_after?: NextAfter4;
 }
 export interface ProjectView {
-  id: Id9;
+  id: Id10;
   name: Name2;
   slug: Slug1;
 }
@@ -1629,7 +1684,7 @@ export interface ProviderFailure {
 }
 export interface ProviderToolCall {
   arguments: Arguments;
-  id: Id10;
+  id: Id11;
   name: Name3;
 }
 export interface Arguments {
@@ -1638,11 +1693,11 @@ export interface Arguments {
 export interface ProviderRequest {
   correlation_id: CorrelationId3;
   data_classification?: DataClassification;
-  node_id?: NodeId1;
+  node_id?: NodeId2;
   output_tokens: OutputTokens1;
   project_id?: ProjectId4;
   purpose: Purpose;
-  run_id?: RunId5;
+  run_id?: RunId6;
   structured_schema?: StructuredSchema;
   task_id?: TaskId2;
   text: Text2;
@@ -1651,9 +1706,9 @@ export interface ProviderRequest {
 export interface ProviderTool {
   description?: Description;
   name: Name4;
-  parameters: Parameters;
+  parameters: Parameters1;
 }
-export interface Parameters {
+export interface Parameters1 {
   [k: string]: JsonValue;
 }
 export interface ReadinessResponse {
@@ -1661,20 +1716,20 @@ export interface ReadinessResponse {
   status: Status4;
 }
 export interface RegistryPage {
-  items: Items5;
+  items: Items6;
   next_after?: NextAfter5;
 }
 export interface RegistryRecord {
   archived: Archived;
   circuit_state?: CircuitState;
   content_hash: ContentHash1;
-  created_at: CreatedAt5;
+  created_at: CreatedAt6;
   created_by?: CreatedBy;
   description: Description1;
   display_name: DisplayName;
   enabled: Enabled;
   health?: Health1;
-  id: Id11;
+  id: Id12;
   key: Key2;
   revision: Revision1;
   revision_id: RevisionId;
@@ -1739,7 +1794,7 @@ export interface ModelProfileSpec {
   locality?: Locality1;
   model_identifier: ModelIdentifier1;
   output_limit: OutputLimit;
-  parameters?: Parameters1;
+  parameters?: Parameters2;
   pricing?: Pricing;
   provider_revision_id: ProviderRevisionId2;
   purposes: Purposes;
@@ -1748,7 +1803,7 @@ export interface ModelProfileSpec {
   tool_calls?: ToolCalls1;
   usage_reporting?: UsageReporting;
 }
-export interface Parameters1 {
+export interface Parameters2 {
   [k: string]: JsonValue;
 }
 export interface RoutePolicySpec {
@@ -1821,7 +1876,7 @@ export interface RegistryWrite {
   display_name: DisplayName1;
   enabled?: Enabled1;
   expected_version?: ExpectedVersion;
-  idempotency_key: IdempotencyKey6;
+  idempotency_key: IdempotencyKey7;
   key: Key3;
   secret_ref?: SecretRef;
   spec: Spec2;
@@ -1833,7 +1888,7 @@ export interface RetryPolicySpec {
 export interface ReviewDecision {
   findings?: Findings;
   finished_at: FinishedAt;
-  id: Id12;
+  id: Id13;
   reviewed_head_sha: ReviewedHeadSha;
   reviewed_snapshot_id: ReviewedSnapshotId;
   reviewer_revision: ReviewerRevision;
@@ -1867,18 +1922,18 @@ export interface SealedRepositorySnapshot {
   base_sha: BaseSha1;
   branch: Branch1;
   content_digest: ContentDigest;
-  created_at: CreatedAt6;
+  created_at: CreatedAt7;
   cumulative_diff_artifact_id: CumulativeDiffArtifactId;
   file_count: FileCount;
   git_status?: GitStatus;
   head_sha: HeadSha1;
-  id: Id13;
+  id: Id14;
   latest_base_sha: LatestBaseSha;
   latest_diff_artifact_id: LatestDiffArtifactId;
   lfs?: Lfs;
   manifest_artifact_id: ManifestArtifactId;
   repository_id: RepositoryId1;
-  run_id: RunId6;
+  run_id: RunId7;
   source_artifact_id: SourceArtifactId;
   submodules?: Submodules;
   task_attempt_id: TaskAttemptId4;
@@ -1901,7 +1956,7 @@ export interface RouteRequirements {
 }
 export interface RouteResolution {
   candidates?: Candidates1;
-  decision?: Decision2;
+  decision?: Decision4;
   demo?: Demo3;
   reasons?: Reasons1;
   route_revision_id: RouteRevisionId2;
@@ -1917,9 +1972,9 @@ export interface CandidateDecision {
 export interface Run {
   claimable_at: ClaimableAt;
   config_snapshot_id: ConfigSnapshotId1;
-  created_at: CreatedAt7;
+  created_at: CreatedAt8;
   desired_state: DesiredRunState;
-  id: Id14;
+  id: Id15;
   job_id: JobId1;
   langgraph_thread_id: LanggraphThreadId;
   run_number: RunNumber;
@@ -1929,13 +1984,13 @@ export interface Run {
   workflow_version_id: WorkflowVersionId2;
 }
 export interface RunCommand {
-  created_at: CreatedAt8;
-  id: Id15;
-  idempotency_key: IdempotencyKey7;
+  created_at: CreatedAt9;
+  id: Id16;
+  idempotency_key: IdempotencyKey8;
   kind: RunCommandKind;
   payload: Payload;
-  request_digest: RequestDigest2;
-  run_id: RunId7;
+  request_digest: RequestDigest4;
+  run_id: RunId8;
   sequence: Sequence;
   status: CommandStatus;
 }
@@ -1945,27 +2000,27 @@ export interface Payload {
 export interface RunCommandReceipt {
   command_id: CommandId;
   duplicate?: Duplicate;
-  request_digest: RequestDigest3;
-  run_id: RunId8;
+  request_digest: RequestDigest5;
+  run_id: RunId9;
   schema_version?: SchemaVersion5;
   sequence: Sequence1;
   status: CommandStatus;
 }
 export interface RunCommandRequest {
-  expected_run_version?: ExpectedRunVersion1;
-  idempotency_key: IdempotencyKey8;
+  expected_run_version?: ExpectedRunVersion2;
+  idempotency_key: IdempotencyKey9;
   kind: RunCommandKind;
   payload?: Payload1;
-  run_id: RunId9;
+  run_id: RunId10;
   schema_version?: SchemaVersion6;
 }
 export interface Payload1 {
   [k: string]: JsonValue;
 }
 export interface RunConfigurationSnapshot {
-  created_at: CreatedAt9;
+  created_at: CreatedAt10;
   effective_spec: EffectiveSpec;
-  id: Id16;
+  id: Id17;
   resolved_revisions: ResolvedRevisions;
   schema_version?: SchemaVersion7;
   snapshot_hash: SnapshotHash1;
@@ -1982,8 +2037,8 @@ export interface ResolvedRevision {
   revision_id: RevisionId1;
 }
 export interface RunControl {
-  expected_run_version: ExpectedRunVersion2;
-  idempotency_key: IdempotencyKey9;
+  expected_run_version: ExpectedRunVersion3;
+  idempotency_key: IdempotencyKey10;
   instruction?: Instruction;
   kind: RunCommandKind;
 }
@@ -1992,11 +2047,11 @@ export interface RunEventSnapshotResponse {
   last_event_position: LastEventPosition;
   last_run_sequence: LastRunSequence;
   read_cursor: ReadCursor;
-  run_id: RunId10;
+  run_id: RunId11;
   status: Status5;
 }
 export interface RunPage {
-  items: Items6;
+  items: Items7;
   next_after?: NextAfter6;
 }
 export interface RunView {
@@ -2004,7 +2059,7 @@ export interface RunView {
   completed_at: CompletedAt;
   current_node: CurrentNode;
   desired_state: DesiredState;
-  id: Id17;
+  id: Id18;
   job_id: JobId2;
   last_event_at: LastEventAt1;
   last_event_position: LastEventPosition1;
@@ -2021,49 +2076,65 @@ export interface RunView {
   version: Version4;
   workflow_version_id: WorkflowVersionId4;
 }
+export interface RunUsage {
+  calls: Calls;
+  currencies: Currencies;
+  known_tokens: KnownTokens;
+  provenance: Provenance1;
+  total_tokens: TotalTokens1;
+  unknown_usage_calls: UnknownUsageCalls;
+  worker_usage?: WorkerUsage;
+}
+export interface CurrencyUsage {
+  currency: Currency2;
+  known_subtotal: KnownSubtotal;
+  status: Status7;
+  total: Total;
+  unknown_calls: UnknownCalls;
+}
 export interface CommandPage {
-  items: Items7;
+  items: Items8;
   next_after?: NextAfter7;
 }
 export interface CommandView {
   applied_at: AppliedAt;
-  id: Id18;
+  id: Id19;
   kind: Kind9;
   sequence: Sequence2;
-  status: Status7;
+  status: Status8;
 }
 export interface NodePage {
-  items: Items8;
+  items: Items9;
   next_after?: NextAfter8;
 }
 export interface NodeView {
   completed_at: CompletedAt1;
   execution_number: ExecutionNumber;
-  id: Id19;
+  id: Id20;
   started_at: StartedAt2;
-  status: Status8;
+  status: Status9;
   task_attempt_id: TaskAttemptId6;
   task_id: TaskId5;
   workflow_node_id: WorkflowNodeId1;
 }
 export interface TaskPage {
-  items: Items9;
+  items: Items10;
   next_after?: NextAfter9;
 }
 export interface TaskView {
   attempts: Attempts;
   dependencies: Dependencies;
-  id: Id21;
+  id: Id22;
   key: Key5;
-  status: Status10;
+  status: Status11;
   title: Title;
   weight: Weight;
 }
 export interface AttemptView {
-  id: Id20;
+  id: Id21;
   number: Number;
   snapshot_digest: SnapshotDigest1;
-  status: Status9;
+  status: Status10;
 }
 export interface SessionResponse {
   absolute_expires_at: AbsoluteExpiresAt;
@@ -2072,16 +2143,16 @@ export interface SessionResponse {
   user: SessionUser;
 }
 export interface SessionUser {
-  id: Id22;
+  id: Id23;
   role?: Role;
   username: Username1;
 }
 export interface Task {
   acceptance_criteria: AcceptanceCriteria1;
-  created_at: CreatedAt10;
-  id: Id23;
+  created_at: CreatedAt11;
+  id: Id24;
   key: Key6;
-  run_id: RunId11;
+  run_id: RunId12;
   status: TaskStatus;
   title: Title1;
   updated_at: UpdatedAt4;
@@ -2096,7 +2167,7 @@ export interface TaskAttempt {
   attempt_number: AttemptNumber;
   base_sha?: BaseSha2;
   completed_at?: CompletedAt2;
-  id: Id24;
+  id: Id25;
   result_sha?: ResultSha;
   started_at?: StartedAt3;
   status: AttemptStatus;
@@ -2116,14 +2187,14 @@ export interface VerificationExecution {
   exit_code?: ExitCode;
   failure_class?: FailureClass1;
   finished_at?: FinishedAt1;
-  id: Id25;
+  id: Id26;
   parsed?: ParsedVerification | null;
   phase?: Phase;
-  run_id: RunId12;
+  run_id: RunId13;
   snapshot_id: SnapshotId;
   source_sha: SourceSha;
   started_at: StartedAt4;
-  status: Status11;
+  status: Status12;
   stderr_artifact_id?: StderrArtifactId;
   stderr_truncated?: StderrTruncated;
   stdout_artifact_id?: StdoutArtifactId;
@@ -2155,7 +2226,7 @@ export interface ParsedVerification {
 }
 export interface CancelResult {
   invocation_id: InvocationId;
-  status: Status12;
+  status: Status13;
 }
 export interface WorkerEvent {
   invocation_id: InvocationId1;
@@ -2166,7 +2237,7 @@ export interface WorkerEvent {
 export interface WorkerInvocationHandle {
   generation: Generation2;
   invocation_id: InvocationId2;
-  request_digest: RequestDigest4;
+  request_digest: RequestDigest6;
   worker_revision_id: WorkerRevisionId;
 }
 export interface WorkerHealth {
@@ -2174,12 +2245,12 @@ export interface WorkerHealth {
   issues?: Issues1;
   network_checked?: NetworkChecked1;
   observed_at: ObservedAt;
-  status: Status13;
+  status: Status14;
 }
 export interface WorkerInvocationRequest {
   architecture_artifact_id?: ArchitectureArtifactId;
   feedback_artifact_ids?: FeedbackArtifactIds;
-  idempotency_key: IdempotencyKey10;
+  idempotency_key: IdempotencyKey11;
   invocation_id: InvocationId3;
   lease: WorkerSlotFence;
   limits?: WorkerLimits;
@@ -2188,14 +2259,14 @@ export interface WorkerInvocationRequest {
   project: WorkerProject;
   protocol_version?: ProtocolVersion;
   required_capabilities?: RequiredCapabilities1;
-  run_id: RunId13;
+  run_id: RunId14;
   task: WorkerTask;
   task_attempt_id: TaskAttemptId8;
   task_id: TaskId8;
   worker_revision_id: WorkerRevisionId2;
 }
 export interface WorkerSlotFence {
-  expires_at: ExpiresAt2;
+  expires_at: ExpiresAt3;
   generation: Generation3;
   lease_id: LeaseId;
   run_generation: RunGeneration;
@@ -2240,7 +2311,7 @@ export interface Environment1 {
 }
 export interface PreparedInvocation {
   request: WorkerInvocationRequest;
-  request_digest: RequestDigest5;
+  request_digest: RequestDigest7;
 }
 export interface ReconciliationResult {
   invocation_id: InvocationId4;
@@ -2258,11 +2329,11 @@ export interface WorkerResult {
   model_profile_revision_id: ModelProfileRevisionId1;
   protocol_version?: ProtocolVersion1;
   repository_snapshot: WorkerRepositorySnapshot;
-  request_digest: RequestDigest6;
+  request_digest: RequestDigest8;
   source_sequence: SourceSequence2;
   start_head: StartHead;
   started_at: StartedAt5;
-  status: Status14;
+  status: Status15;
   summary: Summary5;
   task_attempt_id: TaskAttemptId9;
   task_id: TaskId9;
@@ -2298,15 +2369,15 @@ export interface WorkerValidationReport {
 export interface WorkflowArchiveRequest {
   archived: Archived2;
   expected_version: ExpectedVersion1;
-  idempotency_key: IdempotencyKey11;
+  idempotency_key: IdempotencyKey12;
 }
 export interface WorkflowCommand {
   expected_version: ExpectedVersion2;
-  idempotency_key: IdempotencyKey12;
+  idempotency_key: IdempotencyKey13;
 }
 export interface WorkflowCreateRequest {
   description?: Description4;
-  idempotency_key: IdempotencyKey13;
+  idempotency_key: IdempotencyKey14;
   key: Key8;
   name: Name5;
 }
@@ -2316,11 +2387,11 @@ export interface WorkflowDocument {
 }
 export interface WorkflowTemplateRecord {
   archived: Archived3;
-  created_at: CreatedAt11;
+  created_at: CreatedAt12;
   current_draft_version_id?: CurrentDraftVersionId;
   current_published_version_id?: CurrentPublishedVersionId;
   description: Description5;
-  id: Id26;
+  id: Id27;
   key: Key9;
   name: Name6;
   updated_at: UpdatedAt5;
@@ -2329,8 +2400,8 @@ export interface WorkflowTemplateRecord {
 export interface WorkflowVersionRecord {
   compiler_version: CompilerVersion;
   content_hash: ContentHash3;
-  created_at: CreatedAt12;
-  id: Id27;
+  created_at: CreatedAt13;
+  id: Id28;
   layout: WorkflowLayout;
   published: Published;
   published_at?: PublishedAt;
@@ -2380,7 +2451,7 @@ export interface NodePolicy {
   worker_selector?: WorkerSelector | null;
 }
 export interface ApprovalPolicy {
-  action_type?: ActionType;
+  action_type?: ActionType1;
   expires_in_seconds?: ExpiresInSeconds;
   required_grant_from?: RequiredGrantFrom;
 }
@@ -2395,7 +2466,7 @@ export interface WorkerSelector {
 export interface WorkflowEdge {
   fallback?: Fallback;
   from: From;
-  id: Id28;
+  id: Id29;
   iteration_key?: IterationKey;
   kind: WorkflowEdgeKind;
   max_iterations?: MaxIterations;
@@ -2413,7 +2484,7 @@ export interface Predicate {
 }
 export interface WorkflowNode {
   config: Config;
-  id: Id29;
+  id: Id30;
   label: Label;
   node_version?: NodeVersion;
   policy?: NodePolicy;
@@ -2430,13 +2501,13 @@ export interface Reducers {
 }
 export interface WorkflowDraftWrite {
   expected_version: ExpectedVersion3;
-  idempotency_key: IdempotencyKey14;
+  idempotency_key: IdempotencyKey15;
   layout?: WorkflowLayout;
   spec: WorkflowSpec;
 }
 export interface WorkflowNewDraft {
   expected_version: ExpectedVersion4;
-  idempotency_key: IdempotencyKey15;
+  idempotency_key: IdempotencyKey16;
   source_version_id?: SourceVersionId;
 }
 export interface OrganizerConfig {
@@ -2476,7 +2547,7 @@ export interface JoinConfig {
   require_all?: RequireAll;
 }
 export interface ApprovalConfig {
-  action_type?: ActionType1;
+  action_type?: ActionType2;
   expires_in_seconds?: ExpiresInSeconds1;
 }
 export interface PublishConfig {
@@ -2487,7 +2558,7 @@ export interface FinalizeConfig {
   outcome?: Outcome1;
 }
 export interface NodeTypePage {
-  items: Items10;
+  items: Items11;
 }
 export interface NodeTypeDefinition {
   config_schema: ConfigSchema;
@@ -2526,12 +2597,12 @@ export interface WorkflowResolvedRevision {
   spec: Spec3;
 }
 export interface WorkflowTemplatePage {
-  items: Items11;
+  items: Items12;
   next_after?: NextAfter10;
 }
 export interface WorkflowValidateRequest {
   expected_version: ExpectedVersion5;
-  idempotency_key: IdempotencyKey16;
+  idempotency_key: IdempotencyKey17;
   layout?: Layout;
   spec: Spec4;
 }
@@ -2551,13 +2622,13 @@ export interface WorkflowIssue {
   code: Code4;
   edge_id?: EdgeId;
   message: Message4;
-  node_id?: NodeId2;
+  node_id?: NodeId3;
   path?: Path1;
 }
 export interface WorkflowVersionContract {
   compiler_version: CompilerVersion2;
   content_hash: ContentHash6;
-  id: Id30;
+  id: Id31;
   layout: Layout1;
   published: Published1;
   spec: WorkflowSpec;
@@ -2569,6 +2640,6 @@ export interface Layout1 {
   [k: string]: JsonValue;
 }
 export interface WorkflowVersionPage {
-  items: Items12;
+  items: Items13;
   next_after?: NextAfter11;
 }

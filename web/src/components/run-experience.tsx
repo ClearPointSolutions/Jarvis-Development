@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "@/lib/session";
 import { createRuntimeClient } from "@/lib/api/runtime";
 import { WorkflowCanvas } from "@/components/workflow-canvas";
+import { RunApprovals } from "@/components/run-approvals";
 import type { WorkflowSpec, WorkflowLayout } from "@jarvis/contracts";
 
 /** Presentation order only: follow published connections without executing them. */
@@ -70,6 +71,20 @@ export function RunExperience({ runId }: { runId: string }) {
     enabled,
   });
   const events = { data: evidence.data?.items ?? [] };
+  const usage = useQuery({
+    queryKey: ["runtime-usage", runId],
+    queryFn: () => client.usage(runId),
+    enabled,
+    refetchInterval: 5000,
+  });
+  const usageEvents = Array.from(
+    new Map(
+      events.data
+        .filter((event) => event.type === "model.usage_recorded")
+        .sort((a, b) => a.global_position - b.global_position)
+        .map((event) => [event.correlation_id, event]),
+    ).values(),
+  );
   const integration = useQuery({
     queryKey: ["runtime-integration", runId],
     queryFn: () => client.integrationHeads(runId),
@@ -112,6 +127,33 @@ export function RunExperience({ runId }: { runId: string }) {
   }
   return (
     <>
+      {run.data?.mode === "real" && <RunApprovals runId={runId} />}
+      <section
+        className="content-card run-experience-card"
+        aria-label="Organizer conversation"
+      >
+        <h2>Organizer conversation</h2>
+        <p>
+          Objective, Organizer responses and follow-up instructions persist with
+          this run. Instructions take effect only at declared safe points.
+        </p>
+        <ol>
+          {events.data
+            .filter((event) => event.type === "message.created")
+            .map((event) => (
+              <li key={event.event_id}>
+                <strong>{String(event.data.role)}</strong>
+                <p style={{ whiteSpace: "pre-wrap" }}>
+                  {String(event.data.body)}
+                </p>
+              </li>
+            ))}
+        </ol>
+        <p>
+          Use the run instruction control for follow-up requests. The event
+          timeline provides persisted history.
+        </p>
+      </section>
       <section
         className="content-card run-experience-card"
         aria-label="Runtime workflow"
@@ -357,32 +399,50 @@ export function RunExperience({ runId }: { runId: string }) {
       >
         <h2>Model usage</h2>
         <p>
-          {events.data.filter((e) => e.type === "model.usage_recorded").length}{" "}
-          durable model calls
+          {usage.data?.calls ?? usageEvents.length} durable model calls
           {run.data?.mode === "demo"
             ? " · token estimates are DEMO fixture values."
             : "."}
         </p>
+        {usage.data && (
+          <p>
+            {usage.data.total_tokens ?? "Unknown"} total gateway tokens (
+            {usage.data.provenance}); {usage.data.known_tokens} known tokens,{" "}
+            {usage.data.unknown_usage_calls} calls with unknown usage.
+            Worker-managed model usage is unavailable.
+          </p>
+        )}
+        {usage.data?.currencies.map((cost) => (
+          <p key={cost.currency}>
+            {cost.currency}: {cost.total ?? cost.status}; known subtotal{" "}
+            {cost.known_subtotal} ({cost.status}).
+          </p>
+        ))}
         <ul>
-          {events.data
-            .filter((e) => e.type === "model.usage_recorded")
-            .map((e) => (
-              <li key={e.event_id}>
-                {workflow.data?.nodes.find(
-                  (n) => n.id === e.scope?.workflow_node_id,
-                )?.label ?? "Model"}
-                :{" "}
-                {String(
-                  typeof e.data.usage === "object" &&
-                    e.data.usage &&
-                    !Array.isArray(e.data.usage) &&
-                    "total_tokens" in e.data.usage
-                    ? (e.data.usage.total_tokens ?? "unknown")
-                    : "unknown",
-                )}{" "}
-                tokens (estimated)
-              </li>
-            ))}
+          {usageEvents.map((e) => (
+            <li key={e.event_id}>
+              {workflow.data?.nodes.find(
+                (n) => n.id === e.scope?.workflow_node_id,
+              )?.label ?? "Model"}
+              :{" "}
+              {String(
+                typeof e.data.usage === "object" &&
+                  e.data.usage &&
+                  !Array.isArray(e.data.usage) &&
+                  "total_tokens" in e.data.usage
+                  ? (e.data.usage.total_tokens ?? "unknown")
+                  : "unknown",
+              )}{" "}
+              tokens (
+              {typeof e.data.usage === "object" &&
+              e.data.usage &&
+              !Array.isArray(e.data.usage) &&
+              "provenance" in e.data.usage
+                ? String(e.data.usage.provenance ?? "unknown")
+                : "unknown"}
+              )
+            </li>
+          ))}
         </ul>
         <h2>Immutable artifacts</h2>
         <ul>

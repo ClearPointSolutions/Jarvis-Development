@@ -59,13 +59,21 @@ class OpenHandsSSHAdapter:
         *,
         publish_log: LogPublisher | None = None,
         artifact_reader: Callable[[UUID], Awaitable[str]] | None = None,
+        require_fence: Callable[[WorkerSlotFence], Awaitable[None]] | None = None,
     ) -> None:
         self.worker = worker
         self.deployment = deployment
         self.transport = transport
+        self.require_fence = require_fence
         self.publish_log = publish_log
         self.artifact_reader = artifact_reader
         self.prepared: dict[UUID, PreparedInvocation] = {}
+
+    async def authorize(self, lease: WorkerSlotFence) -> None:
+        if self.require_fence is not None:
+            await self.require_fence(lease)
+        elif lease.expires_at <= datetime.now(UTC):
+            raise WorkerBoundaryError("stale_worker_fence")
 
     async def _rpc(
         self,
@@ -172,8 +180,9 @@ class OpenHandsSSHAdapter:
     async def prepare(
         self, request: WorkerInvocationRequest, lease: WorkerSlotFence, context: WorkerCallContext
     ) -> PreparedInvocation:
-        if request.lease != lease or lease.expires_at <= datetime.now(UTC):
+        if request.lease != lease:
             raise WorkerBoundaryError("stale_worker_fence")
+        await self.authorize(lease)
         if not validate_model_binding(self.worker, request.model_profile_revision_id).valid:
             raise WorkerBoundaryError("incompatible_model_binding")
         if set(request.required_capabilities) - set(self.worker.capabilities):
@@ -248,8 +257,7 @@ class OpenHandsSSHAdapter:
                 feedback=RecursiveRedactor().redact_text("\n".join(feedback))[0],
             )
             try:
-                if request.lease.expires_at <= datetime.now(UTC):
-                    raise WorkerBoundaryError("stale_worker_fence")
+                await self.authorize(request.lease)
                 await self._rpc("start", context, {"launch": launch.model_dump(mode="json")})
             except WorkerBoundaryError:
                 observation = await self.reconcile(handle, context)

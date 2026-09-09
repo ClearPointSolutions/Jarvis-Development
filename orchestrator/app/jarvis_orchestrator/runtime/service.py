@@ -8,7 +8,7 @@ from collections.abc import Callable, Mapping
 from contextlib import suppress
 from importlib import import_module
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from langgraph.types import Command
 from sqlalchemy import select
@@ -32,6 +32,9 @@ from jarvis_persistence.models import (
     WorkflowVersionModel,
 )
 
+if TYPE_CHECKING:
+    from jarvis_orchestrator.runtime.composition import RealComposition
+
 
 class OrchestratorService:
     def __init__(
@@ -48,6 +51,7 @@ class OrchestratorService:
         artifact_root: Path = Path("var/artifacts"),
         worker_registry: WorkerRuntimeRegistry | None = None,
         verification_factory: Callable[[RunOwnership, RunFence], EffectAdapter] | None = None,
+        real_composition: RealComposition | None = None,
     ) -> None:
         if (
             not 1 <= max_concurrency <= 64
@@ -67,6 +71,7 @@ class OrchestratorService:
         self.artifact_root = artifact_root
         self.worker_registry = worker_registry
         self.verification_factory = verification_factory
+        self.real_composition = real_composition
         self.commands = CommandProcessor(ownership)
         self.active: dict[RunFence, asyncio.Task[None]] = {}
 
@@ -116,6 +121,10 @@ class OrchestratorService:
     async def tick(self) -> None:
         await self.ownership.heartbeat()
         await self.commands.poll()
+        if self.real_composition is not None:
+            from jarvis_orchestrator.runtime.approvals import expire_approvals
+
+            await expire_approvals(self.ownership)
         for fence, task in list(self.active.items()):
             if task.done():
                 del self.active[fence]
@@ -128,7 +137,9 @@ class OrchestratorService:
                     await asyncio.gather(task, return_exceptions=True)
                     del self.active[fence]
         while len(self.active) < self.max_concurrency:
-            claimed = await self.ownership.claim(capacity=self.global_concurrency)
+            claimed = await self.ownership.claim(
+                capacity=self.global_concurrency, mode="demo" if self.demo else "real"
+            )
             if claimed is None:
                 break
             self.active[claimed] = asyncio.create_task(self.execute(claimed))
@@ -144,6 +155,8 @@ class OrchestratorService:
         except asyncio.CancelledError:
             raise
         except Exception as error:
+            from jarvis_orchestrator.runtime.errors import RuntimeDependencyError
+
             # Never emit native exception text; it may contain credentials/output.
             logging.getLogger(__name__).warning(
                 "Runtime exception_type=%s run=%s", type(error).__name__, fence.run_id
@@ -151,7 +164,11 @@ class OrchestratorService:
             try:
                 async with self.ownership.fenced(fence) as (session, run):
                     run.status = "blocked"
-                    run.result_summary = "Runtime requires configuration or effect reconciliation"
+                    run.result_summary = (
+                        str(error)
+                        if isinstance(error, RuntimeDependencyError)
+                        else "Runtime requires configuration or effect reconciliation"
+                    )
                     run.current_node = None
                     run.completed_at = self.ownership.clock.now()
                     run.version += 1
@@ -221,6 +238,28 @@ class OrchestratorService:
         adapters = self.adapters
         decision_handler = None
         worker_registry = self.worker_registry
+        if (mode == "demo") != self.demo:
+            raise ValueError("Orchestrator runtime mode does not match queued run")
+        if self.real_composition is not None:
+            if self.demo:
+                raise ValueError("DEMO cannot construct real infrastructure adapters")
+            adapters = await self.real_composition.build(
+                self.ownership, fence, spec, snapshot, version.id
+            )
+            decision_handler = self.real_composition.approvals(
+                self.ownership, fence, spec, version.id
+            )
+            from jarvis_contracts.workflow_nodes import NODE_DEFINITIONS
+
+            missing_handlers = [
+                node.id
+                for node in spec.nodes
+                if NODE_DEFINITIONS[node.type].external
+                and node.type.value != "approval"
+                and node.id not in adapters
+            ]
+            if missing_handlers:
+                raise ValueError("required runtime handlers are unavailable")
         if self.demo:
             from jarvis_contracts.demo import DemoFixture
             from jarvis_orchestrator.demo.adapters import DemoEffectAdapter
@@ -358,7 +397,7 @@ class OrchestratorService:
                     wait = run.runtime_json.get("wait", {})
                     run.status = (
                         "approval_required"
-                        if wait.get("kind") == "demo_decision"
+                        if wait.get("kind") in {"demo_decision", "approval"}
                         else "paused"
                         if wait.get("kind") == "pause"
                         else "queued"

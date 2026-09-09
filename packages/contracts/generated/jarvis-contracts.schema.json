@@ -260,6 +260,60 @@
       "title": "ApprovalConfig",
       "type": "object"
     },
+    "ApprovalDecisionRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "enum": [
+            "approved",
+            "rejected"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "expected_run_version": {
+          "minimum": 1,
+          "title": "Expected Run Version",
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "request_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Request Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "idempotency_key",
+        "expected_run_version",
+        "request_digest",
+        "decision"
+      ],
+      "title": "ApprovalDecisionRequest",
+      "type": "object"
+    },
+    "ApprovalPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ApprovalView"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "ApprovalPage",
+      "type": "object"
+    },
     "ApprovalPolicy": {
       "additionalProperties": false,
       "properties": {
@@ -308,6 +362,108 @@
         }
       },
       "title": "ApprovalPolicy",
+      "type": "object"
+    },
+    "ApprovalView": {
+      "additionalProperties": false,
+      "properties": {
+        "action_type": {
+          "title": "Action Type",
+          "type": "string"
+        },
+        "actor_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Actor Id"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "decided_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Decided At"
+        },
+        "decision": {
+          "default": "pending",
+          "enum": [
+            "pending",
+            "approved",
+            "rejected",
+            "expired",
+            "cancelled"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expires At"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "node_id": {
+          "title": "Node Id",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        },
+        "request_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Request Digest",
+          "type": "string"
+        },
+        "run_id": {
+          "format": "uuid",
+          "title": "Run Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "run_id",
+        "node_id",
+        "action_type",
+        "request_digest",
+        "parameters",
+        "created_at"
+      ],
+      "title": "ApprovalView",
       "type": "object"
     },
     "ArchitectConfig": {
@@ -775,6 +931,65 @@
         }
       },
       "title": "Cost",
+      "type": "object"
+    },
+    "CurrencyUsage": {
+      "additionalProperties": false,
+      "properties": {
+        "currency": {
+          "title": "Currency",
+          "type": "string"
+        },
+        "known_subtotal": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            }
+          ],
+          "title": "Known Subtotal"
+        },
+        "status": {
+          "enum": [
+            "exact",
+            "estimated",
+            "unknown",
+            "not_applicable"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "total": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Total"
+        },
+        "unknown_calls": {
+          "title": "Unknown Calls",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "currency",
+        "known_subtotal",
+        "total",
+        "status",
+        "unknown_calls"
+      ],
+      "title": "CurrencyUsage",
       "type": "object"
     },
     "DemoDecision": {
@@ -5367,6 +5582,66 @@
       "title": "RunStatus",
       "type": "string"
     },
+    "RunUsage": {
+      "additionalProperties": false,
+      "properties": {
+        "calls": {
+          "title": "Calls",
+          "type": "integer"
+        },
+        "currencies": {
+          "items": {
+            "$ref": "#/$defs/CurrencyUsage"
+          },
+          "title": "Currencies",
+          "type": "array"
+        },
+        "known_tokens": {
+          "title": "Known Tokens",
+          "type": "integer"
+        },
+        "provenance": {
+          "enum": [
+            "exact",
+            "estimated",
+            "unknown"
+          ],
+          "title": "Provenance",
+          "type": "string"
+        },
+        "total_tokens": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Total Tokens"
+        },
+        "unknown_usage_calls": {
+          "title": "Unknown Usage Calls",
+          "type": "integer"
+        },
+        "worker_usage": {
+          "const": "unavailable",
+          "default": "unavailable",
+          "title": "Worker Usage",
+          "type": "string"
+        }
+      },
+      "required": [
+        "calls",
+        "total_tokens",
+        "known_tokens",
+        "unknown_usage_calls",
+        "provenance",
+        "currencies"
+      ],
+      "title": "RunUsage",
+      "type": "object"
+    },
     "RunView": {
       "additionalProperties": false,
       "properties": {
@@ -8563,6 +8838,12 @@
       ],
       "default": null
     },
+    "approval_decision": {
+      "$ref": "#/$defs/ApprovalDecisionRequest"
+    },
+    "approvals": {
+      "$ref": "#/$defs/ApprovalPage"
+    },
     "artifact": {
       "anyOf": [
         {
@@ -8996,6 +9277,9 @@
       ],
       "default": null
     },
+    "run_usage": {
+      "$ref": "#/$defs/RunUsage"
+    },
     "runtime_commands": {
       "$ref": "#/$defs/CommandPage"
     },
@@ -9286,6 +9570,9 @@
     }
   },
   "required": [
+    "run_usage",
+    "approvals",
+    "approval_decision",
     "integration_heads",
     "verification_execution",
     "review_evidence",

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 from typing import cast
@@ -113,7 +114,7 @@ class WorkerEffectAdapter:
                             select(EventModel)
                             .where(
                                 EventModel.run_id == run.id,
-                                EventModel.type == "review.failed",
+                                EventModel.type.in_(("review.failed", "test.failed")),
                                 EventModel.data_json["task_id"].astext == str(request.task_id),
                             )
                             .order_by(EventModel.global_position.desc())
@@ -171,46 +172,68 @@ class WorkerEffectAdapter:
                             request_json=public,
                         )
                     )
-            report = await self.adapter.validate(self.worker, self.context())
-            async with self.ownership.fenced(self.fence) as (session, run):
-                health = await session.get(WorkerHealthModel, prepared.request.worker_revision_id)
-                if health is None:
-                    session.add(
-                        WorkerHealthModel(
-                            revision_id=prepared.request.worker_revision_id,
-                            report_json=report.model_dump(mode="json"),
-                            observed_at=self.ownership.clock.now(),
-                        )
+            pending = asyncio.create_task(self._dispatch_prepared(prepared))
+            try:
+                while not pending.done():
+                    done, _ = await asyncio.wait(
+                        {pending}, timeout=self.ownership.ttl.total_seconds() / 3
                     )
-                else:
-                    health.report_json = report.model_dump(mode="json")
-                    health.observed_at = self.ownership.clock.now()
-                await self.ownership.event(
-                    session,
-                    run,
-                    "worker.health_changed",
-                    {
-                        "worker_revision_id": str(prepared.request.worker_revision_id),
-                        "health": report.health.status,
-                    },
-                )
-            if not report.valid:
-                raise validation_failure(report)
-            await self.adapter.prepare(prepared.request, prepared.request.lease, self.context())
-            await self.adapter.start(prepared, self.context())
-            async with self.ownership.fenced(self.fence) as (session, run):
-                await self.slots.require(session, prepared.request.lease)
-                await self.ownership.event(
-                    session,
-                    run,
-                    "worker.invocation_dispatched",
-                    {
-                        "invocation_id": str(prepared.request.invocation_id),
-                        "generation": prepared.request.lease.generation,
-                    },
-                )
+                    if not done:
+                        await self.slots.renew(prepared.request.lease)
+                await pending
+            finally:
+                if not pending.done():
+                    pending.cancel()
+                    await asyncio.gather(pending, return_exceptions=True)
         except WorkerBoundaryError as error:
+            async with self.ownership.fenced(self.fence) as (session, run):
+                await self.ownership.event(
+                    session,
+                    run,
+                    "worker.invocation_failed",
+                    {"code": error.code, "failure_class": error.failure_class.value},
+                )
             raise ClassifiedNodeError(error.failure_class) from None
+
+    async def _dispatch_prepared(self, prepared: PreparedInvocation) -> None:
+        report = await self.adapter.validate(self.worker, self.context())
+        async with self.ownership.fenced(self.fence) as (session, run):
+            health = await session.get(WorkerHealthModel, prepared.request.worker_revision_id)
+            if health is None:
+                session.add(
+                    WorkerHealthModel(
+                        revision_id=prepared.request.worker_revision_id,
+                        report_json=report.model_dump(mode="json"),
+                        observed_at=self.ownership.clock.now(),
+                    )
+                )
+            else:
+                health.report_json = report.model_dump(mode="json")
+                health.observed_at = self.ownership.clock.now()
+            await self.ownership.event(
+                session,
+                run,
+                "worker.health_changed",
+                {
+                    "worker_revision_id": str(prepared.request.worker_revision_id),
+                    "health": report.health.status,
+                },
+            )
+        if not report.valid:
+            raise validation_failure(report)
+        await self.adapter.prepare(prepared.request, prepared.request.lease, self.context())
+        await self.adapter.start(prepared, self.context())
+        async with self.ownership.fenced(self.fence) as (session, run):
+            await self.slots.require(session, prepared.request.lease)
+            await self.ownership.event(
+                session,
+                run,
+                "worker.invocation_dispatched",
+                {
+                    "invocation_id": str(prepared.request.invocation_id),
+                    "generation": prepared.request.lease.generation,
+                },
+            )
 
     async def inspect(self, identity: str) -> EffectObservation:
         prepared = await self.load(identity)

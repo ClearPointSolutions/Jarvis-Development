@@ -11,6 +11,7 @@ import uvicorn
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from jarvis_api.approvals import router as approval_router
 from jarvis_api.auth.authorization import ObjectAuthorizer
 from jarvis_api.auth.crypto import load_server_key
 from jarvis_api.auth.routes import router as auth_router
@@ -23,6 +24,7 @@ from jarvis_api.registry.service import RegistryService
 from jarvis_api.routing.routes import router as routing_router
 from jarvis_api.runtime import router as runtime_router
 from jarvis_api.security import install_security_middleware
+from jarvis_api.usage import router as usage_router
 from jarvis_api.workflows.routes import router as workflow_router
 from jarvis_api.workflows.service import WorkflowService
 from jarvis_contracts.api import ApiErrorResponse, LivenessResponse
@@ -98,6 +100,8 @@ def create_app(
     app.include_router(routing_router)
     app.include_router(workflow_router)
     app.include_router(runtime_router)
+    app.include_router(approval_router)
+    app.include_router(usage_router)
     install_event_delivery(app, config, session_factory, app.state.auth_service)
 
     @app.get(

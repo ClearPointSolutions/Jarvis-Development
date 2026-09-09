@@ -17,6 +17,7 @@ from jarvis_contracts.api import (
     RunEventSnapshotResponse,
     SessionResponse,
 )
+from jarvis_contracts.approvals import ApprovalDecisionRequest, ApprovalPage
 from jarvis_contracts.base import ContractModel
 from jarvis_contracts.commands import IdempotencyContract, RunCommandReceipt, RunCommandRequest
 from jarvis_contracts.configuration import ConfigurationRevision, RunConfigurationSnapshot
@@ -38,6 +39,7 @@ from jarvis_contracts.failures import (
     FailureRecord,
     RetryPolicySpec,
 )
+from jarvis_contracts.operations import RunUsage
 from jarvis_contracts.registry import (
     AccountingPage,
     ProviderChunk,
@@ -111,6 +113,9 @@ from jarvis_contracts.workflow_nodes import (
 
 
 class JarvisContractBundle(ContractModel):
+    run_usage: RunUsage
+    approvals: ApprovalPage
+    approval_decision: ApprovalDecisionRequest
     integration_heads: IntegrationHeadPage
     verification_execution: VerificationExecution
     review_evidence: ReviewEvidence

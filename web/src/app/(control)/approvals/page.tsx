@@ -1,4 +1,4 @@
-import { FoundationRoute } from "@/components/foundation-route";
+import { MissionDashboard } from "@/components/mission-dashboard";
 export default function Page() {
-  return <FoundationRoute route="approvals" />;
+  return <MissionDashboard approvalsOnly />;
 }

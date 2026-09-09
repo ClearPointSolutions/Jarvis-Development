@@ -33,6 +33,7 @@ export function RuntimeRuns() {
   });
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [mode, setMode] = useState<"demo" | "real">("demo");
   async function createProject(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
@@ -61,11 +62,15 @@ export function RuntimeRuns() {
       const run = await client.start(String(data.get("project")), {
         workflow_version_id: String(data.get("workflow")),
         objective: String(data.get("objective")),
-        mode: "demo",
-        demo_fixture: {
-          scenario: String(data.get("scenario")) as
-            "canonical" | "infrastructure" | "review" | "provider",
-        },
+        mode,
+        ...(mode === "demo"
+          ? {
+              demo_fixture: {
+                scenario: String(data.get("scenario")) as
+                  "canonical" | "infrastructure" | "review" | "provider",
+              },
+            }
+          : {}),
         priority: 0,
         idempotency_key: crypto.randomUUID(),
       });
@@ -137,13 +142,34 @@ export function RuntimeRuns() {
               </option>
             ))}
         </select>
-        <label htmlFor="demo-scenario">DEMO scenario</label>
-        <select id="demo-scenario" name="scenario" defaultValue="canonical">
-          <option value="canonical">Test failure, retry, success</option>
-          <option value="infrastructure">Worker infrastructure recovery</option>
-          <option value="review">Reviewer feedback and retry</option>
-          <option value="provider">Provider transient recovery</option>
+        <label htmlFor="run-mode">Execution mode</label>
+        <select
+          id="run-mode"
+          value={mode}
+          onChange={(event) => setMode(event.target.value as "demo" | "real")}
+        >
+          <option value="demo">DEMO — deterministic fixtures</option>
+          <option value="real">Real — configured providers and worker</option>
         </select>
+        {mode === "real" && (
+          <p>
+            Requires a real published workflow and matching server-side
+            infrastructure configuration.
+          </p>
+        )}
+        {mode === "demo" && (
+          <>
+            <label htmlFor="demo-scenario">DEMO scenario</label>
+            <select id="demo-scenario" name="scenario" defaultValue="canonical">
+              <option value="canonical">Test failure, retry, success</option>
+              <option value="infrastructure">
+                Worker infrastructure recovery
+              </option>
+              <option value="review">Reviewer feedback and retry</option>
+              <option value="provider">Provider transient recovery</option>
+            </select>
+          </>
+        )}
         <label htmlFor="run-objective">Objective</label>
         <textarea
           id="run-objective"

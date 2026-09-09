@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
@@ -25,7 +25,7 @@ from jarvis_contracts.workers import WorkerInvocationRequest, WorkerResult
 from jarvis_orchestrator.runtime.effects import EffectObservation
 from jarvis_orchestrator.verification.executor import ConfirmedRepository
 from jarvis_orchestrator.verification.integration import LocalIntegrator
-from jarvis_orchestrator.verification.reviews import ReviewService
+from jarvis_orchestrator.verification.reviews import ReviewerAdapter, ReviewService
 from jarvis_orchestrator.workflows.factories import NodeContext
 from jarvis_orchestrator.workflows.state import WorkflowStateV1
 from jarvis_persistence.models import (
@@ -51,6 +51,7 @@ class LocalVerificationBinding:
     initial_branch: str
     combined_commands: tuple[VerificationCommand, ...]
     resolve_root: Callable[[WorkerInvocationRequest], Path]
+    transfer_root: Callable[[WorkerInvocationRequest, WorkerResult], Awaitable[Path]] | None = None
 
 
 class VerificationEffectAdapter:
@@ -61,10 +62,13 @@ class VerificationEffectAdapter:
         integrator: LocalIntegrator,
         reviewer: ReviewService,
         binding: LocalVerificationBinding,
+        *,
+        reviewer_factory: Callable[[NodeContext, RunnableConfig], ReviewerAdapter] | None = None,
     ) -> None:
         if not 1 <= len(binding.combined_commands) <= 32:
             raise ValueError("combined verification configuration is required")
         self.integrator, self.reviewer, self.binding = integrator, reviewer, binding
+        self.reviewer_factory = reviewer_factory
         self.artifacts = integrator.verifier.artifacts
         self.owner, self.fence = self.artifacts.ownership, self.artifacts.fence
 
@@ -99,6 +103,8 @@ class VerificationEffectAdapter:
         self, identity: str, state: WorkflowStateV1, context: NodeContext, config: RunnableConfig
     ) -> None:
         kind = context.node.type.value
+        if kind == "reviewer" and self.reviewer_factory is not None:
+            self.reviewer.adapter = self.reviewer_factory(context, config)
         if kind not in {"verify", "reviewer", "integrate"}:
             raise ValueError("unsupported verification effect")
         async with self.owner.fenced(self.fence) as (session, run):
@@ -176,9 +182,12 @@ class VerificationEffectAdapter:
             criteria = tuple(task.acceptance_criteria_json)
             title = task.title
             workflow_id, config_id = run.workflow_version_id, run.config_snapshot_id
-        repository = ConfirmedRepository(
-            self.binding.resolve_root(request), result.branch, result.end_head
+        root = (
+            await self.binding.transfer_root(request, result)
+            if self.binding.transfer_root is not None
+            else self.binding.resolve_root(request)
         )
+        repository = ConfirmedRepository(root, result.branch, result.end_head)
         await self.integrator.leases.initialize(
             self.binding.repository_id,
             base_sha=self.binding.initial_sha,

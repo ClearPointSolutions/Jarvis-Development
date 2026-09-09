@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from uuid6 import uuid7
 
 from jarvis_orchestrator.demo.bootstrap import bootstrap_demo
-from jarvis_orchestrator.runtime.ownership import RunFence
+from jarvis_orchestrator.runtime.ownership import RunFence, StaleExecutorError
 from jarvis_orchestrator.runtime.service import OrchestratorService
 from jarvis_persistence.checkpoints import postgres_saver
 from jarvis_persistence.models import EventModel, ModelCallModel, RunLeaseModel, RunModel
@@ -31,7 +31,23 @@ async def execute_with_renewal(service: OrchestratorService, fence: RunFence) ->
                 {pending}, timeout=service.ownership.ttl.total_seconds() / 3
             )
             if not done:
-                await service.ownership.renew(fence)
+                try:
+                    await service.ownership.renew(fence)
+                except StaleExecutorError:
+                    # Completion may release the lease after asyncio.wait but
+                    # before renewal obtains the row lock. Accept only a proven
+                    # release by this generation; expiry/reassignment still fails.
+                    async with service.ownership.sessions() as session:
+                        released = await session.scalar(
+                            select(RunLeaseModel).where(
+                                RunLeaseModel.run_id == fence.run_id,
+                                RunLeaseModel.generation == fence.generation,
+                            )
+                        )
+                        assert released is not None and released.released_at is not None
+                        assert released.owner_instance_id == fence.owner
+                    await pending
+                    break
         await pending
     finally:
         if not pending.done():

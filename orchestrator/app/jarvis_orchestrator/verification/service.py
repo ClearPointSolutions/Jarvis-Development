@@ -174,12 +174,31 @@ class VerificationService:
                     "verification-result",
                     completed.model_dump(mode="json"),
                 )
+                feedback_id = None
+                if not result.passed:
+                    feedback_id = await self.artifacts.put(
+                        session,
+                        run,
+                        snapshot.task_attempt_id,
+                        "verification-feedback",
+                        {
+                            "source_sha": snapshot.head_sha,
+                            "command": command.model_dump(mode="json"),
+                            "summary": result.parsed.summary,
+                            "stdout_excerpt": result.process.stdout[:3000].decode(errors="replace"),
+                            "stderr_excerpt": result.process.stderr[:1000].decode(errors="replace"),
+                            "excerpt_truncated": len(result.process.stdout) > 3000
+                            or len(result.process.stderr) > 1000,
+                            "complete_report_artifact_id": str(artifact_id),
+                        },
+                    )
                 await owner.event(
                     session,
                     run,
                     "test.completed" if result.passed else "test.failed",
                     {
                         "task_id": str(task_id),
+                        "feedback_artifact_id": str(feedback_id) if feedback_id else None,
                         "task_attempt_id": str(snapshot.task_attempt_id),
                         "verification_execution_id": str(execution_id),
                         "snapshot_id": str(snapshot.id),

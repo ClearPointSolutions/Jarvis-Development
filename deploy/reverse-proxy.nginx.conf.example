@@ -1,0 +1,23 @@
+# Install only in the explicitly authorized V1 TLS proxy. Certificate paths and
+# server_name are examples to replace; this file is not auto-installed by deploy.
+server {
+    listen 443 ssl;
+    server_name jarvis-v1.example.invalid;
+    ssl_certificate /etc/jarvis-v1/tls/fullchain.pem;
+    ssl_certificate_key /etc/jarvis-v1/tls/privkey.pem;
+    client_max_body_size 1m;
+    location /api/ {
+        proxy_pass http://127.0.0.1:18000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_buffering off;
+        proxy_read_timeout 120s;
+    }
+    location / {
+        proxy_pass http://127.0.0.1:13000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $remote_addr;
+    }
+}

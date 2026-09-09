@@ -23,7 +23,7 @@ from uuid import UUID
 from pydantic import Field
 
 from jarvis_contracts.base import ContractModel, canonical_json, sha256_digest
-from jarvis_contracts.workers import PreparedInvocation
+from jarvis_contracts.workers import PreparedInvocation, WorkerResult
 from jarvis_orchestrator.workers.capture import LogCapture
 from jarvis_orchestrator.workers.safety import WorkerBoundaryError, decode_object, encoded_argument
 from jarvis_orchestrator.workers.workspace import local_contained
@@ -336,6 +336,30 @@ def main() -> None:
                     "stderr": bounded_log("stderr.log"),
                 }
             print(json.dumps(metadata))
+        elif command.get("operation") == "export_candidate":
+            from jarvis_orchestrator.workers.source_transfer import export_candidate
+
+            prepared = PreparedInvocation.model_validate(command["prepared"])
+            candidate_result = WorkerResult.model_validate(command["result"])
+            store = InvocationStore(Path(str(command["invocation_root"])))
+            metadata = store.read(prepared.request.invocation_id)
+            if (
+                metadata.get("state") != "succeeded"
+                or metadata.get("request_digest") != prepared.request_digest
+            ):
+                raise WorkerBoundaryError("source_transfer_invocation_not_succeeded")
+            print(
+                json.dumps(
+                    asyncio.run(
+                        export_candidate(
+                            prepared,
+                            candidate_result,
+                            Path(str(command["workspace_root"])),
+                            store.root,
+                        )
+                    )
+                )
+            )
         elif command.get("operation") == "repository":
             from jarvis_orchestrator.workers.workspace import WorktreeManager
 
@@ -365,6 +389,7 @@ def main() -> None:
                 json.dumps(
                     {
                         "wrapper_version": WRAPPER_VERSION,
+                        "source_transfer_version": "1.0",
                         "issues": issues,
                         "capabilities": ["code", "filesystem", "shell", "git", "tests"]
                         if not issues

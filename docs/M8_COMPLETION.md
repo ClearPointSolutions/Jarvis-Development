@@ -1,9 +1,17 @@
 # M8 verification, review, artifacts and Git integration
 
-Status: IN PROGRESS. Final local gates and exact-commit CI are pending.
-M9 has not started. This is not yet a completion claim.
+Status: M8 baseline implementation verified on main at
+`c701fcb397b4469ee115b509d8d026f3b26bb356`. The closure text below previously lagged
+the implementation. GitHub job 102297159696 in
+[34297493184](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34297493184)
+was independently inspected: checkout matches this SHA, 714 Python tests passed,
+85.88% coverage, 49 frontend tests, 10 browser tests and the full verification
+script passed. This closes the baseline M8 local scope, not real V1 acceptance.
 
-## Baseline
+Current real runtime/M9-M11 extensions are tracked in
+[LOCAL_MVP_MATRIX.md](LOCAL_MVP_MATRIX.md) and require their own exact-revision gates.
+
+## Historical M8 development baseline
 
 Fetched clean main: `e62b7e8a44a6af99d54c6e6c760eaaf2657f2250`.
 Branch: `codex/m8-verification-review-git`.

@@ -24,9 +24,17 @@ class ReviewerAdapter(Protocol):
 
 class ReviewService:
     def __init__(
-        self, executor: VerificationExecutor, artifacts: EvidenceArtifacts, adapter: ReviewerAdapter
+        self,
+        executor: VerificationExecutor,
+        artifacts: EvidenceArtifacts,
+        adapter: ReviewerAdapter,
+        *,
+        timeout_seconds: float = 120,
     ) -> None:
+        if not 1 <= timeout_seconds <= 3600:
+            raise ValueError("Reviewer deadline must be between 1 and 3600 seconds")
         self.executor, self.artifacts, self.adapter = executor, artifacts, adapter
+        self.timeout_seconds = timeout_seconds
 
     async def current(self, repository: ConfirmedRepository, evidence: ReviewEvidence) -> bool:
         from jarvis_orchestrator.verification.snapshots import SnapshotBuilder
@@ -105,7 +113,7 @@ class ReviewService:
                     },
                 )
             owner.fault("m8_after_reviewer_dispatched")
-            async with asyncio.timeout(120):
+            async with asyncio.timeout(self.timeout_seconds):
                 decision = await self.adapter.review(review_id, evidence, self.artifacts)
             decision = ReviewDecision.model_validate(decision.model_dump())
             if (

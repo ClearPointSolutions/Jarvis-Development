@@ -476,6 +476,17 @@ async def create_job(
         session.add(run)
         await session.flush()
         await ownership.event(session, run, "job.created", {"actor_id": str(principal.user_id)})
+        await ownership.event(
+            session,
+            run,
+            "message.created",
+            {
+                "role": "user",
+                "body": body.objective,
+                "actor_id": str(principal.user_id),
+                "message_kind": "objective",
+            },
+        )
         await ownership.event(session, run, "run.queued", {"actor_id": str(principal.user_id)})
         view = run_view(run, job)
         record.state, record.response_status, record.response_json = (
@@ -596,6 +607,19 @@ async def control(
                 409, "run.command_conflict", "Run version or idempotency key changed"
             ) from None
         if not receipt.duplicate:
+            if body.instruction:
+                await RunOwnership(factory, owner="control-api").event(
+                    session,
+                    run,
+                    "message.created",
+                    {
+                        "role": "user",
+                        "body": body.instruction,
+                        "actor_id": str(principal.user_id),
+                        "command_id": str(receipt.command_id),
+                        "message_kind": "instruction",
+                    },
+                )
             run.version += 1
             await RunOwnership(factory, owner="control-api").event(
                 session,

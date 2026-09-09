@@ -1,0 +1,116 @@
+name: jarvis-v1
+
+x-python: &python
+  image: ${JARVIS_PYTHON_IMAGE:?Set an immutable Python image reference}
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs: ["/tmp:rw,noexec,nosuid,size=128m"]
+  entrypoint: [python, /app/scripts/container_entrypoint.py]
+  networks: [v1]
+
+services:
+  postgres:
+    image: postgres:16.10-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: jarvis_v1
+      POSTGRES_USER: jarvis_v1_bootstrap
+      POSTGRES_PASSWORD_FILE: /run/secrets/bootstrap_password
+    secrets: [bootstrap_password]
+    volumes: [postgres:/var/lib/postgresql/data]
+    networks: [v1]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U jarvis_v1_bootstrap -d jarvis_v1]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  bootstrap:
+    <<: *python
+    restart: "no"
+    command: [python, /app/scripts/bootstrap_database.py]
+    environment:
+      JARVIS_DATABASE_USER: jarvis_v1_bootstrap
+      JARVIS_DATABASE_PASSWORD_FILE: /run/secrets/bootstrap_password
+    secrets: [bootstrap_password, migrator_password, api_password, orchestrator_password]
+    depends_on:
+      postgres: {condition: service_healthy}
+  migrate:
+    <<: *python
+    restart: "no"
+    command: [sh, -c, "python -m alembic upgrade head && python -m jarvis_persistence.checkpoints"]
+    environment:
+      JARVIS_DATABASE_USER: jarvis_v1_migrator_login
+      JARVIS_DATABASE_PASSWORD_FILE: /run/secrets/migrator_password
+    secrets: [migrator_password]
+    depends_on:
+      bootstrap: {condition: service_completed_successfully}
+  api:
+    <<: *python
+    command: [python, -m, jarvis_api.main]
+    environment:
+      JARVIS_DATABASE_USER: jarvis_v1_api_login
+      JARVIS_DATABASE_PASSWORD_FILE: /run/secrets/api_password
+      JARVIS_ENV: production
+      JARVIS_API_HOST: 0.0.0.0
+      JARVIS_PUBLIC_ORIGIN: ${JARVIS_PUBLIC_ORIGIN:?Set HTTPS origin}
+      JARVIS_COOKIE_SECURE: "true"
+      JARVIS_CSRF_HMAC_KEY_FILE: /run/secrets/csrf_key
+      JARVIS_ARTIFACT_ROOT: /var/lib/jarvis-v1/artifacts
+      JARVIS_PROVIDER_ALLOWED_ENDPOINTS: ${JARVIS_PROVIDER_ALLOWED_ENDPOINTS:-[]}
+    secrets: [api_password, csrf_key]
+    volumes: [artifacts:/var/lib/jarvis-v1/artifacts]
+    ports: ["127.0.0.1:${JARVIS_API_PORT:-18000}:8000"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+  orchestrator:
+    <<: *python
+    command: [python, -m, jarvis_orchestrator.main]
+    stop_grace_period: 30s
+    environment:
+      JARVIS_DATABASE_USER: jarvis_v1_orchestrator_login
+      JARVIS_DATABASE_PASSWORD_FILE: /run/secrets/orchestrator_password
+      JARVIS_ORCHESTRATOR_RUNTIME_MODE: real
+      JARVIS_ORCHESTRATOR_RUNTIME_FILE: /etc/jarvis-v1/runtime.json
+      JARVIS_ORCHESTRATOR_MAX_CONCURRENCY: "1"
+      JARVIS_ORCHESTRATOR_GLOBAL_CONCURRENCY: "1"
+      JARVIS_ARTIFACT_ROOT: /var/lib/jarvis-v1/artifacts
+    secrets: [orchestrator_password]
+    volumes:
+      - artifacts:/var/lib/jarvis-v1/artifacts
+      - source:/var/lib/jarvis-v1/source
+      - ${JARVIS_PRIVATE_CONFIG_DIR:?Set private config directory}:/etc/jarvis-v1:ro
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+  web:
+    image: ${JARVIS_WEB_IMAGE:?Set an immutable web image reference}
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=64m"]
+    environment:
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+    ports: ["127.0.0.1:${JARVIS_WEB_PORT:-13000}:3000"]
+    networks: [v1]
+    depends_on: [api]
+
+networks:
+  v1: {}
+volumes:
+  postgres: {}
+  artifacts: {}
+  source: {}
+secrets:
+  bootstrap_password:
+    file: ${JARVIS_SECRET_DIR:?Set private secret directory}/bootstrap_password
+  migrator_password:
+    file: ${JARVIS_SECRET_DIR}/migrator_password
+  api_password:
+    file: ${JARVIS_SECRET_DIR}/api_password
+  orchestrator_password:
+    file: ${JARVIS_SECRET_DIR}/orchestrator_password
+  csrf_key:
+    file: ${JARVIS_SECRET_DIR}/csrf_key

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
@@ -115,6 +116,41 @@ class OpenSSHTransport:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
+        except NotImplementedError:
+            # Psycopg requires Windows' SelectorEventLoop, which has no native
+            # subprocess transport. Reuse the bounded process-group/Job Object
+            # runner so cancellation still terminates our SSH process tree.
+            from jarvis_orchestrator.verification.process import run_process
+
+            result = await run_process(
+                self.argv(command),
+                cwd=self.credentials.private_key_file.parent,
+                environment={
+                    key: value
+                    for key, value in os.environ.items()
+                    if key.upper()
+                    in {"PATH", "SYSTEMROOT", "TEMP", "TMP", "PROGRAMDATA", "COMSPEC"}
+                },
+                timeout=timeout,
+                limit=limit,
+            )
+            if result.timed_out:
+                raise WorkerBoundaryError(
+                    "ssh_timeout", FailureClass.INFRASTRUCTURE_TIMEOUT
+                ) from None
+            if result.exit_code == 255:
+                raise WorkerBoundaryError(
+                    self.connection_error(result.stderr),
+                    FailureClass.INFRASTRUCTURE_WORKER_TRANSPORT,
+                ) from None
+            if result.exit_code is None:
+                raise WorkerBoundaryError("ssh_unavailable") from None
+            return TransportResult(
+                result.stdout,
+                result.stderr,
+                result.exit_code,
+                result.stdout_truncated or result.stderr_truncated,
+            )
         except OSError:
             raise WorkerBoundaryError(
                 "ssh_unavailable", FailureClass.INFRASTRUCTURE_WORKER_TRANSPORT
@@ -138,14 +174,19 @@ class OpenSSHTransport:
             raise WorkerBoundaryError("ssh_timeout", FailureClass.INFRASTRUCTURE_TIMEOUT) from None
         stdout, stderr = output
         if exit_code == 255:
-            diagnostic = stderr[0].lower()
-            code = "host_unreachable"
-            if (
-                b"host key verification failed" in diagnostic
-                or b"host identification has changed" in diagnostic
-            ):
-                code = "host_key_mismatch"
-            elif b"permission denied" in diagnostic:
-                code = "authentication_failed"
-            raise WorkerBoundaryError(code, FailureClass.INFRASTRUCTURE_WORKER_TRANSPORT)
+            raise WorkerBoundaryError(
+                self.connection_error(stderr[0]), FailureClass.INFRASTRUCTURE_WORKER_TRANSPORT
+            )
         return TransportResult(stdout[0], stderr[0], exit_code, stdout[1] or stderr[1])
+
+    @staticmethod
+    def connection_error(stderr: bytes) -> str:
+        diagnostic = stderr.lower()
+        if (
+            b"host key verification failed" in diagnostic
+            or b"host identification has changed" in diagnostic
+        ):
+            return "host_key_mismatch"
+        if b"permission denied" in diagnostic:
+            return "authentication_failed"
+        return "host_unreachable"

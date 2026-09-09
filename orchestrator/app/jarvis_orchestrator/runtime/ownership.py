@@ -10,10 +10,11 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import timedelta
+from typing import Literal
 from uuid import UUID
 
 from pydantic import JsonValue
-from sqlalchemy import exists, func, select
+from sqlalchemy import exists, func, select, true
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from jarvis_api.events.normalizer import EventIntent, EventNormalizer, EventWriter
@@ -146,7 +147,9 @@ class RunOwnership:
             ),
         )
 
-    async def claim(self, *, capacity: int | None = None) -> RunFence | None:
+    async def claim(
+        self, *, capacity: int | None = None, mode: Literal["real", "demo"] | None = None
+    ) -> RunFence | None:
         async with self.sessions.begin() as session:
             await lock_events(session)
             instance = await session.get(OrchestratorInstanceModel, self.owner)
@@ -176,6 +179,7 @@ class RunOwnership:
                         ("queued", "claiming", "running", "pause_requested", "cancel_requested")
                     ),
                     RunModel.claimable_at <= now,
+                    RunModel.mode == mode if mode is not None else true(),
                     ~live,
                 )
                 .order_by(

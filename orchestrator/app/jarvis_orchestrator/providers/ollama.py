@@ -68,7 +68,8 @@ class OllamaAdapter(BaseAdapter):
 
     async def list_models(self) -> tuple[str, ...]:
         try:
-            return await self._list_models()
+            async with asyncio.timeout(self.provider.timeouts.run_seconds):
+                return await self._list_models()
         except (Exception, asyncio.CancelledError) as exc:
             failure = self.normalize_error(exc)
             raise BoundaryError(failure.code, failure.failure_class) from None
@@ -156,6 +157,8 @@ class OllamaAdapter(BaseAdapter):
             texts: list[str] = []
             calls: list[ProviderToolCall] = []
             for part in parts:
+                if "model" in part and part["model"] != self.profile.model_identifier:
+                    raise BoundaryError("model_identity_mismatch")
                 if "error" in part:
                     raise BoundaryError("provider_reported_error")
                 message = part["message"]
@@ -179,8 +182,11 @@ class OllamaAdapter(BaseAdapter):
                 texts.append(content)
             final = parts[-1]
             usage = Usage()
-            if isinstance(final.get("prompt_eval_count"), int) and isinstance(
-                final.get("eval_count"), int
+            if (
+                type(final.get("prompt_eval_count")) is int
+                and type(final.get("eval_count")) is int
+                and final["prompt_eval_count"] >= 0
+                and final["eval_count"] >= 0
             ):
                 usage = Usage(
                     input_tokens=final["prompt_eval_count"],
