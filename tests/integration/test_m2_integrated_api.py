@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from uuid6 import uuid7
 
 from jarvis_api.auth.crypto import PasswordManager, sha256_text
+from jarvis_api.auth.routes import EXPECTED_SCHEMA_REVISION
 from jarvis_api.config import Settings
 from jarvis_api.main import create_app
 from jarvis_persistence.models import (
@@ -104,7 +105,8 @@ async def test_actual_api_role_readiness_redacted_audit_and_rotated_logout_resta
     async with api.factory() as session:
         assert await session.scalar(text("SELECT current_user")) == "jarvis_v1_api"
         assert (
-            await session.scalar(text("SELECT version_num FROM public.alembic_version")) == "0009"
+            await session.scalar(text("SELECT version_num FROM public.alembic_version"))
+            == EXPECTED_SCHEMA_REVISION
         )
     assert (await api.client.get("/api/v1/system/readiness")).status_code == 401
     first = await login(api)

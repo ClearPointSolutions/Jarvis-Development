@@ -27,6 +27,9 @@ from jarvis_contracts.api import (
     SessionUser,
 )
 
+EXPECTED_SCHEMA_REVISION = "0010"
+"""Alembic head this code requires; readiness is 503 until the database matches."""
+
 router = APIRouter(prefix="/api/v1")
 
 
@@ -163,7 +166,8 @@ async def readiness(request: Request, _principal: CurrentPrincipal) -> Readiness
             "The service is not ready",
             details={"database": "unavailable"},
         ) from error
-    if revision != "0009":
+    # Must move with every migration; test_schema_pin.py fails when it drifts.
+    if revision != EXPECTED_SCHEMA_REVISION:
         raise ApiProblemError(
             503,
             "system.not_ready",
