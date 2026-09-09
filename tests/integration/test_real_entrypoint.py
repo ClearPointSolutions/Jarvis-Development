@@ -396,6 +396,43 @@ async def test_normal_real_entrypoint(
                     run,
                     (tmp_path / "orchestrator.log").read_text()[-4000:],
                 )
+                wrong_project = await api.client.post(
+                    "/api/v1/projects",
+                    headers=headers,
+                    json={
+                        "slug": namespace + "-other",
+                        "name": "Different project",
+                        "idempotency_key": namespace + "-other",
+                    },
+                )
+                assert wrong_project.status_code == 201
+                rejected = await api.client.post(
+                    f"/api/v1/projects/{wrong_project.json()['id']}/jobs",
+                    headers=headers,
+                    json={
+                        "workflow_version_id": str(doc.version.id),
+                        "objective": "Must never dispatch",
+                        "mode": "real",
+                        "idempotency_key": namespace + "-wrong-project",
+                    },
+                )
+                assert rejected.status_code == 202
+                rejected_id = rejected.json()["id"]
+                for _ in range(30):
+                    await asyncio.sleep(1)
+                    rejected_run = (await api.client.get(f"/api/v1/runs/{rejected_id}")).json()
+                    if rejected_run["status"] == "blocked":
+                        break
+                assert rejected_run["status"] == "blocked"
+                async with session_factory() as session:
+                    rejected_events = (
+                        await session.scalars(
+                            select(EventModel).where(EventModel.run_id == rejected_id)
+                        )
+                    ).all()
+                    assert not {"model.call_started", "worker.invocation_dispatched"}.intersection(
+                        event.type for event in rejected_events
+                    )
             finally:
                 if process is not None:
                     process.terminate()
@@ -430,6 +467,7 @@ async def test_normal_real_entrypoint(
             )
             assert refs["profile"] != refs["developer"]
             assert "run.completed" in types
+            assert types.count("run.configuration_bound") == 1
     finally:
         server.shutdown()
         server.server_close()

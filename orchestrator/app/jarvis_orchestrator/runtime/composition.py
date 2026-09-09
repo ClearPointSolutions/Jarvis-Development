@@ -26,6 +26,7 @@ from jarvis_contracts.workflow import WorkflowSpec
 from jarvis_contracts.workflow_api import WorkflowResolvedSnapshot
 from jarvis_orchestrator.providers.runtime import RuntimeModel
 from jarvis_orchestrator.runtime.approvals import ProtectedEffect, approval_handler
+from jarvis_orchestrator.runtime.binding import freeze_binding
 from jarvis_orchestrator.runtime.configuration import RealRuntimeConfiguration, RepositoryBinding
 from jarvis_orchestrator.runtime.effects import EffectAdapter
 from jarvis_orchestrator.runtime.errors import RuntimeDependencyError
@@ -55,6 +56,8 @@ from jarvis_orchestrator.workflows.state import WorkflowStateV1
 from jarvis_orchestrator.workflows.validation import effective_policy
 from jarvis_persistence.models import (
     EffectModel,
+    JobModel,
+    RunConfigSnapshotModel,
     TaskAttemptModel,
     TaskModel,
     WorkerInvocationModel,
@@ -65,17 +68,25 @@ class RealComposition:
     def __init__(self, settings: RealRuntimeConfiguration, artifact_root: Path) -> None:
         self.settings, self.artifact_root = settings, artifact_root
 
-    def approval_parameters(self, workflow_id: UUID) -> dict[str, JsonValue]:
-        binding = self.settings.workflows[workflow_id]
-        return {
-            "binding_digest": sha256_digest(binding),
-            "repository_id": str(binding.project.repository_id),
-        }
+    async def approval_parameters(
+        self, owner: RunOwnership, fence: RunFence
+    ) -> dict[str, JsonValue]:
+        async with owner.fenced(fence) as (session, run):
+            snapshot = await session.get(RunConfigSnapshotModel, run.config_snapshot_id)
+            if snapshot is None:
+                raise RuntimeDependencyError("bound run configuration is unavailable")
+            binding = snapshot.effective_spec_json.get("repository_binding")
+            if not isinstance(binding, dict):
+                raise RuntimeDependencyError("run has no immutable repository binding")
+            return {
+                "binding_digest": binding["binding_digest"],
+                "repository_id": binding["repository_id"],
+            }
 
-    def approvals(
+    async def approvals(
         self, owner: RunOwnership, fence: RunFence, spec: WorkflowSpec, workflow_id: UUID
     ) -> NodeHandler:
-        return approval_handler(owner, fence, spec, self.approval_parameters(workflow_id))
+        return approval_handler(owner, fence, spec, await self.approval_parameters(owner, fence))
 
     def model(
         self, owner: RunOwnership, fence: RunFence, context: NodeContext, config: RunnableConfig
@@ -113,9 +124,15 @@ class RealComposition:
         snapshot: WorkflowResolvedSnapshot,
         workflow_id: UUID,
     ) -> dict[str, EffectAdapter]:
-        binding = self.settings.workflows.get(workflow_id)
-        if binding is None:
-            raise RuntimeDependencyError("published workflow has no server-side repository binding")
+        async with owner.fenced(fence) as (session, run):
+            job = await session.get(JobModel, run.job_id)
+            if job is None:
+                raise RuntimeDependencyError("run project is unavailable")
+            project_id = job.project_id
+        try:
+            binding = self.settings.repository_binding(project_id, workflow_id)
+        except ValueError as exc:
+            raise RuntimeDependencyError(str(exc)) from None
         deployment = self.settings.workers.get(binding.worker_revision_id)
         revision = next(
             (row for row in snapshot.revisions if row.revision_id == binding.worker_revision_id),
@@ -130,6 +147,33 @@ class RealComposition:
             )
         if binding.project.workspace_root != deployment.workspace_root + "/" + binding.project.slug:
             raise RuntimeDependencyError("legacy runner cannot honor the configured workspace")
+        if deployment.host_alias not in self.settings.allowed_worker_hosts:
+            raise RuntimeDependencyError("worker target is not permitted by the repository binding")
+        for node in spec.nodes:
+            if node.type.value == "worker":
+                selector = effective_policy(spec, node).worker_selector
+                if selector is None or selector.revision_id != binding.worker_revision_id:
+                    raise RuntimeDependencyError("workflow worker differs from repository binding")
+        await freeze_binding(
+            owner,
+            fence,
+            {
+                "project_id": str(project_id),
+                "workflow_version_id": str(workflow_id),
+                "repository_id": str(binding.project.repository_id),
+                "worker_revision_id": str(binding.worker_revision_id),
+                "binding_digest": sha256_digest(
+                    {
+                        "repository": binding.model_dump(mode="json"),
+                        "deployment": deployment.model_dump(mode="json"),
+                        "verification": self.settings.verification_isolation.model_dump(
+                            mode="json"
+                        ),
+                    }
+                ),
+                "target_digest": sha256_digest(deployment),
+            },
+        )
         credentials = self.settings.credential_files
         transport = OpenSSHTransport(
             deployment,
@@ -282,8 +326,9 @@ class RealComposition:
                 handlers[node.id] = worker_effect
             elif node.type.value in {"verify", "reviewer", "integrate"}:
                 handlers[node.id] = verification
+        parameters = await self.approval_parameters(owner, fence)
         return {
-            key: ProtectedEffect(adapter, owner, fence, self.approval_parameters(workflow_id))
+            key: ProtectedEffect(adapter, owner, fence, parameters)
             for key, adapter in handlers.items()
         }
 

@@ -9,9 +9,14 @@ Authoritative checklist: [V1_HARDENING_MATRIX.md](V1_HARDENING_MATRIX.md).
 Phase 1 baseline passed exact `9d65e94` CI 34315858229: full PostgreSQL verify,
 mandatory normal-entrypoint SSH acceptance, coverage and canonical demo.
 The Windows wrapper polling correction is separately committed as `c0aeb54`.
-Phase 2B exit requires candidate-bound disposable verification, denied authority
-and network canaries, normal project tests, durable recovery and reproducible
-executor packaging. In progress; no product/deployment readiness claim yet.
+Phase 2B local acceptance passed: candidate-bound disposable verification,
+denied authority/network canaries, normal project tests and durable recovery.
+Executor production packaging remains under O/P. Phase 2C local acceptance passed:
+exact project/repository/workflow/worker/target binding before inference and
+immutable identity on recovery, including normal-startup cross-project rejection.
+Phase 2D requires repeat jobs to inherit accepted source and Core Git history
+without manifest edits, while historical-base work uses an isolated workspace.
+No product/deployment readiness claim yet.
 
 
 Last updated: 2026-09-08

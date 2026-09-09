@@ -39,6 +39,7 @@ class RealRuntimeConfiguration(BaseModel):
     credential_files: dict[str, Path] = Field(default_factory=dict, repr=False)
     allowed_worker_hosts: tuple[str, ...] = ()
     workflows: dict[UUID, RepositoryBinding] = Field(default_factory=dict)
+    project_workflows: dict[UUID, dict[UUID, RepositoryBinding]] = Field(default_factory=dict)
     source_root: Path
     verification_isolation: VerificationIsolation
     executables: dict[str, tuple[str, ...]]
@@ -47,6 +48,16 @@ class RealRuntimeConfiguration(BaseModel):
     ssh_executable: Path
     git_author_name: str = Field(min_length=1, max_length=120)
     git_author_email: str = Field(min_length=1, max_length=200)
+
+    def repository_binding(self, project_id: UUID, workflow_id: UUID) -> RepositoryBinding:
+        binding = self.project_workflows.get(project_id, {}).get(workflow_id)
+        if binding is None:
+            binding = self.workflows.get(workflow_id)
+        if binding is None:
+            raise ValueError("project/workflow has no server-side repository binding")
+        if binding.project.project_id != project_id:
+            raise ValueError("project does not match repository binding")
+        return binding
 
     @field_validator("source_root", "git_executable", "ssh_executable")
     @classmethod
