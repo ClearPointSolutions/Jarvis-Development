@@ -73,7 +73,7 @@ async def test_detached_wrapper_runs_once_and_persists_terminal(tmp_path: Path) 
     store.launch(launch)
     for _ in range(150):
         record = InvocationStore(Path(launch.invocation_root)).read(identity)
-        if record["state"] not in {"starting", "running"}:
+        if record["state"] in {"succeeded", "failed", "cancelled"}:
             break
         await asyncio.sleep(0.1)
     assert record["state"] == "succeeded", record
@@ -115,7 +115,10 @@ async def test_wrapper_bounded_secret_logs_keep_final_sentinel(tmp_path: Path) -
     identity = launch.prepared.request.invocation_id
     for _ in range(150):
         record = store.read(identity)
-        if record["state"] not in {"starting", "running"}:
+        # Coverage instrumentation can delay the first heartbeat past the
+        # staleness threshold. Unknown is not a terminal outcome; keep polling
+        # the same invocation without relaunching it or weakening the guard.
+        if record["state"] in {"succeeded", "failed", "cancelled"}:
             break
         await asyncio.sleep(0.1)
     assert record["state"] == "succeeded"

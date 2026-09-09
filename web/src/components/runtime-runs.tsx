@@ -109,8 +109,9 @@ export function RuntimeRuns() {
       <form className="content-card login-form" onSubmit={start}>
         <h2>Start run</h2>
         <p>
-          Local deterministic mode. No real worker or provider adapters are
-          enabled in demo mode.
+          {mode === "demo"
+            ? "Local deterministic mode. No real worker or provider adapters are enabled in demo mode."
+            : "Run an agent loop with your configured providers and worker."}
         </p>
         <label htmlFor="run-project">Project</label>
         <select id="run-project" name="project" required defaultValue="">

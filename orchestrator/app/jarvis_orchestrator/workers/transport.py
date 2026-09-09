@@ -179,6 +179,38 @@ class OpenSSHTransport:
             )
         return TransportResult(stdout[0], stderr[0], exit_code, stdout[1] or stderr[1])
 
+    async def execute_input(
+        self, command: str, data: bytes, *, timeout: float, limit: int
+    ) -> TransportResult:
+        from jarvis_orchestrator.verification.process import run_process
+
+        if not 0 < timeout <= 86400 or not 1024 <= limit <= 104857600:
+            raise WorkerBoundaryError("transport_limits_invalid")
+        result = await run_process(
+            self.argv(command),
+            cwd=self.credentials.private_key_file.parent,
+            environment={
+                key: value
+                for key, value in os.environ.items()
+                if key.upper() in {"PATH", "SYSTEMROOT", "TEMP", "TMP", "PROGRAMDATA", "COMSPEC"}
+            },
+            timeout=timeout,
+            limit=limit,
+            input_data=data,
+        )
+        if result.timed_out:
+            raise WorkerBoundaryError("ssh_timeout", FailureClass.INFRASTRUCTURE_TIMEOUT)
+        if result.exit_code in {None, 255}:
+            raise WorkerBoundaryError(
+                "ssh_unavailable", FailureClass.INFRASTRUCTURE_WORKER_TRANSPORT
+            )
+        return TransportResult(
+            result.stdout,
+            result.stderr,
+            result.exit_code,
+            result.stdout_truncated or result.stderr_truncated,
+        )
+
     @staticmethod
     def connection_error(stderr: bytes) -> str:
         diagnostic = stderr.lower()

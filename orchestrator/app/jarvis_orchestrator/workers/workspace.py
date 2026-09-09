@@ -145,7 +145,11 @@ class WorktreeManager:
         actual_root = Path(await self.scalar(workspace, "rev-parse", "--show-toplevel")).resolve()
         if actual_root != workspace:
             raise WorkerBoundaryError("repository_root_mismatch")
-        actual_branch = await self.scalar(workspace, "symbolic-ref", "--short", "HEAD")
+        # --short can expand to heads/<name> when a receipt ref shares the
+        # branch's suffix. Compare the unambiguous full ref instead.
+        actual_branch = (await self.scalar(workspace, "symbolic-ref", "HEAD")).removeprefix(
+            "refs/heads/"
+        )
         head = await self.scalar(workspace, "rev-parse", "--verify", "HEAD")
         if actual_branch != branch or (expected_head is not None and expected_head != head):
             raise WorkerBoundaryError("repository_identity_mismatch")

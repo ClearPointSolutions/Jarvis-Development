@@ -39,7 +39,7 @@ from jarvis_contracts.failures import (
     FailureRecord,
     RetryPolicySpec,
 )
-from jarvis_contracts.operations import RunUsage
+from jarvis_contracts.operations import RunUsage, SystemHealth
 from jarvis_contracts.registry import (
     AccountingPage,
     ProviderChunk,
@@ -113,6 +113,7 @@ from jarvis_contracts.workflow_nodes import (
 
 
 class JarvisContractBundle(ContractModel):
+    system_health: SystemHealth
     run_usage: RunUsage
     approvals: ApprovalPage
     approval_decision: ApprovalDecisionRequest

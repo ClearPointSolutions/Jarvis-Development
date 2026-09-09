@@ -1,8 +1,10 @@
-# Controlled first Ollama test (implementation acceptance in progress)
+# Controlled first Ollama test
 
-This is not yet a passing deployment runbook. The normal-entrypoint protocol
-acceptance and complete local verification gate must pass before target use.
-No exact homelab target has been supplied or contacted in this session.
+The complete local verification gate and the exact-commit CI both pass, and a
+live local Ollama has been exercised through the real planning and review
+contracts. This is still not a deployment runbook: no homelab target has been
+supplied or contacted, live paid-provider execution is untested, and GitHub
+publication is excluded from this MVP.
 
 ## Authoritative configuration
 
@@ -57,6 +59,133 @@ Expected: explicit `network_checked`, installed-model health and, for inference,
 actual model/profile identity and usage provenance. A cold installed model can be
 warming. Unknown tokens/cost remain unknown. A successful enum response proves
 basic schema compatibility only, not planner/reviewer quality.
+
+## Observed real-model behaviour (loopback Ollama, 2026-09-09)
+
+These are measured results from an actually running local Ollama, not fixtures.
+
+Model capability is not uniform across the three model contracts:
+
+| Contract | `qwen3:0.6b` | `qwen3:1.7b` |
+| --- | --- | --- |
+| Connection/inventory validation | passes | passes |
+| `OrganizerOutput` / `TaskPlan` planning | passes | passes |
+| `ReviewDecision` review schema | intermittently fails | intermittently passes |
+
+The reviewer schema is the strictest contract: six identifiers, a SHA, a digest
+and a bounded findings list. Choose a larger tag for the reviewer node than for
+planning if review keeps failing its contract.
+
+Latency is substantial. A cold load plus one planning call took 55-69 seconds on
+this hardware, and a full organizer-plus-architect pair took about three minutes.
+Size `probe_seconds` (maximum 60) and `reviewer_seconds` accordingly, and expect
+the service heartbeat, not a short lease, to keep a run alive during inference.
+
+Small models intermittently return structured output that does not satisfy the
+requested schema. The adapter classifies that as `provider.contract_failure`.
+An unmatched failure class gets no retries and a `block` exhaustion action, so
+**a real-model retry policy must include rules for the provider and
+infrastructure classes** or one malformed response blocks the whole run. Real
+composition now refuses to start such a run, naming the missing classes:
+
+```
+provider.contract_failure  provider.transient  provider.rate_limited
+infrastructure.timeout     infrastructure.service_unavailable
+```
+
+Free local profiles carry no pricing, so accounting records an unknown cost with
+no amount rather than inventing one. Paid providers are separate: see the budget
+gateway below.
+
+## Paid providers and the budget gateway
+
+A paid provider is refused unless the run's bound route policy authorizes it.
+Before each billed call the gateway evaluates that immutable policy and records
+a private immutable grant keyed by call identity, so a restart replays the
+original decision instead of buying a second inference. It fails closed when
+pricing is unknown, when no route policy is bound, when `allow_paid` is false,
+when a per-call or per-run ceiling cannot be satisfied, and — for a policy that
+sets `max_run_cost` — when the durable run total cannot be determined because an
+earlier billed call has no recorded outcome. Set `allow_paid`, the token ceilings
+and `max_call_cost`/`max_run_cost` on the route policy's `spend` block.
+
+Live paid-provider execution has not been exercised: it needs a real OpenAI
+credential, which was not available. Its acceptance is fixture-based.
+
+## GitHub publication is excluded from this MVP
+
+There is no real publication handler. Real composition refuses a workflow
+containing a `github_publish` node before any inference or worker dispatch.
+Do not publish a workflow with that node for real use.
+
+## Running real acceptance on Windows: use a short temporary root
+
+This is the single most expensive trap in local acceptance, and it looks exactly
+like an application defect.
+
+The real acceptance test derives its per-run `source_root` from `TMPDIR`. Core
+then builds `<source_root>/<32 hex>/c/<key>` and runs `git worktree add` on it.
+With the repository checkout's own path as `TMPDIR`, that source root is already
+around 90 characters before Core adds roughly 40 more, and Git for Windows fails
+on the resulting worktree path. The failure surfaces as a `WorkerBoundaryError`
+from the candidate import, which defaults to `configuration.invalid`, is
+therefore not retryable, and blocks the run with no useful detail.
+
+Export a genuinely short root before the run:
+
+```sh
+mkdir -p /c/jv/t
+export TMPDIR=C:/jv/t
+```
+
+Set `TMPDIR` only. Python's `tempfile` reads it first, so that is enough. Leave
+`TEMP` and `TMP` at their Windows values: overriding them with a forward-slash
+path, or unsetting them, leaves the Windows Playwright process without a usable
+temp directory, and it writes a literal `web/undefined/` transform cache into the
+repository that fails the Prettier gate on the next run.
+
+The same class of failure is recorded in `V1_HARDENING_MATRIX.md` as Git for
+Windows `fatal: '$GIT_DIR' too big` during the M8 work. CI is unaffected: it runs
+on Linux under `/tmp`.
+
+Two further conditions are worth setting up the same way. Provision a fresh
+disposable worker rather than reusing a long-lived container:
+
+```sh
+python -m scripts.provision_runtime_fixture --directory .tmp/fresh-ssh \
+  --name jarvis-v1-fresh-worker --port 22260
+```
+
+Point `JARVIS_TEST_SSH_DIRECTORY`, `JARVIS_TEST_SSH_CONTAINER` and
+`JARVIS_TEST_SSH_PORT` at what that command creates. Use a database dedicated to
+the run too: queued runs left behind by other suites compete with the service
+under test.
+
+## Reading a blocked run
+
+A blocked run now names the boundary that refused it. The node log line carries
+`code=<constant> node=<node id>`, and the run's `result_summary` reads
+`Runtime requires reconciliation: <constant>`, for example
+`source_import_tree_mismatch`. Only curated constants reach that channel; native
+exception text never does. `code=unspecified` means the failure came from
+somewhere with no boundary constant, not that the detail was withheld.
+
+When a probe fails, its JSON also names the exception type alongside the generic
+failure code. `ValidationError` means the private configuration file is wrong;
+it is not a reachability problem.
+
+## Opt-in live model acceptance
+
+With a reachable allowlisted Ollama and an installed tag:
+
+```sh
+export JARVIS_LIVE_OLLAMA_URL=http://127.0.0.1:11439
+export JARVIS_LIVE_OLLAMA_MODEL=qwen3:1.7b
+export TEST_DATABASE_URL=postgresql+psycopg://user@127.0.0.1:5432/database
+python -m pytest tests/integration/test_live_model.py -q
+```
+
+These are skipped without both variables, so CI never depends on a model server.
 
 ## Supported initial project profile
 

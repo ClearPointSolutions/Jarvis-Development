@@ -1,4 +1,4 @@
-import { FoundationRoute } from "@/components/foundation-route";
+import { OperationsPage } from "@/components/operations-page";
 export default function Page() {
-  return <FoundationRoute route="health" />;
+  return <OperationsPage />;
 }

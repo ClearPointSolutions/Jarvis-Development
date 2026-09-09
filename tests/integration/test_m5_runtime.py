@@ -59,6 +59,9 @@ async def prepare_run(
         await session.flush()
         run = await session.get(RunModel, seeded.run_id)
         assert run is not None
+        # These service fixtures inject explicit protocol adapters into the real
+        # runtime. They do not request the canonical demo adapter bundle.
+        run.mode = "real"
         run.workflow_version_id = version.id
         run.config_snapshot_id = config.id
     return seeded.run_id

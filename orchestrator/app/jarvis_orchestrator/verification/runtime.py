@@ -52,6 +52,7 @@ class LocalVerificationBinding:
     combined_commands: tuple[VerificationCommand, ...]
     resolve_root: Callable[[WorkerInvocationRequest], Path]
     transfer_root: Callable[[WorkerInvocationRequest, WorkerResult], Awaitable[Path]] | None = None
+    candidate_branches: bool = False
 
 
 class VerificationEffectAdapter:
@@ -187,7 +188,12 @@ class VerificationEffectAdapter:
             if self.binding.transfer_root is not None
             else self.binding.resolve_root(request)
         )
-        repository = ConfirmedRepository(root, result.branch, result.end_head)
+        branch = (
+            "jarvis-candidates/" + result.invocation_id.hex
+            if self.binding.candidate_branches and root.name != "repository"
+            else result.branch
+        )
+        repository = ConfirmedRepository(root, branch, result.end_head)
         await self.integrator.leases.initialize(
             self.binding.repository_id,
             base_sha=self.binding.initial_sha,

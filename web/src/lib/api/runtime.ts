@@ -1,4 +1,5 @@
 import type {
+  SystemHealth,
   ApprovalPage,
   ApprovalView,
   ApprovalDecisionRequest,
@@ -21,6 +22,7 @@ import type {
   IntegrationHeadPage,
 } from "@jarvis/contracts";
 import { ApiRequestError } from "./client";
+import { collectPages } from "./pagination";
 
 export function createRuntimeClient(csrfToken?: string) {
   async function request<T>(path: string, body?: unknown): Promise<T> {
@@ -48,7 +50,17 @@ export function createRuntimeClient(csrfToken?: string) {
       );
     return response.json() as Promise<T>;
   }
+  function pages<
+    P extends { items: unknown[]; next_after?: string | number | null },
+  >(path: string) {
+    return collectPages<P>((after) =>
+      request<P>(
+        `${path}${after === undefined ? "" : `${path.includes("?") ? "&" : "?"}after=${encodeURIComponent(after)}`}`,
+      ),
+    );
+  }
   return {
+    health: () => request<SystemHealth>("/system/health"),
     usage: (id: string) =>
       request<RunUsage>(`/runs/${encodeURIComponent(id)}/usage`),
     approvals: (id: string) =>
@@ -63,11 +75,11 @@ export function createRuntimeClient(csrfToken?: string) {
         `/runs/${encodeURIComponent(id)}/integration-heads`,
       ),
     evidence: (id: string) =>
-      request<EventPage>(`/runs/${encodeURIComponent(id)}/events?limit=1000`),
+      pages<EventPage>(`/runs/${encodeURIComponent(id)}/events?limit=1000`),
     tasks: (id: string) =>
-      request<TaskPage>(`/runs/${encodeURIComponent(id)}/tasks`),
+      pages<TaskPage>(`/runs/${encodeURIComponent(id)}/tasks`),
     nodes: (id: string) =>
-      request<NodePage>(`/runs/${encodeURIComponent(id)}/nodes?limit=100`),
+      pages<NodePage>(`/runs/${encodeURIComponent(id)}/nodes?limit=100`),
     workflow: (id: string) =>
       request<WorkflowSpec>(`/runs/${encodeURIComponent(id)}/workflow`),
     decision: (id: string) =>
@@ -79,15 +91,15 @@ export function createRuntimeClient(csrfToken?: string) {
         `/runs/${encodeURIComponent(id)}/demo-decision`,
         body,
       ),
-    projects: () => request<ProjectPage>("/projects"),
+    projects: () => pages<ProjectPage>("/projects"),
     createProject: (body: ProjectCreate) =>
       request<ProjectView>("/projects", body),
     start: (project: string, body: JobCreate) =>
       request<RunView>(`/projects/${encodeURIComponent(project)}/jobs`, body),
-    runs: () => request<RunPage>("/runs"),
+    runs: () => pages<RunPage>("/runs"),
     get: (id: string) => request<RunView>(`/runs/${encodeURIComponent(id)}`),
     commands: (id: string) =>
-      request<CommandPage>(`/runs/${encodeURIComponent(id)}/commands`),
+      pages<CommandPage>(`/runs/${encodeURIComponent(id)}/commands`),
     command: (id: string, body: RunControl) =>
       request<RunCommandReceipt>(
         `/runs/${encodeURIComponent(id)}/commands`,

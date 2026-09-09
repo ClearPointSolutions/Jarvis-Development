@@ -1,4 +1,4 @@
-import { FoundationRoute } from "@/components/foundation-route";
+import { ArtifactHistory } from "@/components/artifact-history";
 export default function Page() {
-  return <FoundationRoute route="artifacts" />;
+  return <ArtifactHistory />;
 }

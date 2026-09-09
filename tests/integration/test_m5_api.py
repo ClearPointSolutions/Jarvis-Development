@@ -53,6 +53,7 @@ async def test_run003_durable_enqueue_auth_idempotency_and_control(
     start_body = {
         "idempotency_key": str(uuid7()),
         "objective": "Exercise durable local execution",
+        "mode": "real",
         "workflow_version_id": publication.json()["version"]["id"],
     }
     path = f"/api/v1/projects/{project.json()['id']}/jobs"

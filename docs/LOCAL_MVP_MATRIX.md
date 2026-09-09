@@ -15,7 +15,7 @@ GitHub publication is authorized.
 | C source limits | Existing UTF-8 snapshot policy retained, bounded full-history transfer | Binary/LFS/symlink/submodule projects unsupported; preflight/runbook remaining |
 | D M9 approvals | Durable interrupt handler, authenticated decision API, event-bound protected effect and real run UI | Seven PostgreSQL request/decision/expiry/tampering/same-thread reconstruction tests passed. Protected-effect and browser acceptance remain |
 | E M10A interface | Existing M8 evidence panels retained | Remaining: conversations, selected-run graph, history, truthful mode and required UI routes |
-| E M10B publication | Existing fail-closed graph guards retained | Remaining: configured GitHub adapter and approval-bound publication/reconciliation |
+| E M10B publication | Excluded from the V1 local MVP: real composition refuses a `github_publish` node before any billed inference or worker dispatch | Not remaining work for V1. A configured GitHub adapter and approval-bound publication/reconciliation are deferred; see the K row of V1_HARDENING_MATRIX.md |
 | E M10C operations | Event-backed provider accounting/preflight | Remaining: aggregation, staleness, retention and incident export |
 | F M11 packaging | Python/web images; Compose bootstrap/migration/runtime identities; V1 deployment and backup scripts | Both images built; isolated production Compose migrations passed, API health and web login returned 200. Health checks, restore, deployment/rollback and security gates remain |
 | Full local gate | Existing verification script and coverage threshold unchanged | Interim PostgreSQL suite 724 passed/1 failed, 79.31% coverage; focused demo renewal-race regression subsequently passed. Full current gate pending |
@@ -67,7 +67,7 @@ Every normative acceptance case remains open until exact-revision evidence is re
 | FAIL-002: Worker transport: | Remaining | Baseline implementation where present; current full-gate revalidation pending |
 | FAIL-003: Provider failures: | Remaining | Baseline implementation where present; current full-gate revalidation pending |
 | FAIL-004: Review failure: | Remaining | Baseline implementation where present; current full-gate revalidation pending |
-| FAIL-005: Budget exhaustion: | Remaining | Baseline implementation where present; current full-gate revalidation pending |
+| FAIL-005: Budget exhaustion: | Implemented | Durable per-call grants against the bound route spend policy; 9 PostgreSQL tests cover allow, denial, exhausted ceiling, unknown pricing, indeterminate spend, restart and replay. Live billed acceptance still needs a real paid credential |
 | FAIL-006: Configuration/security: | Remaining | Baseline implementation where present; current full-gate revalidation pending |
 | FAIL-007: Git conflict: | Remaining | Baseline implementation where present; current full-gate revalidation pending |
 | WRK-001: Registry/editor: | Remaining | Baseline implementation where present; current full-gate revalidation pending |
@@ -95,7 +95,7 @@ Every normative acceptance case remains open until exact-revision evidence is re
 | APR-005: Node re-entry: | Remaining | Baseline implementation where present; current full-gate revalidation pending |
 | APR-006: Policy defaults: | Remaining | Baseline implementation where present; current full-gate revalidation pending |
 | GH-001: Not configured: | Remaining | Baseline implementation where present; current full-gate revalidation pending |
-| GH-002: Approved publication: | Remaining | Baseline implementation where present; current full-gate revalidation pending |
+| GH-002: Approved publication: | Out of V1 scope | No real publication handler; a real run refuses a `github_publish` node up front rather than appearing to publish |
 | GH-003: Scope: | Remaining | Baseline implementation where present; current full-gate revalidation pending |
 | GH-004: CI: | Remaining | Baseline implementation where present; current full-gate revalidation pending |
 | HLT-001: Health: | Remaining | Baseline implementation where present; current full-gate revalidation pending |

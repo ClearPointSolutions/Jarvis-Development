@@ -14,9 +14,9 @@ from langgraph.types import Command
 from sqlalchemy import select
 from sqlalchemy.exc import OperationalError
 
-from jarvis_contracts.base import sha256_digest
 from jarvis_contracts.workflow import WorkflowSpec
 from jarvis_contracts.workflow_api import WorkflowResolvedSnapshot
+from jarvis_orchestrator.runtime.binding import configuration_digest
 from jarvis_orchestrator.runtime.checkpoints import fenced_saver
 from jarvis_orchestrator.runtime.commands import CommandProcessor
 from jarvis_orchestrator.runtime.effects import EffectAdapter, EffectLedger
@@ -155,20 +155,31 @@ class OrchestratorService:
         except asyncio.CancelledError:
             raise
         except Exception as error:
-            from jarvis_orchestrator.runtime.errors import RuntimeDependencyError
+            from jarvis_orchestrator.runtime.errors import (
+                RuntimeDependencyError,
+                safe_boundary_code,
+            )
 
             # Never emit native exception text; it may contain credentials/output.
+            # Boundary errors carry a curated safe constant instead, and without
+            # it a blocked run is indistinguishable from any other blocked run.
+            safe_code = safe_boundary_code(error)
             logging.getLogger(__name__).warning(
-                "Runtime exception_type=%s run=%s", type(error).__name__, fence.run_id
+                "Runtime exception_type=%s code=%s run=%s",
+                type(error).__name__,
+                safe_code or "unspecified",
+                fence.run_id,
             )
+            if isinstance(error, RuntimeDependencyError):
+                summary = str(error)
+            elif safe_code is not None:
+                summary = f"Runtime requires reconciliation: {safe_code}"
+            else:
+                summary = "Runtime requires configuration or effect reconciliation"
             try:
                 async with self.ownership.fenced(fence) as (session, run):
                     run.status = "blocked"
-                    run.result_summary = (
-                        str(error)
-                        if isinstance(error, RuntimeDependencyError)
-                        else "Runtime requires configuration or effect reconciliation"
-                    )
+                    run.result_summary = summary
                     run.current_node = None
                     run.completed_at = self.ownership.clock.now()
                     run.version += 1
@@ -210,9 +221,7 @@ class OrchestratorService:
             if (
                 snapshot_row.workflow_version_id != version.id
                 or snapshot_row.snapshot_hash
-                != sha256_digest(
-                    {"version_id": str(version.id), "snapshot": snapshot.model_dump(mode="json")}
-                )
+                != configuration_digest(version.id, snapshot_row.effective_spec_json)
             ):
                 raise ValueError("Immutable run snapshot identity is invalid")
             thread = run.langgraph_thread_id
@@ -246,7 +255,7 @@ class OrchestratorService:
             adapters = await self.real_composition.build(
                 self.ownership, fence, spec, snapshot, version.id
             )
-            decision_handler = self.real_composition.approvals(
+            decision_handler = await self.real_composition.approvals(
                 self.ownership, fence, spec, version.id
             )
             from jarvis_contracts.workflow_nodes import NODE_DEFINITIONS

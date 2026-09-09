@@ -1,6 +1,8 @@
 import asyncio
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from jarvis_api.config import get_settings
@@ -38,12 +40,54 @@ def test_orchestrator_serve_waits_for_shutdown() -> None:
     with (
         patch(
             "jarvis_orchestrator.main.OrchestratorSettings",
-            return_value=OrchestratorSettings(DATABASE_URL="postgresql+psycopg://localhost/test"),
+            return_value=OrchestratorSettings(
+                DATABASE_URL="postgresql+psycopg://localhost/test",
+                runtime_file=Path("configured-runtime.json"),
+                max_concurrency=1,
+                global_concurrency=1,
+            ),
         ),
+        patch("jarvis_orchestrator.runtime.configuration.RealRuntimeConfiguration.load"),
+        patch("jarvis_orchestrator.runtime.composition.RealComposition") as composition,
         patch("jarvis_orchestrator.main.OrchestratorService", return_value=service),
     ):
         asyncio.run(serve())
     service.serve.assert_awaited_once()
+    composition.assert_called_once()
+
+
+def test_real_startup_rejects_missing_manifest_before_database_access() -> None:
+    with (
+        patch(
+            "jarvis_orchestrator.main.OrchestratorSettings",
+            return_value=OrchestratorSettings(
+                DATABASE_URL="postgresql+psycopg://localhost/test", runtime_file=None
+            ),
+        ),
+        patch("jarvis_orchestrator.main.create_async_database_engine") as database,
+        pytest.raises(ValueError, match="requires JARVIS_ORCHESTRATOR_RUNTIME_FILE"),
+    ):
+        asyncio.run(serve())
+    database.assert_not_called()
+
+
+@pytest.mark.parametrize("local,global_limit", [(2, 1), (1, 2)])
+def test_legacy_real_startup_refuses_parallel_execution(local: int, global_limit: int) -> None:
+    with (
+        patch(
+            "jarvis_orchestrator.main.OrchestratorSettings",
+            return_value=OrchestratorSettings(
+                DATABASE_URL="postgresql+psycopg://localhost/test",
+                runtime_file=Path("configured-runtime.json"),
+                max_concurrency=local,
+                global_concurrency=global_limit,
+            ),
+        ),
+        patch("jarvis_orchestrator.main.create_async_database_engine") as database,
+        pytest.raises(ValueError, match="concurrency one"),
+    ):
+        asyncio.run(serve())
+    database.assert_not_called()
 
 
 def test_orchestrator_entrypoint_uses_asyncio_runner() -> None:

@@ -11,8 +11,10 @@ import { EventFeed } from "@/components/event-feed";
 
 export function MissionDashboard({
   approvalsOnly = false,
+  title,
 }: {
   approvalsOnly?: boolean;
+  title?: string;
 }) {
   const session = useSession();
   const runs = useQuery({
@@ -30,7 +32,7 @@ export function MissionDashboard({
     <div className="page-stack">
       <header className="page-header">
         <p className="eyebrow">Durable execution</p>
-        <h1>{approvalsOnly ? "Approvals" : "Mission overview"}</h1>
+        <h1>{title ?? (approvalsOnly ? "Approvals" : "Mission overview")}</h1>
         <Link href="/runs" className="button">
           Create an objective
         </Link>

@@ -652,6 +652,13 @@ export type IdleExpiresAt = string;
 export type Id23 = string;
 export type Role = "owner";
 export type Username1 = string;
+export type AcceptingInstances = number;
+export type Database1 = "healthy";
+export type ExpiredActiveLeases = number;
+export type HeartbeatStaleAfterSeconds = number;
+export type LastHeartbeatAt1 = string | null;
+export type ObservedAt = string;
+export type Orchestrator = "healthy" | "stale" | "unknown";
 export type AcceptanceCriteria1 = string[];
 export type CreatedAt11 = string;
 export type Id24 = string;
@@ -806,7 +813,7 @@ export type WorkerRevisionId = string;
 export type Capabilities3 = string[];
 export type Issues1 = string[];
 export type NetworkChecked1 = boolean;
-export type ObservedAt = string;
+export type ObservedAt1 = string;
 export type Status14 = "healthy" | "degraded" | "unavailable" | "misconfigured" | "unknown";
 export type ArchitectureArtifactId = string | null;
 /**
@@ -1290,6 +1297,7 @@ export interface JarvisContractBundle {
   runtime_nodes: NodePage;
   runtime_tasks: TaskPage;
   session_response?: SessionResponse | null;
+  system_health: SystemHealth;
   task?: Task | null;
   task_attempt?: TaskAttempt | null;
   validation_report?: ValidationReport | null;
@@ -2147,6 +2155,19 @@ export interface SessionUser {
   role?: Role;
   username: Username1;
 }
+export interface SystemHealth {
+  accepting_instances: AcceptingInstances;
+  database?: Database1;
+  expired_active_leases: ExpiredActiveLeases;
+  heartbeat_stale_after_seconds: HeartbeatStaleAfterSeconds;
+  last_heartbeat_at: LastHeartbeatAt1;
+  observed_at: ObservedAt;
+  orchestrator: Orchestrator;
+  run_counts: RunCounts;
+}
+export interface RunCounts {
+  [k: string]: number;
+}
 export interface Task {
   acceptance_criteria: AcceptanceCriteria1;
   created_at: CreatedAt11;
@@ -2244,7 +2265,7 @@ export interface WorkerHealth {
   capabilities?: Capabilities3;
   issues?: Issues1;
   network_checked?: NetworkChecked1;
-  observed_at: ObservedAt;
+  observed_at: ObservedAt1;
   status: Status14;
 }
 export interface WorkerInvocationRequest {

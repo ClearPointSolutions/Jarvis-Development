@@ -7,6 +7,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
+from uuid import UUID
 
 from jarvis_api.events.redaction import RecursiveRedactor
 from jarvis_contracts.verification import ParsedVerification, VerificationCommand
@@ -33,6 +34,18 @@ class VerificationResult:
 
 
 class VerificationExecutor:
+    recoverable = False
+
+    async def execute_bound(
+        self,
+        repository: ConfirmedRepository,
+        command: VerificationCommand,
+        *,
+        run_id: UUID,
+        execution_id: UUID,
+    ) -> VerificationResult:
+        return await self.execute(repository, command)
+
     def __init__(
         self,
         manager: WorktreeManager,

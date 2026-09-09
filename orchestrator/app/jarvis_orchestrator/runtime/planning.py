@@ -14,6 +14,7 @@ from uuid6 import uuid7
 from jarvis_contracts.base import ContractModel
 from jarvis_contracts.registry import ModelProfileSpec, ProviderRequest, ProviderSpec
 from jarvis_contracts.workers import SafeKey, WorkerTask
+from jarvis_orchestrator.providers.budget import bound_budget
 from jarvis_orchestrator.providers.configuration import ProviderRuntimeConfig
 from jarvis_orchestrator.providers.runtime import RuntimeModel
 from jarvis_orchestrator.runtime.effects import EffectObservation
@@ -65,7 +66,9 @@ class OrganizerOutput(ContractModel):
 
 
 class PlanningEffect:
-    idempotent = False
+    # RuntimeModel reuses an immutable response and blocks any started call
+    # without a receipt. Re-entry cannot silently repeat inference.
+    idempotent = True
 
     def __init__(
         self, configuration: ProviderRuntimeConfig, owner: RunOwnership, fence: RunFence
@@ -125,6 +128,7 @@ class PlanningEffect:
             profile_row.spec,
             provider_row.revision_id,
             profile_row.revision_id,
+            bound_budget(context),
         )
         prompt = (
             "Return only schema-valid JSON with final observable content, no hidden reasoning. "

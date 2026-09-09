@@ -1,4 +1,4 @@
-import { FoundationRoute } from "@/components/foundation-route";
+import { ProjectHistory } from "@/components/project-history";
 export default function Page() {
-  return <FoundationRoute route="projects" />;
+  return <ProjectHistory />;
 }

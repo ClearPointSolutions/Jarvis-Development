@@ -347,3 +347,34 @@ These do not block architecture, but they are explicit gates:
 ## Superseding a decision
 
 Append a new ADR with `supersedes: ADR-xxx`, record evidence, compatibility/migration/security/rollback impact, update normative docs/tests, and merge it before implementation that relies on the change. Historical entries remain intact.
+
+### ADR-028 — Disposable verification boundary (implementation in progress)
+
+Supersedes host-process verification as the production execution boundary.
+Core retains LangGraph, source sealing and evidence authority. A dedicated
+executor-host broker runs an immutable Python tool image with the exact bounded
+candidate copied through stdin into disposable tmpfs. No bind mounts, Core
+configuration, database/provider/SSH credentials or Docker socket enter tested
+code. Network is disabled; the root filesystem is read-only; UID 10001,
+no-new-privileges, dropped capabilities, CPU/memory/PID and output limits apply.
+The initial offline profile supports Python/pytest with preinstalled dependencies.
+Additional project tools require an explicitly built and pinned tool image.
+
+The broker owns immutable request intents and response receipts bound to run,
+execution, candidate, source payload and image identities. A completed receipt
+can be reused. Uncertain starts remain fail-closed; existing started/exited
+containers reconcile by their bound identities. The production transport must put Docker authority
+on the dedicated executor host, never in an application container or workload.
+Local direct invocation is only the disposable acceptance harness at this stage.
+
+Current evidence: traversal/bounds/substitution contract tests and an actual
+container test asserting non-root, no capabilities, no-new-privileges, read-only
+root, absent Core paths/credentials/socket, denied network, a passing small
+Python project and receipt reuse. This is not complete deployment acceptance.
+Both normal-entrypoint variants now pass through
+isolated verification. Receipt-publication crash recovery returns the original
+random output without rerunning; timeout and abandoned-broker watchdog tests
+pass. Remote transport and packaging remain required deployment gates.
+The user authorizes implementation and draft PR review while explicitly
+prohibiting a main merge; that instruction supersedes the historical instruction
+to merge an ADR before implementing it.

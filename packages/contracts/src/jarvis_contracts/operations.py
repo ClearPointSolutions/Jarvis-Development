@@ -1,5 +1,6 @@
 """Truthful read-only operational projections."""
 
+from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
@@ -22,3 +23,14 @@ class RunUsage(ContractModel):
     provenance: Literal["exact", "estimated", "unknown"]
     currencies: tuple[CurrencyUsage, ...]
     worker_usage: Literal["unavailable"] = "unavailable"
+
+
+class SystemHealth(ContractModel):
+    observed_at: datetime
+    database: Literal["healthy"] = "healthy"
+    orchestrator: Literal["healthy", "stale", "unknown"]
+    last_heartbeat_at: datetime | None
+    heartbeat_stale_after_seconds: int
+    accepting_instances: int
+    run_counts: dict[str, int]
+    expired_active_leases: int

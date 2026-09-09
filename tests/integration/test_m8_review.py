@@ -32,6 +32,8 @@ pytestmark = pytest.mark.integration
 
 
 class CurrentTaskReviewer:
+    recoverable = False
+
     def __init__(self, *, fail: bool = False) -> None:
         self.fail, self.calls = fail, 0
 
@@ -76,8 +78,12 @@ class CurrentTaskReviewer:
 
 
 @pytest.mark.parametrize("failure", [False, True])
+@pytest.mark.parametrize("recover_start", [False, True])
 async def test_cumulative_review_recovery_feedback_and_head_mutation(
-    session_factory: async_sessionmaker[AsyncSession], tmp_path: Path, failure: bool
+    session_factory: async_sessionmaker[AsyncSession],
+    tmp_path: Path,
+    failure: bool,
+    recover_start: bool,
 ) -> None:
     run_id = await prepare_run(session_factory)
     owner, fence = await acquire(session_factory, run_id)
@@ -137,6 +143,17 @@ async def test_cumulative_review_recovery_feedback_and_head_mutation(
     )
     adapter = CurrentTaskReviewer(fail=failure)
     review = ReviewService(executor, artifacts, adapter)
+    if recover_start:
+        adapter.recoverable = True
+
+        def interrupt(point: str) -> None:
+            if point == "m8_after_reviewer_dispatched":
+                raise RuntimeError("injected review interruption")
+
+        owner.fault = interrupt
+        with pytest.raises(RuntimeError, match="injected review"):
+            await review.run(repository, evidence, operation_id=operation_id)
+        owner.fault = lambda _point: None
     decision, feedback, valid = await review.run(repository, evidence, operation_id=operation_id)
     assert valid and (decision.verdict == "FAIL") == failure
     recovered = ReviewService(executor, artifacts, adapter)
@@ -157,6 +174,7 @@ async def test_cumulative_review_recovery_feedback_and_head_mutation(
         ).all()
         assert sum(e.type == "review.snapshot_invalidated" for e in events) == 1
         assert sum(e.type == "command.normalized" for e in events) == 1
+        assert sum(e.type == "review.started" for e in events) == 1
         assert (
             sum(e.type == ("review.failed" if failure else "review.completed") for e in events) == 1
         )

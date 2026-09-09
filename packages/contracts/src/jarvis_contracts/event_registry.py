@@ -86,13 +86,14 @@ command.normalized
 git.push_completed git.push_started graph.checkpointed graph.compile_failed graph.compiled
 graph.fanout_started graph.join_completed graph.route_selected instruction.applied
 instruction.queued job.blocked job.cancelled job.completed job.created job.failed job.status_changed
-lease.expired message.created model.call_completed model.call_failed model.call_started
+lease.expired message.created model.budget_authorized model.budget_denied
+model.call_completed model.call_failed model.call_started
 model.failover
 model.health_changed model.route_selected model.stream_progress model.usage_recorded node.cancelled
 node.failed node.interrupted node.queued node.skipped node.started node.succeeded node.waiting
 orchestrator.heartbeat retry.budget_consumed retry.budget_exhausted review.completed review.failed
 review.snapshot_invalidated review.started run.blocked run.cancel_requested run.cancelled
-run.claimed
+run.claimed run.configuration_bound
 run.command_applied run.command_rejected run.command_requested run.completed run.failed
 run.pause_requested run.paused run.queued run.recovered run.recovering run.resumed run.started
 security.redaction_applied service.health_changed system.health_changed task.attempt_started
@@ -102,6 +103,7 @@ task.retry_scheduled task.reviewing task.succeeded task.verifying test.completed
 test.started
 thread.created tool.completed tool.failed tool.started worker.cancel_requested worker.cancelled
 worker.health_changed worker.heartbeat worker.invocation_completed worker.invocation_dispatched
+worker.workspace_prepared
 worker.invocation_failed worker.lease_acquired worker.lease_lost workflow.published
 """
 _EVENT_NAMES = _EVENT_NAMES_TEXT.split()

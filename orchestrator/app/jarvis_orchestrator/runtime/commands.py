@@ -102,6 +102,7 @@ class CommandProcessor:
                     try:
                         has_receiver = version is not None and any(
                             NODE_DEFINITIONS[node.type].external
+                            and node.type.value in {"organizer", "architect", "worker"}
                             and node.policy.accepts_runtime_instructions
                             for node in WorkflowSpec.model_validate(version.spec_json).nodes
                         )
@@ -114,6 +115,15 @@ class CommandProcessor:
                     else:
                         instructions.append({"command_id": str(command.id), **command.payload_json})
                         run.runtime_json = {**run.runtime_json, "instructions": instructions}
+                        await self.ownership.event(
+                            session,
+                            run,
+                            "instruction.queued",
+                            {
+                                "command_id": str(command.id),
+                                "summary": "Waiting for a supported instruction safe point",
+                            },
+                        )
                 command.status = status
                 command.applied_at = self.ownership.clock.now()
                 run.version += 1

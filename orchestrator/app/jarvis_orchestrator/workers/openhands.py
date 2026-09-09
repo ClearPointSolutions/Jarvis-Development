@@ -68,6 +68,7 @@ class OpenHandsSSHAdapter:
         self.publish_log = publish_log
         self.artifact_reader = artifact_reader
         self.prepared: dict[UUID, PreparedInvocation] = {}
+        self.historical_workspace_version: str | None = None
 
     async def authorize(self, lease: WorkerSlotFence) -> None:
         if self.require_fence is not None:
@@ -133,6 +134,10 @@ class OpenHandsSSHAdapter:
             )
             if data.get("wrapper_version") != "1.0":
                 raise WorkerBoundaryError("wrapper_version_mismatch")
+            if data.get("source_transfer_version") != "1.0":
+                raise WorkerBoundaryError("source_transfer_version_mismatch")
+            version = data.get("historical_workspace_version")
+            self.historical_workspace_version = version if isinstance(version, str) else None
             capabilities = tuple(
                 str(value) for value in cast(list[object], data.get("capabilities", []))
             )

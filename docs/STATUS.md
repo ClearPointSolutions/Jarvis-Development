@@ -1,5 +1,74 @@
 # Jarvis V1 Status
 
+## MVP completion acceptance (2026-09-09 continuation)
+
+Continue the existing integration branch from `dd8c3f8`. Completion requires
+the A–Q matrix, current full verification, browser/operator acceptance, and
+documented real-worker/model staging evidence. Historical logs are supporting
+evidence only. Current implementation criteria include durable model-response
+recovery without duplicate inference, complete cursor-based history and current
+node projections, and truthful runtime instruction delivery. Preserve all
+existing security, coverage, isolation and legacy boundaries. No readiness claim
+until the remaining product and staging gates pass.
+
+## Paid budget gateway and live model acceptance (2026-09-09, later session)
+
+Continued `codex/v1-integration-hardening` from `f4f6355`. The prior session's
+full gate reached 775 backend tests at 85.62% coverage and then stopped at the
+frontend Prettier check; that was a local CRLF artifact in two Playwright specs,
+not a repository defect. The committed bytes are LF, so CI was never affected.
+
+Implemented the durable paid-inference budget gateway (`providers/budget.py`,
+migration `0010`) that replaces the unconditional paid-call refusal. Nine
+PostgreSQL tests and four composition preflight tests pass.
+
+Live local Ollama was actually contacted at loopback `11439`. Connection
+validation reported `network_checked`; the real model satisfied the actual
+`OrganizerOutput` and `TaskPlan` planning schemas; usage was recorded with
+`provenance: "exact"`. Two honest findings came out of that: the stricter
+`ReviewDecision` schema is beyond `qwen3:0.6b` and only intermittently met by
+`qwen3:1.7b`, and an unmatched failure class has no retries, so one malformed
+structured response blocked a whole run. Real composition now refuses, before any
+billed inference, a model node whose bound retry policy lacks the provider and
+infrastructure classes. It also refuses a `github_publish` node: V1 has no
+publication handler, so publication is excluded truthfully rather than failing
+late after real spend.
+
+Migration `0010` also moved the Alembic head while the readiness endpoint still
+pinned `0009`, so a correctly migrated deployment would have reported itself
+permanently unready. The full gate caught it; `1039cdd` fixes the pin and adds a
+unit test comparing it to the actual head.
+
+Exact commit `1039cddd7cb6a02d9b45481bf9b991bf0f8272d4` passed
+[verify 34410979797](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34410979797)
+with every step green, including mandatory real-entrypoint worker provisioning
+and the complete unchanged `scripts/verify.sh`. The earlier `f4f6355` failure was
+the external `npx playwright install` browser-dependency step, not a repository
+defect.
+
+No OpenAI endpoint, GitHub repository or homelab host was contacted. Paid
+execution and publication remain unproven by design. Rows D-F, H-J and L-Q of the
+hardening matrix are open, so this is a gate result, not a readiness claim.
+
+## Active integration and hardening (2026-09-09)
+
+Branch: `codex/v1-integration-hardening`, clean starting commit `1c61e70`.
+Fetched remote main and exact CI run 34309805401: unchanged, failing.
+The current user's authorization covers all local A–Q implementation and verification.
+Authoritative checklist: [V1_HARDENING_MATRIX.md](V1_HARDENING_MATRIX.md).
+Phase 1 baseline passed exact `9d65e94` CI 34315858229: full PostgreSQL verify,
+mandatory normal-entrypoint SSH acceptance, coverage and canonical demo.
+The Windows wrapper polling correction is separately committed as `c0aeb54`.
+Phase 2B local acceptance passed: candidate-bound disposable verification,
+denied authority/network canaries, normal project tests and durable recovery.
+Executor production packaging remains under O/P. Phase 2C local acceptance passed:
+exact project/repository/workflow/worker/target binding before inference and
+immutable identity on recovery, including normal-startup cross-project rejection.
+Phase 2D requires repeat jobs to inherit accepted source and Core Git history
+without manifest edits, while historical-base work uses an isolated workspace.
+No product/deployment readiness claim yet.
+
+
 Last updated: 2026-09-08
 Current phase: local MVP runtime and M9–M11 implementation in progress.
 Overall state: M7 complete; M8 code is on main. Current changes are unverified as a whole.

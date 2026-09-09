@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
@@ -16,6 +17,7 @@ from sqlalchemy import (
     Index,
     Integer,
     MetaData,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -42,6 +44,57 @@ NAMING_CONVENTION = {
 
 class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
+
+
+class ModelResponseReceiptModel(Base):
+    __tablename__ = "model_response_receipts"
+    __table_args__ = ({"schema": CONTROL_SCHEMA},)
+
+    call_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
+    run_id: Mapped[UUID] = mapped_column(
+        ForeignKey("control.runs.id", ondelete="RESTRICT"), nullable=False
+    )
+    request_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    response_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    response_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class ModelBudgetGrantModel(Base):
+    """Immutable per-call authorization for billed inference."""
+
+    __tablename__ = "model_budget_grants"
+    __table_args__ = (
+        CheckConstraint("decision IN ('allow', 'deny', 'require_approval')", name="decision"),
+        {"schema": CONTROL_SCHEMA},
+    )
+
+    call_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
+    run_id: Mapped[UUID] = mapped_column(
+        ForeignKey("control.runs.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    route_revision_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.configuration_revisions.id", ondelete="RESTRICT")
+    )
+    profile_revision_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.configuration_revisions.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    provider_revision_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.configuration_revisions.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    request_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    policy_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    decision: Mapped[str] = mapped_column(String(24), nullable=False)
+    reasons_json: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
+    estimated_cost: Mapped[Decimal | None] = mapped_column(Numeric(20, 10))
+    run_spend_before: Mapped[Decimal | None] = mapped_column(Numeric(20, 10))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
 
 
 class MutableRow:
