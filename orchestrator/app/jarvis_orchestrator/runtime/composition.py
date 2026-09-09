@@ -33,8 +33,8 @@ from jarvis_orchestrator.runtime.model_selection import select_model
 from jarvis_orchestrator.runtime.ownership import RunFence, RunOwnership
 from jarvis_orchestrator.runtime.planning import PlanningEffect
 from jarvis_orchestrator.verification.artifacts import EvidenceArtifacts
-from jarvis_orchestrator.verification.executor import VerificationExecutor
 from jarvis_orchestrator.verification.integration import LocalIntegrator
+from jarvis_orchestrator.verification.isolated_executor import IsolatedVerificationExecutor
 from jarvis_orchestrator.verification.leases import IntegrationLeases
 from jarvis_orchestrator.verification.model_reviewer import ModelReviewer
 from jarvis_orchestrator.verification.reviews import ReviewerAdapter, ReviewService
@@ -157,8 +157,10 @@ class RealComposition:
         run_root = self.settings.source_root / fence.run_id.hex
         run_root.mkdir(parents=True, exist_ok=True)
         manager = WorktreeManager(run_root, git_executable=str(self.settings.git_executable))
-        executor = VerificationExecutor(
-            manager, self.settings.executables, path=self.settings.executable_path
+        executor = IsolatedVerificationExecutor(
+            manager,
+            self.settings.verification_isolation.broker_argv,
+            self.settings.verification_isolation.image_id,
         )
         artifacts = EvidenceArtifacts(owner, fence, self.artifact_root)
         request_source = LegacyRequestSource(owner, fence, binding, artifacts)

@@ -31,6 +31,7 @@ jobs:
       DATABASE_URL: postgresql+psycopg://jarvis_v1_dev@127.0.0.1:5432/jarvis_v1_test
       CI: "true"
       JARVIS_REQUIRE_REAL_ENTRYPOINT: "1"
+      JARVIS_TEST_ISOLATION_IMAGE: jarvis-v1-verification:local
       JARVIS_TEST_SSH_DIRECTORY: /tmp/jarvis-ci-ssh
       JARVIS_TEST_SSH_CONTAINER: jarvis-v1-ci-protocol-worker
       JARVIS_TEST_SSH_PORT: "22249"

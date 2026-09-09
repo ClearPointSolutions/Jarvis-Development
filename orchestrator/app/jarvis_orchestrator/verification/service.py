@@ -75,7 +75,9 @@ class VerificationService:
                     .order_by(EventModel.global_position.desc())
                     .limit(1)
                 )
-            if prior is not None:
+            if prior is not None and not (
+                prior.type == "test.started" and self.executor.recoverable
+            ):
                 if prior.type == "test.started":
                     raise AmbiguousEffectError("verification execution requires reconciliation")
                 artifact_id = UUID(prior.data_json["report_artifact_id"])
@@ -133,7 +135,9 @@ class VerificationService:
                     },
                 )
             owner.fault("m8_after_verification_started")
-            result = await self.executor.execute(repository, command)
+            result = await self.executor.execute_bound(
+                repository, command, run_id=fence.run_id, execution_id=execution_id
+            )
             async with owner.fenced(fence) as (session, run):
                 stdout = await self.artifacts.put(
                     session,

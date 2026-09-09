@@ -1,0 +1,12 @@
+[Unit]
+Description=Reconcile Jarvis V1 verification deadlines
+
+[Service]
+Type=oneshot
+User=jarvis-verifier
+ExecStart=/opt/jarvis-v1/executor/venv/bin/python -I -m jarvis_orchestrator.verification.isolation_cli --config /opt/jarvis-v1/executor/broker.json --reap
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/jarvis-v1/executor/receipts
+

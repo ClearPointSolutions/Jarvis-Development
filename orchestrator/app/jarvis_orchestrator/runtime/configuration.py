@@ -18,6 +18,19 @@ class RepositoryBinding(BaseModel):
     combined_commands: tuple[VerificationCommand, ...] = Field(min_length=1, max_length=32)
 
 
+class VerificationIsolation(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
+    broker_argv: tuple[str, ...] = Field(min_length=1, max_length=32)
+    image_id: str = Field(pattern=r"^sha256:[a-f0-9]{64}$")
+
+    @field_validator("broker_argv")
+    @classmethod
+    def configured_command(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if not Path(value[0]).is_absolute() or any("\x00" in item for item in value):
+            raise ValueError("verification broker requires a server-configured absolute executable")
+        return value
+
+
 class RealRuntimeConfiguration(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
     schema_version: str = Field(default="1.0", pattern=r"^1\.0$")
@@ -27,6 +40,7 @@ class RealRuntimeConfiguration(BaseModel):
     allowed_worker_hosts: tuple[str, ...] = ()
     workflows: dict[UUID, RepositoryBinding] = Field(default_factory=dict)
     source_root: Path
+    verification_isolation: VerificationIsolation
     executables: dict[str, tuple[str, ...]]
     executable_path: str
     git_executable: Path

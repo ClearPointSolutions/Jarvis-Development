@@ -9,8 +9,8 @@ matrix owns current work and evidence, superseding its historical progress table
 
 | Finding | Existing implementation | Remaining change | Executable acceptance | Exact evidence | Status |
 | --- | --- | --- | --- | --- | --- |
-| A baseline | Real composition and mode guards | Repair fixtures; mandatory SSH CI; subprocess coverage | Full PostgreSQL verify, real entrypoint, canonical demo | Fresh database migration 0001–0008 and checkpoint setup passed; baseline suite running | In progress |
-| B isolation | Host VerificationExecutor | Disposable credential-free execution with network/resource policy | Canary escape/authority denial and normal builds | Audit reproduction; code verification pending | Open |
+| A baseline | Repaired real/demo fixtures, mandatory SSH fixture, composed startup coverage | Preserve full gate through later changes | Full PostgreSQL verify, real entrypoint, canonical demo | Exact `9d65e94` CI 34315858229 passed the whole verify script; 749 backend tests in preceding exact baseline; Windows wrapper follow-up passes all 5 instrumented tests | Passed baseline |
+| B isolation | Candidate-bound broker, dedicated image, normal composition requires isolation; independent watchdog | Remote broker transport and complete packaging under O/P | Canary escape/authority denial and normal builds | 9 isolation tests passed against actual dedicated Docker image; crash/random-output reuse, timeout and abandoned-broker watchdog passed; both isolated normal-startup variants passed in 422.60s | Local acceptance passed; deployment gate pending |
 | C binding | Workflow manifest binding | Bind project/repository/workflow/worker/target in immutable snapshot | Reject cross-project enqueue before inference | Audit finding; current inspection pending | Open |
 | D lifecycle | Per-run source, fixed initial SHA | Accepted current base and isolated historical runs | Two jobs preserve accepted history | No current evidence | Open |
 | E transfer | Verified bundle and receipt | Durable promotion intent, local receipt recovery, dependency-independent cancellation | Crash at import/ref/receipt boundaries | No current evidence | Open |
@@ -96,3 +96,11 @@ transient unknown heartbeat during instrumented startup; durable status later
 proved that same invocation succeeded. Polling now waits for a terminal result
 within the existing bound without relaunch or guard changes. All five wrapper
 tests pass with subprocess coverage (49.8s). CI for `9d65e94` is still running.
+
+Phase B local implementation evidence: dedicated image build, 9 confinement/
+identity/recovery tests (17.75s), both normal-entrypoint variants with the actual
+isolated executor (422.60s), all 42 existing verification unit tests (26.37s),
+210-file mypy, Ruff and secret scan passed. Existing Git/PostgreSQL integration
+regression is still running separately; no deployment completion is claimed.
+Exact baseline `c0aeb54750ee06e7d3eca646cf64dc0d92ba0a5e` also passed both CI
+34316772524 and 34316776758. Executor transport/systemd packaging remains under O/P.

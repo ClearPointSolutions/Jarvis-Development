@@ -39,6 +39,15 @@ def provision(directory: Path, name: str, port: int) -> None:
         "docker",
         "build",
         "-f",
+        "deploy/verification.Dockerfile",
+        "-t",
+        "jarvis-v1-verification:local",
+        ".",
+    )
+    command(
+        "docker",
+        "build",
+        "-f",
         "tests/fixtures/runtime-worker/Dockerfile",
         "-t",
         "jarvis-v1-protocol-worker:local",

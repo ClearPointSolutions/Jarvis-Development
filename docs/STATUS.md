@@ -6,9 +6,12 @@ Branch: `codex/v1-integration-hardening`, clean starting commit `1c61e70`.
 Fetched remote main and exact CI run 34309805401: unchanged, failing.
 The current user's authorization covers all local A–Q implementation and verification.
 Authoritative checklist: [V1_HARDENING_MATRIX.md](V1_HARDENING_MATRIX.md).
-Phase 1 exit requires repaired mode fixtures, explicit startup configuration tests,
-mandatory normal-entrypoint SSH acceptance in CI, subprocess coverage, unchanged
-coverage gate, full PostgreSQL verify and canonical demo. No readiness claim yet.
+Phase 1 baseline passed exact `9d65e94` CI 34315858229: full PostgreSQL verify,
+mandatory normal-entrypoint SSH acceptance, coverage and canonical demo.
+The Windows wrapper polling correction is separately committed as `c0aeb54`.
+Phase 2B exit requires candidate-bound disposable verification, denied authority
+and network canaries, normal project tests, durable recovery and reproducible
+executor packaging. In progress; no product/deployment readiness claim yet.
 
 
 Last updated: 2026-09-08

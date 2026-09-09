@@ -265,7 +265,31 @@ async def test_normal_real_entrypoint(
             },
         )
         assert project.status_code == 201, project.text
+        image = os.environ.get("JARVIS_TEST_ISOLATION_IMAGE", "jarvis-v1-verification:local")
+        image_id = json.loads(subprocess.check_output(["docker", "image", "inspect", image]))[0][
+            "Id"
+        ]
+        broker_config = tmp_path / "broker.json"
+        broker_config.write_text(
+            json.dumps(
+                {
+                    "docker_executable": shutil.which("docker"),
+                    "image_id": image_id,
+                    "receipt_root": str(tmp_path / "verification-receipts"),
+                }
+            )
+        )
         manifest = {
+            "verification_isolation": {
+                "broker_argv": [
+                    sys.executable,
+                    "-m",
+                    "jarvis_orchestrator.verification.isolation_cli",
+                    "--config",
+                    str(broker_config),
+                ],
+                "image_id": image_id,
+            },
             "providers": {"allowed_endpoints": [endpoint]},
             "workers": {
                 refs["worker"]: {
