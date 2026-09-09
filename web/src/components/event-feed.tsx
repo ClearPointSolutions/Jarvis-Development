@@ -71,6 +71,17 @@ export function EventFeed({ runId }: { runId?: string }) {
     source.onopen = () => {
       setConnection("Live");
       void client.invalidateQueries({ queryKey: ["run-projection", runId] });
+      for (const name of [
+        "runtime-run",
+        "runtime-tasks",
+        "runtime-nodes",
+        "runtime-decision",
+        "runtime-evidence",
+        "runtime-approvals",
+        "runtime-integration",
+      ]) {
+        void client.invalidateQueries({ queryKey: [name, runId] });
+      }
     };
     source.onerror = () => {
       if (stopped) return;
@@ -92,6 +103,8 @@ export function EventFeed({ runId }: { runId?: string }) {
               "runtime-nodes",
               "runtime-decision",
               "runtime-evidence",
+              "runtime-approvals",
+              "runtime-integration",
             ]) {
               void client.invalidateQueries({ queryKey: [name, runId] });
             }

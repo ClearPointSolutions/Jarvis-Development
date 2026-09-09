@@ -56,5 +56,27 @@ test("M8 real runtime evidence, sealed integration and authorized downloads", as
   await page.reload();
   await expect(artifact).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.goto("/projects");
+  await expect(
+    page.getByRole("heading", { name: "Projects", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.locator(`a[href="/runs/${process.env.JARVIS_M8_RUN_ID}"]`),
+  ).toBeVisible();
+  await page.goto("/artifacts");
+  await page
+    .getByLabel("Run", { exact: true })
+    .selectOption(process.env.JARVIS_M8_RUN_ID!);
+  await expect(
+    page.locator('a[href^="/api/v1/artifacts/"]').first(),
+  ).toBeVisible();
+  await page.goto("/health");
+  await expect(
+    page.getByRole("heading", { name: "Services and queue" }),
+  ).toBeVisible();
+  await expect(page.getByText("Database", { exact: true })).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   expect(serious).toEqual([]);
 });

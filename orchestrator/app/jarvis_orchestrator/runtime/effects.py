@@ -122,6 +122,7 @@ class EffectLedger:
                     instructions = (
                         list(run.runtime_json.get("instructions", []))
                         if context.policy.accepts_runtime_instructions
+                        and context.node.type.value in {"organizer", "architect", "worker"}
                         else []
                     )
                     effect.request_json = {"node": context.node.id, "instructions": instructions}
@@ -156,6 +157,7 @@ class EffectLedger:
                             {
                                 "node_execution_id": str(effect.node_execution_id),
                                 "count": len(instructions),
+                                "command_ids": [item["command_id"] for item in instructions],
                             },
                         )
                     await self.ownership.event(

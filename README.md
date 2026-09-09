@@ -1,12 +1,36 @@
 # Jarvis V1 / Mission Control
 
 Jarvis V1 is the durable human control plane for a LangGraph-based development
-system. M5 adds a dedicated PostgreSQL queue consumer, fenced LangGraph execution,
-durable pause/resume/cancel commands, effect reconciliation and retry scheduling
-to the M2–M4 authentication, events, configuration and workflow foundations.
-M6 adds a deterministic demo vertical slice through that same runtime, with
-real tasks, verification retries, artifacts, live graph updates and restart history.
-The legacy prototype is unchanged.
+system. A configured real workflow plans tasks, dispatches an SSH coding worker,
+verifies exact candidate commits in isolated containers, reviews the results,
+retries failures, and integrates accepted work. PostgreSQL preserves runs,
+commands, approvals, events, model receipts and checkpoints across restarts.
+
+The integration branch is still undergoing MVP acceptance. See
+[current status](docs/STATUS.md) and the [hardening matrix](docs/V1_HARDENING_MATRIX.md)
+for remaining gates. Protocol tests do not establish actual model quality or
+Worker-01 compatibility. The legacy prototype remains the recovery option.
+
+## Use Mission Control
+
+1. Install the supported dependencies and bootstrap the database and owner below.
+2. Configure provider, model, route, retry, permission and worker revisions in
+   the corresponding screens. Publish a workflow through Workflow Studio.
+3. For real work, provision the private runtime manifest and isolated verification
+   broker using [the real-runtime guide](docs/FIRST_OLLAMA_TEST.md) and
+   [executor configuration](docs/VERIFICATION_EXECUTOR.md).
+4. Start the API, web and separate orchestrator. Open Runs, select the project,
+   published workflow and Real mode, then submit an objective.
+5. Use the run view to inspect tasks, source/test/review evidence, approve a
+   protected step, or pause, resume, cancel and queue follow-up instructions.
+   Instructions wait for a supported, instruction-enabled planning or worker node.
+6. Projects links persistent run history. Artifacts lists authorized downloads.
+   Health shows database access, orchestrator heartbeats and queue/lease state.
+
+Initial real execution supports small committed UTF-8 projects and an exclusive
+compatible worker. Paid model calls remain blocked until the budget gateway is
+implemented; live GitHub publication and deployment/restore acceptance are still
+open. Demo mode uses the same durable runtime with deterministic dependencies.
 
 The API enqueues work and returns 202. Run `python -m jarvis_orchestrator.main`
 as a separate process with its own `DATABASE_URL` and the
@@ -44,7 +68,9 @@ After building `web`, run `scripts/demo.sh` for the local deterministic demo or
 `scripts/demo.sh --e2e` for disposable browser acceptance. On Windows use
 `.venv/Scripts/python.exe -m scripts.demo --e2e`. See
 [M6 demo operation and boundaries](docs/M6_COMPLETION.md).
-`scripts/deploy-core.sh` still refuses deployment until its later milestone.
+`scripts/deploy-core.sh check` performs local preflight. Deployment requires an
+explicitly configured V1 target and its private configuration; it is a separate
+acceptance gate, not part of the demo.
 
 Start the disposable local PostgreSQL database and include its M1 gates with:
 

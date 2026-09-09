@@ -29,6 +29,43 @@ matrix owns current work and evidence, superseding its historical progress table
 
 ## Validation and continuation
 
+### Current continuation evidence (2026-09-09)
+
+- D/E: normal process and service startup both pass (1082.76s), including
+  completed work, a second job inheriting accepted history, isolated historical
+  work and cross-project rejection. Composition now actually uses the durable
+  candidate store and recovers local receipts before requesting a worker export.
+  Eight candidate interruption/tampering tests pass after fixing ambiguous Git
+  short-ref comparison. Dependency-independent cancellation remains open.
+- F: migration `0009` adds private immutable normalized model-response receipts.
+  Request/profile/provider digests prevent substitution. Completed responses
+  survive the model/domain persistence window; missing receipts remain ambiguous.
+  Two PostgreSQL gateway/role/immutability tests pass. Planning permits guarded
+  re-entry; model review reuses original evidence and a stable persisted timestamp.
+  Four review recovery/current-source tests pass (115.71s).
+- H: only supported planning/worker nodes consume instructions. Worker requests
+  now include frozen instructions in their architecture artifact; queued/delivered
+  events distinguish safe-point attachment. Seven control/recovery tests pass.
+  A real worker receiving a follow-up during coding remains an acceptance gap.
+- L: runtime list clients follow cursors for runs/projects/tasks/nodes/commands
+  and evidence. Tests cover run 51, node 101 and event 1001, later-page errors and
+  repeated cursors. Reconnect refreshes runtime projections and latest execution
+  numbers determine graph state. Full browser history boundary tests remain open.
+- M/Q: Projects and Artifacts use actual authorized history/downloads. Health
+  reports persisted heartbeats, owned queue counts and expired leases. Its API
+  authentication/ownership/staleness test passes. Settings links real registries;
+  Developer opens the runtime inspector. Durable standalone conversations,
+  retention, incident exports and the full operator acceptance inventory remain open.
+- Frontend: 54 tests passed; production build and types passed before final
+  presentation edits. Added browser navigation/download/health/a11y checks.
+- Whole-gate revalidation is running in `.tmp/finish-verify-v3.log` on an isolated
+  database, with mandatory HTTP/SSH/isolated-executor acceptance. No skipped gate,
+  product completeness, staging, publication, or merge-readiness claim is made.
+
+The original A–Q requirements above remain authoritative; these focused results
+do not close their remaining acceptance cases. Real Worker-01/model/disposable
+repository configuration was requested for staging; no homelab contact occurred.
+
 ### Phase 1 evidence in progress
 
 - `tests/unit/test_foundations.py`: initial repaired startup suite 7 passed;

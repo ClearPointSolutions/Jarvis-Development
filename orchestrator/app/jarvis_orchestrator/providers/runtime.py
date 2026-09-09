@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from jarvis_api.routing.observability import AccountingService
 from jarvis_api.routing.policies import calculate_cost
+from jarvis_contracts.base import canonical_json, sha256_digest
 from jarvis_contracts.registry import (
     AccountingRecord,
     ModelProfileSpec,
@@ -21,7 +22,7 @@ from jarvis_orchestrator.providers.configuration import ProviderRuntimeConfig
 from jarvis_orchestrator.runtime.effects import AmbiguousEffectError
 from jarvis_orchestrator.runtime.nodes import ClassifiedNodeError
 from jarvis_orchestrator.runtime.ownership import RunFence, RunOwnership
-from jarvis_persistence.models import EventModel
+from jarvis_persistence.models import EventModel, ModelResponseReceiptModel
 
 
 class RuntimeModel:
@@ -53,7 +54,23 @@ class RuntimeModel:
         # configured policy is evaluated by the composition's protected gateway.
         if self.provider.egress.paid:
             raise ValueError("paid model calls require a configured budget gateway")
+        request_digest = sha256_digest(
+            {
+                "request": request.model_dump(mode="json"),
+                "provider_revision_id": str(self.adapter.provider_revision_id),
+                "profile_revision_id": str(self.adapter.profile_revision_id),
+            }
+        )
         async with self.owner.fenced(self.fence) as (session, run):
+            receipt = await session.get(ModelResponseReceiptModel, call_id)
+            if receipt is not None:
+                if (
+                    receipt.run_id != run.id
+                    or receipt.request_digest != request_digest
+                    or sha256_digest(receipt.response_json) != receipt.response_digest
+                ):
+                    raise AmbiguousEffectError("model receipt identity mismatch")
+                return self._structured(ProviderResult.model_validate(receipt.response_json))
             previous = await session.scalar(
                 select(EventModel.event_id).where(
                     EventModel.run_id == run.id,
@@ -77,7 +94,19 @@ class RuntimeModel:
             # An append-only unknown attempt survives death during inference.
             await self._account(session, call_id, request, None)
         result = await self.adapter.invoke(request)
+        payload = result.model_dump(mode="json")
+        if len(canonical_json(payload)) > 2_097_152:
+            raise AmbiguousEffectError("model response exceeds receipt limit")
         async with self.owner.fenced(self.fence) as (session, run):
+            session.add(
+                ModelResponseReceiptModel(
+                    call_id=call_id,
+                    run_id=run.id,
+                    request_digest=request_digest,
+                    response_digest=sha256_digest(payload),
+                    response_json=payload,
+                )
+            )
             await self._account(session, call_id, request, result)
             await self.owner.event(
                 session,
@@ -93,6 +122,11 @@ class RuntimeModel:
                     "failure": result.failure.model_dump(mode="json") if result.failure else None,
                 },
             )
+        self.owner.fault("after_model_receipt_before_domain_result")
+        return self._structured(result)
+
+    @staticmethod
+    def _structured(result: ProviderResult) -> dict[str, JsonValue]:
         if result.failure:
             raise ClassifiedNodeError(result.failure.failure_class)
         if result.structured is None:

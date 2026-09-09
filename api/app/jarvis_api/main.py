@@ -102,6 +102,9 @@ def create_app(
     app.include_router(runtime_router)
     app.include_router(approval_router)
     app.include_router(usage_router)
+    from jarvis_api.operations import router as operations_router
+
+    app.include_router(operations_router)
     install_event_delivery(app, config, session_factory, app.state.auth_service)
 
     @app.get(

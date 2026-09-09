@@ -65,7 +65,9 @@ class OrganizerOutput(ContractModel):
 
 
 class PlanningEffect:
-    idempotent = False
+    # RuntimeModel reuses an immutable response and blocks any started call
+    # without a receipt. Re-entry cannot silently repeat inference.
+    idempotent = True
 
     def __init__(
         self, configuration: ProviderRuntimeConfig, owner: RunOwnership, fence: RunFence

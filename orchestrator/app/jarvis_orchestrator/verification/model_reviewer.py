@@ -7,11 +7,13 @@ from typing import cast
 from uuid import UUID
 
 from pydantic import JsonValue
+from sqlalchemy import select
 
 from jarvis_contracts.registry import ProviderRequest
 from jarvis_contracts.verification import ReviewDecision, ReviewEvidence
 from jarvis_orchestrator.providers.runtime import RuntimeModel
 from jarvis_orchestrator.verification.artifacts import EvidenceArtifacts
+from jarvis_persistence.models import EventModel
 
 
 def decision_schema() -> dict[str, JsonValue]:
@@ -32,6 +34,8 @@ def decision_schema() -> dict[str, JsonValue]:
 
 
 class ModelReviewer:
+    recoverable = True
+
     def __init__(self, model: RuntimeModel) -> None:
         self.model = model
 
@@ -39,6 +43,19 @@ class ModelReviewer:
         self, review_id: UUID, evidence: ReviewEvidence, artifacts: EvidenceArtifacts
     ) -> ReviewDecision:
         snapshot = evidence.snapshot
+        async with self.model.owner.fenced(self.model.fence) as (session, run):
+            started = await session.scalar(
+                select(EventModel.occurred_at)
+                .where(
+                    EventModel.run_id == run.id,
+                    EventModel.type == "review.started",
+                    EventModel.data_json["review_id"].astext == str(review_id),
+                )
+                .order_by(EventModel.global_position)
+                .limit(1)
+            )
+        if started is None:
+            raise ValueError("model review requires durable review intent")
         sources = {
             "manifest": snapshot.manifest_artifact_id,
             "cumulative_source": snapshot.source_artifact_id,
@@ -50,7 +67,7 @@ class ModelReviewer:
             "evidence": evidence.model_dump(mode="json"),
             "required_review_id": str(review_id),
             "required_reviewer_revision": str(self.model.adapter.profile_revision_id),
-            "review_started_at": self.model.owner.clock.now().isoformat(),
+            "review_started_at": started.isoformat(),
         }
         for label, artifact_id in sources.items():
             content[label] = await artifacts.read(artifact_id)

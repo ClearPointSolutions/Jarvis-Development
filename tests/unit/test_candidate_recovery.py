@@ -3,12 +3,12 @@
 from pathlib import Path
 
 import pytest
+from tests.unit.test_source_transfer import candidate
 
 from jarvis_orchestrator.workers.candidate_store import import_candidate, recover_candidate
 from jarvis_orchestrator.workers.safety import WorkerBoundaryError
 from jarvis_orchestrator.workers.source_transfer import export_candidate
 from jarvis_orchestrator.workers.workspace import WorktreeManager
-from tests.unit.test_source_transfer import candidate
 
 
 @pytest.mark.parametrize(

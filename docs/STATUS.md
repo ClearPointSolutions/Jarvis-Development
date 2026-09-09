@@ -1,5 +1,16 @@
 # Jarvis V1 Status
 
+## MVP completion acceptance (2026-09-09 continuation)
+
+Continue the existing integration branch from `dd8c3f8`. Completion requires
+the A–Q matrix, current full verification, browser/operator acceptance, and
+documented real-worker/model staging evidence. Historical logs are supporting
+evidence only. Current implementation criteria include durable model-response
+recovery without duplicate inference, complete cursor-based history and current
+node projections, and truthful runtime instruction delivery. Preserve all
+existing security, coverage, isolation and legacy boundaries. No readiness claim
+until the remaining product and staging gates pass.
+
 ## Active integration and hardening (2026-09-09)
 
 Branch: `codex/v1-integration-hardening`, clean starting commit `1c61e70`.

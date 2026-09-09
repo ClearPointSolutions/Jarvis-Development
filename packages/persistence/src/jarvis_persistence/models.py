@@ -44,6 +44,22 @@ class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
 
 
+class ModelResponseReceiptModel(Base):
+    __tablename__ = "model_response_receipts"
+    __table_args__ = ({"schema": CONTROL_SCHEMA},)
+
+    call_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
+    run_id: Mapped[UUID] = mapped_column(
+        ForeignKey("control.runs.id", ondelete="RESTRICT"), nullable=False
+    )
+    request_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    response_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    response_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
 class MutableRow:
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

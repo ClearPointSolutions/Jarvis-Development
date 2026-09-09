@@ -83,14 +83,28 @@ class ReviewService:
                 .order_by(EventModel.global_position.desc())
                 .limit(1)
             )
-        if previous is not None:
-            if previous.type == "review.started":
-                raise AmbiguousEffectError("Reviewer dispatch requires reconciliation")
+        recovering = previous is not None and previous.type == "review.started"
+        if recovering and not getattr(self.adapter, "recoverable", False):
+            raise AmbiguousEffectError("Reviewer dispatch requires reconciliation")
+        if previous is not None and not recovering:
             artifact_id = UUID(previous.data_json["feedback_artifact_id"])
             decision = ReviewDecision.model_validate(await self.artifacts.read(artifact_id))
         else:
             if not await self.current(repository, evidence):
                 raise ValueError("review snapshot changed before dispatch")
+            if recovering:
+                assert previous is not None
+                original = ReviewEvidence.model_validate(
+                    await self.artifacts.read(UUID(previous.data_json["evidence_artifact_id"]))
+                )
+                if (
+                    original.task_id != evidence.task_id
+                    or original.task_attempt_id != evidence.task_attempt_id
+                    or original.snapshot != evidence.snapshot
+                    or original.acceptance_criteria != evidence.acceptance_criteria
+                ):
+                    raise AmbiguousEffectError("Recovered review evidence identity changed")
+                evidence = original
             async with owner.fenced(fence) as (session, run):
                 evidence_id = await self.artifacts.put(
                     session,
@@ -99,19 +113,20 @@ class ReviewService:
                     "review-evidence",
                     evidence.model_dump(mode="json"),
                 )
-                await owner.event(
-                    session,
-                    run,
-                    "review.started",
-                    {
-                        "task_id": str(evidence.task_id),
-                        "task_attempt_id": str(evidence.task_attempt_id),
-                        "review_id": str(review_id),
-                        "evidence_artifact_id": str(evidence_id),
-                        "snapshot_id": str(evidence.snapshot.id),
-                        "head_sha": evidence.snapshot.head_sha,
-                    },
-                )
+                if not recovering:
+                    await owner.event(
+                        session,
+                        run,
+                        "review.started",
+                        {
+                            "task_id": str(evidence.task_id),
+                            "task_attempt_id": str(evidence.task_attempt_id),
+                            "review_id": str(review_id),
+                            "evidence_artifact_id": str(evidence_id),
+                            "snapshot_id": str(evidence.snapshot.id),
+                            "head_sha": evidence.snapshot.head_sha,
+                        },
+                    )
             owner.fault("m8_after_reviewer_dispatched")
             async with asyncio.timeout(self.timeout_seconds):
                 decision = await self.adapter.review(review_id, evidence, self.artifacts)

@@ -49,9 +49,9 @@ from jarvis_orchestrator.verification.runtime import (
 from jarvis_orchestrator.verification.service import VerificationService
 from jarvis_orchestrator.verification.snapshots import SnapshotBuilder
 from jarvis_orchestrator.workers.artifacts import WorkerContextReader, WorkerLogPublisher
+from jarvis_orchestrator.workers.candidate_store import import_candidate, recover_candidate
 from jarvis_orchestrator.workers.openhands import OpenHandsSSHAdapter
 from jarvis_orchestrator.workers.runtime import WorkerEffectAdapter
-from jarvis_orchestrator.workers.source_transfer import import_candidate
 from jarvis_orchestrator.workers.transport import OpenSSHTransport, SSHCredentials
 from jarvis_orchestrator.workers.workspace import WorktreeManager
 from jarvis_orchestrator.workflows.factories import NodeContext, NodeHandler
@@ -328,6 +328,9 @@ class RealComposition:
             return ModelReviewer(self.model(owner, fence, context, config))
 
         async def transfer(request: WorkerInvocationRequest, result: WorkerResult) -> Path:
+            cached = await recover_candidate(manager, result)
+            if cached is not None:
+                return cached
             envelope = await native._rpc(
                 "export_candidate",
                 worker_effect.context(),
@@ -369,6 +372,7 @@ class RealComposition:
                 binding.combined_commands,
                 no_remote_path,
                 transfer,
+                candidate_branches=True,
             ),
             reviewer_factory=reviewer_factory,
         )
@@ -471,8 +475,14 @@ class LegacyRequestSource:
                     },
                 )
             project = self.binding.project.model_copy(update={"base_sha": attempt.base_sha})
+            architecture: JsonValue = task.verification_json["architecture"]
+            if settings.get("runtime_instructions"):
+                architecture = {
+                    "architecture": architecture,
+                    "supervisor_instructions": settings["runtime_instructions"],
+                }
             architecture_id = await self.artifacts.put(
-                session, run, attempt.id, "architecture", task.verification_json["architecture"]
+                session, run, attempt.id, "architecture", architecture
             )
             return WorkerInvocationRequest(
                 invocation_id=uuid7(),

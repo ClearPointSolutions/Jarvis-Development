@@ -4126,6 +4126,73 @@
         "title": "SpendPolicy",
         "type": "object"
       },
+      "SystemHealth": {
+        "additionalProperties": false,
+        "properties": {
+          "accepting_instances": {
+            "title": "Accepting Instances",
+            "type": "integer"
+          },
+          "database": {
+            "const": "healthy",
+            "default": "healthy",
+            "title": "Database",
+            "type": "string"
+          },
+          "expired_active_leases": {
+            "title": "Expired Active Leases",
+            "type": "integer"
+          },
+          "heartbeat_stale_after_seconds": {
+            "title": "Heartbeat Stale After Seconds",
+            "type": "integer"
+          },
+          "last_heartbeat_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Heartbeat At"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "orchestrator": {
+            "enum": [
+              "healthy",
+              "stale",
+              "unknown"
+            ],
+            "title": "Orchestrator",
+            "type": "string"
+          },
+          "run_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Run Counts",
+            "type": "object"
+          }
+        },
+        "required": [
+          "observed_at",
+          "orchestrator",
+          "last_heartbeat_at",
+          "heartbeat_stale_after_seconds",
+          "accepting_instances",
+          "run_counts",
+          "expired_active_leases"
+        ],
+        "title": "SystemHealth",
+        "type": "object"
+      },
       "TaskPage": {
         "additionalProperties": false,
         "properties": {
@@ -10716,6 +10783,151 @@
         "summary": "Session",
         "tags": [
           "authentication"
+        ]
+      }
+    },
+    "/api/v1/system/health": {
+      "get": {
+        "operationId": "system_health_api_v1_system_health_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "stale_after_seconds",
+            "required": false,
+            "schema": {
+              "default": 60,
+              "maximum": 3600,
+              "minimum": 10,
+              "title": "Stale After Seconds",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemHealth"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "System Health",
+        "tags": [
+          "operations"
         ]
       }
     },

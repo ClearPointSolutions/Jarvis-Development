@@ -103,7 +103,9 @@ export function RunExperience({ runId }: { runId: string }) {
     : 0;
   const projection = Object.fromEntries([
     ...(workflow.data?.nodes ?? []).map((n) => [n.id, "Not visited"]),
-    ...(nodes.data?.items ?? []).map((n) => [n.workflow_node_id, n.status]),
+    ...[...(nodes.data?.items ?? [])]
+      .sort((a, b) => a.execution_number - b.execution_number)
+      .map((n) => [n.workflow_node_id, n.status]),
   ]);
   async function decide(value: "approved" | "rejected") {
     if (!decision.data) return;
