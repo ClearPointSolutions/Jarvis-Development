@@ -86,7 +86,8 @@ command.normalized
 git.push_completed git.push_started graph.checkpointed graph.compile_failed graph.compiled
 graph.fanout_started graph.join_completed graph.route_selected instruction.applied
 instruction.queued job.blocked job.cancelled job.completed job.created job.failed job.status_changed
-lease.expired message.created model.call_completed model.call_failed model.call_started
+lease.expired message.created model.budget_authorized model.budget_denied
+model.call_completed model.call_failed model.call_started
 model.failover
 model.health_changed model.route_selected model.stream_progress model.usage_recorded node.cancelled
 node.failed node.interrupted node.queued node.skipped node.started node.succeeded node.waiting

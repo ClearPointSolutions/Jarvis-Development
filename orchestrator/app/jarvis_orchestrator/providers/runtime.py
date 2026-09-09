@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Literal
 from uuid import UUID, uuid5
 
 from pydantic import JsonValue
@@ -18,6 +19,7 @@ from jarvis_contracts.registry import (
     ProviderResult,
     ProviderSpec,
 )
+from jarvis_orchestrator.providers.budget import BudgetDeniedError, BudgetGateway
 from jarvis_orchestrator.providers.configuration import ProviderRuntimeConfig
 from jarvis_orchestrator.runtime.effects import AmbiguousEffectError
 from jarvis_orchestrator.runtime.nodes import ClassifiedNodeError
@@ -41,19 +43,19 @@ class RuntimeModel:
         profile: ModelProfileSpec,
         provider_id: UUID,
         profile_id: UUID,
+        budget: BudgetGateway | None = None,
     ) -> None:
         self.owner, self.fence = owner, fence
         self.profile, self.provider = profile, provider
+        self.provider_id, self.profile_id = provider_id, profile_id
+        # Absent an explicit bound policy the gateway refuses every paid call.
+        self.budget = budget or BudgetGateway(None, None)
         self.adapter = configuration.adapter(provider, profile, provider_id, profile_id)
 
     async def invoke(self, call_id: UUID, request: ProviderRequest) -> dict[str, JsonValue]:
         if request.run_id != self.fence.run_id:
             raise ValueError("model call run identity mismatch")
         self.adapter.check_request(request)
-        # Paid ceilings need a durable grant before a call; reject until the
-        # configured policy is evaluated by the composition's protected gateway.
-        if self.provider.egress.paid:
-            raise ValueError("paid model calls require a configured budget gateway")
         request_digest = sha256_digest(
             {
                 "request": request.model_dump(mode="json"),
@@ -80,19 +82,80 @@ class RuntimeModel:
             )
             if previous is not None:
                 raise AmbiguousEffectError("model call requires receipt reconciliation")
-            await self.owner.event(
+            # A paid call is authorized durably in this same transaction, so a
+            # crash can never leave a grant without its reconcilable intent.
+            grant = await self.budget.authorize(
                 session,
-                run,
-                "model.call_started",
-                {
-                    "call_id": str(call_id),
-                    "profile_revision_id": str(self.adapter.profile_revision_id),
-                    "provider_revision_id": str(self.adapter.provider_revision_id),
-                    "model_identifier": self.profile.model_identifier,
-                },
+                run.id,
+                call_id,
+                request,
+                self.profile,
+                self.adapter.profile_revision_id,
+                self.adapter.provider_revision_id,
+                request_digest,
+                paid=self.provider.egress.paid,
             )
-            # An append-only unknown attempt survives death during inference.
-            await self._account(session, call_id, request, None)
+            if grant is not None and grant.decision != "allow":
+                refused = tuple(str(reason) for reason in grant.reasons_json)
+                # The stored decision is constrained to these three values.
+                refusal: Literal["denied", "require_approval"] = (
+                    "require_approval" if grant.decision == "require_approval" else "denied"
+                )
+                await self._account(
+                    session, call_id, request, None, stage="denied", outcome=refusal
+                )
+                await self.owner.event(
+                    session,
+                    run,
+                    "model.budget_denied",
+                    {
+                        "call_id": str(call_id),
+                        "decision": grant.decision,
+                        "reasons": list(refused),
+                        "profile_revision_id": str(self.adapter.profile_revision_id),
+                        "provider_revision_id": str(self.adapter.provider_revision_id),
+                    },
+                )
+                denied = refused
+            else:
+                denied = None
+                if grant is not None:
+                    await self.owner.event(
+                        session,
+                        run,
+                        "model.budget_authorized",
+                        {
+                            "call_id": str(call_id),
+                            # Decimals are rendered as text; an unknown stays null
+                            # rather than becoming the string "None".
+                            "estimated_cost": (
+                                None if grant.estimated_cost is None else str(grant.estimated_cost)
+                            ),
+                            "run_spend_before": (
+                                None
+                                if grant.run_spend_before is None
+                                else str(grant.run_spend_before)
+                            ),
+                            "policy_digest": grant.policy_digest,
+                            "route_revision_id": str(grant.route_revision_id),
+                        },
+                    )
+                await self.owner.event(
+                    session,
+                    run,
+                    "model.call_started",
+                    {
+                        "call_id": str(call_id),
+                        "profile_revision_id": str(self.adapter.profile_revision_id),
+                        "provider_revision_id": str(self.adapter.provider_revision_id),
+                        "model_identifier": self.profile.model_identifier,
+                    },
+                )
+                # An append-only unknown attempt survives death during inference.
+                await self._account(session, call_id, request, None)
+        # The refusal is committed before it is raised, so the denial is durable.
+        if denied is not None:
+            raise BudgetDeniedError(denied)
         result = await self.adapter.invoke(request)
         payload = result.model_dump(mode="json")
         if len(canonical_json(payload)) > 2_097_152:
@@ -139,11 +202,14 @@ class RuntimeModel:
         call_id: UUID,
         request: ProviderRequest,
         result: ProviderResult | None,
+        *,
+        stage: str | None = None,
+        outcome: Literal["denied", "require_approval"] | None = None,
     ) -> None:
         from jarvis_contracts.registry import Usage
 
         usage = result.usage if result is not None else Usage()
-        stage = "result" if result is not None else "started"
+        stage = stage or ("result" if result is not None else "started")
         await AccountingService(self.owner.sessions).record_in_session(
             session,
             AccountingRecord(
@@ -159,11 +225,8 @@ class RuntimeModel:
                 usage=usage,
                 pricing=self.profile.pricing,
                 cost=calculate_cost(usage, self.profile.pricing),
-                outcome="unknown"
-                if result is None
-                else "failed"
-                if result.failure
-                else "completed",
+                outcome=outcome
+                or ("unknown" if result is None else "failed" if result.failure else "completed"),
                 created_at=self.owner.clock.now(),
             ),
             idempotency_key=f"{call_id}:{stage}",

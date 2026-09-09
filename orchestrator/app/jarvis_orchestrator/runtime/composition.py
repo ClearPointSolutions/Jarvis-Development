@@ -14,7 +14,13 @@ from sqlalchemy import select
 from uuid6 import uuid7
 
 from jarvis_contracts.base import sha256_digest
-from jarvis_contracts.registry import ModelProfileSpec, ProviderSpec, WorkerSpec
+from jarvis_contracts.enums import FailureClass
+from jarvis_contracts.registry import (
+    ModelProfileSpec,
+    ProviderSpec,
+    RetryRegistrySpec,
+    WorkerSpec,
+)
 from jarvis_contracts.workers import (
     PreparedInvocation,
     WorkerInvocationRequest,
@@ -25,6 +31,7 @@ from jarvis_contracts.workers import (
 )
 from jarvis_contracts.workflow import WorkflowSpec
 from jarvis_contracts.workflow_api import WorkflowResolvedSnapshot
+from jarvis_orchestrator.providers.budget import bound_budget
 from jarvis_orchestrator.providers.runtime import RuntimeModel
 from jarvis_orchestrator.runtime.approvals import ProtectedEffect, approval_handler
 from jarvis_orchestrator.runtime.binding import freeze_binding
@@ -65,6 +72,43 @@ from jarvis_persistence.models import (
     TaskModel,
     WorkerInvocationModel,
 )
+
+# A real provider intermittently returns a malformed structured response, times
+# out or drops a connection. Without a bound rule those classes are unretryable
+# and block the run at its first hiccup, so the gap is reported before starting.
+REQUIRED_MODEL_RETRY_CLASSES = (
+    FailureClass.PROVIDER_CONTRACT_FAILURE,
+    FailureClass.PROVIDER_TRANSIENT,
+    FailureClass.PROVIDER_RATE_LIMITED,
+    FailureClass.INFRASTRUCTURE_TIMEOUT,
+    FailureClass.INFRASTRUCTURE_SERVICE_UNAVAILABLE,
+)
+
+
+def require_provider_retry_rules(context: NodeContext) -> None:
+    """Refuse a real model node whose bound retry policy cannot absorb providers."""
+
+    reference = context.policy.retry_policy_ref
+    policy = next(
+        (
+            revision.spec
+            for revision in context.snapshot.revisions
+            if revision.revision_id == reference
+        ),
+        None,
+    )
+    if not isinstance(policy, RetryRegistrySpec):
+        raise RuntimeDependencyError(
+            f"node {context.node.id} has no immutable retry policy for real model use"
+        )
+    covered = {rule.failure_class for rule in policy.rules if rule.max_retries > 0}
+    missing = [item.value for item in REQUIRED_MODEL_RETRY_CLASSES if item not in covered]
+    if missing:
+        raise RuntimeDependencyError(
+            f"retry policy for node {context.node.id} has no retries for "
+            + ", ".join(missing)
+            + "; real providers require these rules"
+        )
 
 
 class RealComposition:
@@ -117,6 +161,7 @@ class RealComposition:
             profile.spec,
             provider.revision_id,
             profile.revision_id,
+            bound_budget(context),
         )
 
     async def build(
@@ -127,6 +172,15 @@ class RealComposition:
         snapshot: WorkflowResolvedSnapshot,
         workflow_id: UUID,
     ) -> dict[str, EffectAdapter]:
+        # V1 has no real publication handler. Refuse before any billed inference
+        # or worker dispatch instead of failing at the unreachable publish node.
+        unsupported = sorted(node.id for node in spec.nodes if node.type.value == "github_publish")
+        if unsupported:
+            raise RuntimeDependencyError(
+                "GitHub publication is not supported in real mode; remove "
+                + ", ".join(unsupported)
+                + " from the published workflow"
+            )
         async with owner.fenced(fence) as (session, run):
             job = await session.get(JobModel, run.job_id)
             if job is None:
@@ -284,6 +338,7 @@ class RealComposition:
                 continue
             if node.type.value not in {"organizer", "architect", "reviewer"}:
                 continue
+            require_provider_retry_rules(context)
             resolution = select_model(context, (), None, owner.clock.now())
             if resolution.decision != "allow":
                 raise RuntimeDependencyError(

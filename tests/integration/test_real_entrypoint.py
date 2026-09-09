@@ -175,11 +175,17 @@ async def test_normal_real_entrypoint(
                         "jitter": "none",
                         "exhaustion_action": "fail",
                     }
+                    # Real model nodes require provider/infrastructure rules;
+                    # composition refuses to start a run without them.
                     for value in [
                         "code.test_failure",
                         "code.review_failure",
                         "infrastructure.worker_transport",
+                        "infrastructure.service_unavailable",
+                        "infrastructure.timeout",
                         "provider.transient",
+                        "provider.rate_limited",
+                        "provider.contract_failure",
                     ]
                 ],
             },

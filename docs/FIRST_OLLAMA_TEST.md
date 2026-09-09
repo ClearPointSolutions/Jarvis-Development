@@ -58,6 +58,77 @@ actual model/profile identity and usage provenance. A cold installed model can b
 warming. Unknown tokens/cost remain unknown. A successful enum response proves
 basic schema compatibility only, not planner/reviewer quality.
 
+## Observed real-model behaviour (loopback Ollama, 2026-09-09)
+
+These are measured results from an actually running local Ollama, not fixtures.
+
+Model capability is not uniform across the three model contracts:
+
+| Contract | `qwen3:0.6b` | `qwen3:1.7b` |
+| --- | --- | --- |
+| Connection/inventory validation | passes | passes |
+| `OrganizerOutput` / `TaskPlan` planning | passes | passes |
+| `ReviewDecision` review schema | intermittently fails | intermittently passes |
+
+The reviewer schema is the strictest contract: six identifiers, a SHA, a digest
+and a bounded findings list. Choose a larger tag for the reviewer node than for
+planning if review keeps failing its contract.
+
+Latency is substantial. A cold load plus one planning call took 55-69 seconds on
+this hardware, and a full organizer-plus-architect pair took about three minutes.
+Size `probe_seconds` (maximum 60) and `reviewer_seconds` accordingly, and expect
+the service heartbeat, not a short lease, to keep a run alive during inference.
+
+Small models intermittently return structured output that does not satisfy the
+requested schema. The adapter classifies that as `provider.contract_failure`.
+An unmatched failure class gets no retries and a `block` exhaustion action, so
+**a real-model retry policy must include rules for the provider and
+infrastructure classes** or one malformed response blocks the whole run. Real
+composition now refuses to start such a run, naming the missing classes:
+
+```
+provider.contract_failure  provider.transient  provider.rate_limited
+infrastructure.timeout     infrastructure.service_unavailable
+```
+
+Free local profiles carry no pricing, so accounting records an unknown cost with
+no amount rather than inventing one. Paid providers are separate: see the budget
+gateway below.
+
+## Paid providers and the budget gateway
+
+A paid provider is refused unless the run's bound route policy authorizes it.
+Before each billed call the gateway evaluates that immutable policy and records
+a private immutable grant keyed by call identity, so a restart replays the
+original decision instead of buying a second inference. It fails closed when
+pricing is unknown, when no route policy is bound, when `allow_paid` is false,
+when a per-call or per-run ceiling cannot be satisfied, and — for a policy that
+sets `max_run_cost` — when the durable run total cannot be determined because an
+earlier billed call has no recorded outcome. Set `allow_paid`, the token ceilings
+and `max_call_cost`/`max_run_cost` on the route policy's `spend` block.
+
+Live paid-provider execution has not been exercised: it needs a real OpenAI
+credential, which was not available. Its acceptance is fixture-based.
+
+## GitHub publication is excluded from this MVP
+
+There is no real publication handler. Real composition refuses a workflow
+containing a `github_publish` node before any inference or worker dispatch.
+Do not publish a workflow with that node for real use.
+
+## Opt-in live model acceptance
+
+With a reachable allowlisted Ollama and an installed tag:
+
+```sh
+export JARVIS_LIVE_OLLAMA_URL=http://127.0.0.1:11439
+export JARVIS_LIVE_OLLAMA_MODEL=qwen3:1.7b
+export TEST_DATABASE_URL=postgresql+psycopg://user@127.0.0.1:5432/database
+python -m pytest tests/integration/test_live_model.py -q
+```
+
+These are skipped without both variables, so CI never depends on a model server.
+
 ## Supported initial project profile
 
 Use a disposable, small committed UTF-8 Python project with no secrets. Existing

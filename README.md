@@ -28,9 +28,15 @@ Worker-01 compatibility. The legacy prototype remains the recovery option.
    Health shows database access, orchestrator heartbeats and queue/lease state.
 
 Initial real execution supports small committed UTF-8 projects and an exclusive
-compatible worker. Paid model calls remain blocked until the budget gateway is
-implemented; live GitHub publication and deployment/restore acceptance are still
-open. Demo mode uses the same durable runtime with deterministic dependencies.
+compatible worker. A paid model call now requires a durable authorization from
+the run's bound route spend policy; that gateway is tested against fixtures, not
+against a live billed provider. GitHub publication is excluded from this MVP and
+a real run refuses a `github_publish` node outright. Deployment and restore
+acceptance are still open. A real model node also requires retry rules for the
+provider and infrastructure failure classes, because small local models return
+malformed structured output often enough to block a run without them; see
+[the real-runtime guide](docs/FIRST_OLLAMA_TEST.md). Demo mode uses the same
+durable runtime with deterministic dependencies.
 
 The API enqueues work and returns 202. Run `python -m jarvis_orchestrator.main`
 as a separate process with its own `DATABASE_URL` and the

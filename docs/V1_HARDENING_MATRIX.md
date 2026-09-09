@@ -15,11 +15,11 @@ matrix owns current work and evidence, superseding its historical progress table
 | D lifecycle | Per-run source, fixed initial SHA | Accepted current base and isolated historical runs | Two jobs preserve accepted history | No current evidence | Open |
 | E transfer | Verified bundle and receipt | Durable promotion intent, local receipt recovery, dependency-independent cancellation | Crash at import/ref/receipt boundaries | No current evidence | Open |
 | F model receipts | Started/completed metadata | Immutable bounded response receipts and reconciliation | Crash after response before domain persistence | No current evidence | Open |
-| G models/routes/budgets | Ollama/OpenAI adapters, runtime paid-call denial | Contract retries, context, health/fallback, paid limits | Protocol failures, actual Ollama planning/review | Historical enum result insufficient | Open |
+| G models/routes/budgets | Ollama/OpenAI adapters; durable budget gateway `providers/budget.py` + migration `0010`; provider retry preflight in `runtime/composition.py` | Health/fallback breadth; paid live acceptance needs a real key | 9 budget tests (`tests/integration/test_model_budget.py`), 4 preflight tests (`tests/unit/test_real_preflight.py`), 4 live tests (`tests/integration/test_live_model.py`) | Live `qwen3:1.7b` on loopback 11439: connection `network_checked`, organizer+architect schemas satisfied, exact usage 483/50 tokens, uninstalled tag classified. Paid path is fixture-only. | Local acceptance passed; paid live open |
 | H instructions | Durable instruction queue; planner consumption | Truthful delivery at supported safe points | Follow-up during coding reaches next request | No current evidence | Open |
 | I capability/limits | Wrapper and UTF-8 seals | Source version, actual model/tools, early project preflight | Capability mismatch and bounded project cases | No current evidence | Open |
 | J approvals | Durable production approval API/UI | Normal-runtime protected effect and browser/restart cases | Reject/expire/tamper/duplicate/crash acceptance | Historical seven tests insufficient | Open |
-| K publication | Missing runtime handler | Allowlisted approval-bound push/PR/reconciliation/CI | Protocol acceptance; separately authorized disposable GitHub | No publication target authorized | Open |
+| K publication | No real handler; real composition now refuses a `github_publish` node before any billed inference or worker dispatch | Full allowlisted approval-bound push/PR if publication becomes in scope | Real-mode build raises `RuntimeDependencyError` naming the node | Truthfully excluded from the V1 local MVP, not disguised as working | Excluded and disabled |
 | L pagination | Cursor APIs, bounded first-page UI | Follow cursors and current projections | Run 51+, event 1001+, node 101+, reconnect | No current evidence | Open |
 | M operator UX | Run evidence and partial views | Durable threads, required views, bootstrap, deliverables | Browser desktop/mobile/a11y operator journeys | Current build is not product acceptance | Open |
 | N release | Archive and shared deployment env | Immutable image/config/schema manifest and rollback | Install A, B, restore A identities | No current evidence | Open |
@@ -28,6 +28,55 @@ matrix owns current work and evidence, superseding its historical progress table
 | Q operations | Usage aggregation | Health/stalls/retention/export/reconciliation/runbook | Fresh-environment commands and incident recovery | No current evidence | Open |
 
 ## Validation and continuation
+
+### Live model and paid-budget evidence (2026-09-09, later session)
+
+Local infrastructure actually contacted: Ollama at loopback `11439`
+(`qwen3:0.6b`, `qwen3:1.7b`) and PostgreSQL 16.10 at loopback `55432`
+(fresh database `jarvis_v1_budget`, migrations `0001`-`0010`). No homelab,
+no OpenAI endpoint and no GitHub repository was contacted.
+
+- G budget gateway: `providers/budget.py` replaces the blanket paid-call refusal
+  with a durable per-call authorization evaluated inside the same fenced
+  transaction that records the call intent. Migration `0010` adds private
+  immutable `control.model_budget_grants`, revoked from `jarvis_v1_api` and
+  update/delete-blocked by trigger. A grant binds the call to the request digest
+  and to the exact bound route revision, so a later permissive revision cannot
+  release a recorded call. Denials commit before they raise, so a refusal is
+  durable evidence rather than a rolled-back decision. Nine PostgreSQL tests
+  cover allow, no-bound-policy, `allow_paid` disabled, exceeded run ceiling,
+  unknown pricing, indeterminate prior spend, restart-without-second-charge,
+  replayed denial with tamper rejection, and the untouched free-provider path.
+- Fail-closed scope correction: an indeterminate durable run total blocks only a
+  policy that sets `max_run_cost`. A policy that does not cap the run does not
+  depend on that total, so requiring it would deny without protecting anything.
+- Duplicate paid inference: unchanged receipt semantics remain the guard. A grant
+  and its `model.call_started` event commit together, so a started call without a
+  receipt still raises `AmbiguousEffectError` instead of re-billing.
+- Live Ollama acceptance (`tests/integration/test_live_model.py`, opt-in through
+  `JARVIS_LIVE_OLLAMA_URL`/`JARVIS_LIVE_OLLAMA_MODEL`): connection validation
+  reports `network_checked` against the real server; the live model satisfied the
+  actual `OrganizerOutput` and `TaskPlan` planning schemas; usage was recorded
+  with `provenance: "exact"` (for example 483 input / 50 output tokens) and no
+  cost amount was invented; an uninstalled tag produced a classified failure and
+  a durable `failed` accounting row rather than a crash. The documented probe
+  reported `qwen3:0.6b` at 243/7 tokens in 22.1s.
+- Honest model-capability finding: `qwen3:0.6b` satisfies the planning contracts
+  but not the stricter `ReviewDecision` schema. Small tags intermittently return
+  malformed structured output, which the system classifies as
+  `provider.contract_failure`. The reviewer test therefore accepts either a valid
+  decision or that classification, and asserts the durable outcome either way.
+- Consequence for real configuration: `evaluate_retry` gives an unmatched failure
+  class no retries and a `block` exhaustion action, so a single malformed real
+  model response blocked an entire run. Real composition now refuses, before any
+  billed inference, a model node whose bound retry policy has no retries for
+  `provider.contract_failure`, `provider.transient`, `provider.rate_limited`,
+  `infrastructure.timeout` or `infrastructure.service_unavailable`. Retry policy
+  stays configuration; only the missing-coverage refusal is code. The real
+  entrypoint fixture was corrected because it lacked exactly those rules.
+- K publication: real composition refuses a `github_publish` node up front. The
+  node already failed closed at invocation, but only after planning, worker
+  dispatch, verification and integration had already spent real time and money.
 
 ### Current continuation evidence (2026-09-09)
 
