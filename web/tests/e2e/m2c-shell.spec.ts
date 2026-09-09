@@ -49,12 +49,17 @@ test("desktop shell is keyboard accessible, secure, and free of serious violatio
   await expect(
     page.getByRole("heading", { name: "Mission overview" }),
   ).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Live graph" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Organizer" })).toBeVisible();
+  await expect(page.getByLabel("Selected run")).toHaveValue("");
+  await expect(page.getByText("No runs have been created.")).toBeVisible();
+  await expect(
+    page.getByText(
+      "Select a run to inspect its published graph, tasks and persisted events.",
+    ),
+  ).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
   await expect(
     page.getByText("DEMO · deterministic runtime", { exact: true }).first(),
-  ).toBeVisible();
+  ).toHaveCount(0);
   await expect(
     page.getByRole("link", { name: "Create an objective" }),
   ).toHaveAttribute("href", "/runs");

@@ -8,12 +8,17 @@ import subprocess
 import sys
 import tempfile
 import threading
+from collections.abc import Iterator
+from contextlib import suppress
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
 import pytest
-from sqlalchemy import select
+from alembic import command as migration
+from alembic.config import Config
+from sqlalchemy import create_engine, select, text
+from sqlalchemy.engine import make_url
 from uuid6 import uuid7
 
 from jarvis_api.registry.service import RegistryService
@@ -22,6 +27,7 @@ from jarvis_contracts.registry import RegistryWrite
 from jarvis_contracts.workflow import WorkflowSpec
 from jarvis_contracts.workflow_api import WorkflowCommand, WorkflowCreateRequest, WorkflowDraftWrite
 from jarvis_orchestrator.demo.bootstrap import canonical_workflow
+from jarvis_persistence.checkpoints import bootstrap as bootstrap_checkpoints
 from jarvis_persistence.models import EventModel
 from tests.integration.test_m2_integrated_api import IntegratedApi, login
 from tests.integration.test_m2_integrated_api import integrated_api as integrated_api
@@ -30,11 +36,39 @@ from tests.runtime_protocol_server import ProtocolHandler
 pytestmark = pytest.mark.integration
 
 
+@pytest.fixture
+def database_url(database_url: str, monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:
+    """Normal startup must not claim unfinished runs left by crash tests."""
+    parsed = make_url(database_url)
+    name = "jarvis_entrypoint_" + uuid7().hex
+    admin = create_engine(parsed.set(database="postgres"), isolation_level="AUTOCOMMIT")
+    url = parsed.set(database=name).render_as_string(hide_password=False)
+    try:
+        with admin.connect() as connection:
+            connection.execute(text(f'CREATE DATABASE "{name}"'))
+        monkeypatch.setenv("DATABASE_URL", url)
+        migration.upgrade(Config("alembic.ini"), "head")
+        asyncio.run(bootstrap_checkpoints())
+        yield url
+    finally:
+        with admin.connect() as connection:
+            connection.execute(text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))
+        admin.dispose()
+
+
+@pytest.mark.parametrize("launch", ["process", "service"])
 async def test_normal_real_entrypoint(
-    integrated_api: IntegratedApi, session_factory: Any, database_url: str, tmp_path: Path
+    integrated_api: IntegratedApi,
+    session_factory: Any,
+    database_url: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    launch: str,
 ) -> None:
     fixture = os.environ.get("JARVIS_TEST_SSH_DIRECTORY")
     if not fixture:
+        if os.environ.get("JARVIS_REQUIRE_REAL_ENTRYPOINT") == "1":
+            pytest.fail("Mandatory real-entrypoint job requires provisioned SSH fixture")
         pytest.skip(
             "requires explicitly started disposable SSH fixture and JARVIS_TEST_SSH_DIRECTORY"
         )
@@ -57,7 +91,14 @@ async def test_normal_real_entrypoint(
     ):
         await asyncio.to_thread(
             subprocess.run,
-            ["docker", "exec", "--user", "10001:10001", "jarvis-v1-mvp-test-worker", *args],
+            [
+                "docker",
+                "exec",
+                "--user",
+                "10001:10001",
+                os.environ.get("JARVIS_TEST_SSH_CONTAINER", "jarvis-v1-mvp-test-worker"),
+                *args,
+            ],
             check=True,
             capture_output=True,
             timeout=30,
@@ -229,7 +270,7 @@ async def test_normal_real_entrypoint(
             "workers": {
                 refs["worker"]: {
                     "host_alias": "127.0.0.1",
-                    "port": 22239,
+                    "port": int(os.environ.get("JARVIS_TEST_SSH_PORT", "22239")),
                     "user": "jarvis",
                     "ssh_key_ref": "secret:fixture-key",
                     "host_key_ref": "secret:fixture-pin",
@@ -300,19 +341,31 @@ async def test_normal_real_entrypoint(
         assert queued.status_code == 202, queued.text
         run_id = queued.json()["id"]
         with (tmp_path / "orchestrator.log").open("wb") as log:
-            process = subprocess.Popen(
-                [sys.executable, "-m", "jarvis_orchestrator.main"],
-                env=env,
-                stdout=log,
-                stderr=subprocess.STDOUT,
-            )
+            process = None
+            serving = None
+            if launch == "process":
+                process = subprocess.Popen(
+                    [sys.executable, "-m", "jarvis_orchestrator.main"],
+                    env=env,
+                    stdout=log,
+                    stderr=subprocess.STDOUT,
+                )
+            else:
+                # Exercise the same normal composition entrypoint in-process as
+                # well: Windows TerminateProcess cannot flush child coverage.
+                from jarvis_orchestrator.main import serve
+
+                for key, value in env.items():
+                    monkeypatch.setenv(key, value)
+                serving = asyncio.create_task(serve())
             try:
                 for _ in range(300):
                     await asyncio.sleep(1)
                     run = (await api.client.get(f"/api/v1/runs/{run_id}")).json()
                     if (
                         run.get("status") in {"completed", "failed", "blocked", "cancelled"}
-                        or process.poll() is not None
+                        or (process is not None and process.poll() is not None)
+                        or (serving is not None and serving.done())
                     ):
                         break
                 assert run.get("status") == "completed", (
@@ -320,8 +373,13 @@ async def test_normal_real_entrypoint(
                     (tmp_path / "orchestrator.log").read_text()[-4000:],
                 )
             finally:
-                process.terminate()
-                await asyncio.to_thread(process.wait, timeout=15)
+                if process is not None:
+                    process.terminate()
+                    await asyncio.to_thread(process.wait, timeout=15)
+                if serving is not None:
+                    serving.cancel()
+                    with suppress(asyncio.CancelledError):
+                        await serving
         async with session_factory() as session:
             events = (
                 await session.scalars(select(EventModel).where(EventModel.run_id == run_id))

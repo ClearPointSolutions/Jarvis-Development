@@ -58,6 +58,8 @@ markers = [
 
 [tool.coverage.run]
 branch = true
+patch = ["subprocess"]
+sigterm = true
 source = ["jarvis_api", "jarvis_orchestrator", "jarvis_contracts", "jarvis_persistence"]
 
 [tool.coverage.report]

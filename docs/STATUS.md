@@ -1,5 +1,16 @@
 # Jarvis V1 Status
 
+## Active integration and hardening (2026-09-09)
+
+Branch: `codex/v1-integration-hardening`, clean starting commit `1c61e70`.
+Fetched remote main and exact CI run 34309805401: unchanged, failing.
+The current user's authorization covers all local A–Q implementation and verification.
+Authoritative checklist: [V1_HARDENING_MATRIX.md](V1_HARDENING_MATRIX.md).
+Phase 1 exit requires repaired mode fixtures, explicit startup configuration tests,
+mandatory normal-entrypoint SSH acceptance in CI, subprocess coverage, unchanged
+coverage gate, full PostgreSQL verify and canonical demo. No readiness claim yet.
+
+
 Last updated: 2026-09-08
 Current phase: local MVP runtime and M9–M11 implementation in progress.
 Overall state: M7 complete; M8 code is on main. Current changes are unverified as a whole.

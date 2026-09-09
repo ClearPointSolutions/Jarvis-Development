@@ -30,6 +30,10 @@ jobs:
       TEST_DATABASE_URL: postgresql+psycopg://jarvis_v1_dev@127.0.0.1:5432/jarvis_v1_test
       DATABASE_URL: postgresql+psycopg://jarvis_v1_dev@127.0.0.1:5432/jarvis_v1_test
       CI: "true"
+      JARVIS_REQUIRE_REAL_ENTRYPOINT: "1"
+      JARVIS_TEST_SSH_DIRECTORY: /tmp/jarvis-ci-ssh
+      JARVIS_TEST_SSH_CONTAINER: jarvis-v1-ci-protocol-worker
+      JARVIS_TEST_SSH_PORT: "22249"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -54,4 +58,9 @@ jobs:
           PGDATABASE: jarvis_v1_test
           PGUSER: jarvis_v1_dev
         run: psql -v ON_ERROR_STOP=1 -f deploy/postgres/init/001_roles.sql
+      - name: Provision mandatory real-entrypoint protocol worker
+        run: python -m scripts.provision_runtime_fixture --directory "$JARVIS_TEST_SSH_DIRECTORY"
       - run: scripts/verify.sh
+      - name: Remove disposable protocol worker
+        if: always()
+        run: docker rm -f jarvis-v1-ci-protocol-worker || true

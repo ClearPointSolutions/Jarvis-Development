@@ -124,6 +124,7 @@ test("M5 real enqueue, pause, same-thread resume, cancel and accessible acknowle
     .getByLabel("Project", { exact: true })
     .selectOption({ label: "M5 browser project" });
   await page.getByLabel("Published workflow").selectOption(version);
+  await page.getByLabel("Execution mode").selectOption("real");
   await page
     .getByLabel("Objective")
     .fill("Observe durable local control boundaries");
@@ -173,6 +174,7 @@ test("M5 real enqueue, pause, same-thread resume, cancel and accessible acknowle
         body: JSON.stringify({
           workflow_version_id: workflow,
           objective: "Cancel at durable boundary",
+          mode: "real",
           idempotency_key: crypto.randomUUID(),
         }),
       });
