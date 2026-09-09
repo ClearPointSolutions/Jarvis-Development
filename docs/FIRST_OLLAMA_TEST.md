@@ -116,15 +116,32 @@ There is no real publication handler. Real composition refuses a workflow
 containing a `github_publish` node before any inference or worker dispatch.
 Do not publish a workflow with that node for real use.
 
-## The SSH fixture is disposable, not durable
+## Running real acceptance on Windows: use a short temporary root
 
-Re-provision the disposable protocol worker before an acceptance run rather than
-reusing a long-lived container. A container reused across many earlier runs
-failed here at the worker boundary with a `WorkerBoundaryError`, which defaults
-to `configuration.invalid`, is therefore not retryable, and blocks the run. It
-reads exactly like an application defect and is not one, so re-provision first
-and only then investigate. CI never sees this because it provisions a fresh
-fixture on every run:
+This is the single most expensive trap in local acceptance, and it looks exactly
+like an application defect.
+
+The real acceptance test derives its per-run `source_root` from `TMPDIR`. Core
+then builds `<source_root>/<32 hex>/c/<key>` and runs `git worktree add` on it.
+With the repository checkout's own path as `TMPDIR`, that source root is already
+around 90 characters before Core adds roughly 40 more, and Git for Windows fails
+on the resulting worktree path. The failure surfaces as a `WorkerBoundaryError`
+from the candidate import, which defaults to `configuration.invalid`, is
+therefore not retryable, and blocks the run with no useful detail.
+
+Export a genuinely short root before the run:
+
+```sh
+mkdir -p /c/jv/t
+export TMPDIR=C:/jv/t TEMP=$TMPDIR TMP=$TMPDIR
+```
+
+The same class of failure is recorded in `V1_HARDENING_MATRIX.md` as Git for
+Windows `fatal: '$GIT_DIR' too big` during the M8 work. CI is unaffected: it runs
+on Linux under `/tmp`.
+
+Two further conditions are worth setting up the same way. Provision a fresh
+disposable worker rather than reusing a long-lived container:
 
 ```sh
 python -m scripts.provision_runtime_fixture --directory .tmp/fresh-ssh \
@@ -136,7 +153,16 @@ Point `JARVIS_TEST_SSH_DIRECTORY`, `JARVIS_TEST_SSH_CONTAINER` and
 the run too: queued runs left behind by other suites compete with the service
 under test.
 
-When a probe fails, its JSON now names the exception type alongside the generic
+## Reading a blocked run
+
+A blocked run now names the boundary that refused it. The node log line carries
+`code=<constant> node=<node id>`, and the run's `result_summary` reads
+`Runtime requires reconciliation: <constant>`, for example
+`source_import_tree_mismatch`. Only curated constants reach that channel; native
+exception text never does. `code=unspecified` means the failure came from
+somewhere with no boundary constant, not that the detail was withheld.
+
+When a probe fails, its JSON also names the exception type alongside the generic
 failure code. `ValidationError` means the private configuration file is wrong;
 it is not a reachability problem.
 

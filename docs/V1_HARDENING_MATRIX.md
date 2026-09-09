@@ -78,6 +78,41 @@ no OpenAI endpoint and no GitHub repository was contacted.
   node already failed closed at invocation, but only after planning, worker
   dispatch, verification and integration had already spent real time and money.
 
+### Windows long-path acceptance constraint (2026-09-09, later session)
+
+Real-entrypoint acceptance failed four consecutive times on this machine with a
+`WorkerBoundaryError` from candidate import, blocking the run. It was neither an
+application defect nor the model/budget work: three protocol model calls always
+completed first, and the fixture provider is unpaid so the budget gateway is
+inert. A freshly provisioned worker fixture failed identically, which refuted the
+stale-container explanation.
+
+The cause is the Windows path limit. `test_real_entrypoint` takes `source_root`
+from `tempfile.mkdtemp()`, so it inherits `TMPDIR`. With the repository checkout
+as `TMPDIR` the source root is about 90 characters, and `import_candidate` then
+adds `<32 hex>/c/<key>` before `git worktree add`. This is the same class of
+failure recorded above as Git for Windows `fatal: '$GIT_DIR' too big`.
+
+With `TMPDIR=C:/jv/t` (a 27-character source root, 62 shorter),
+`test_normal_real_entrypoint[process]` **passed in 465.43s** against a freshly
+provisioned worker and a dedicated database, exercising candidate import,
+worktree checkout, a failing attempt, its retry and multiple source stores.
+CI is unaffected: it runs on Linux under `/tmp`.
+
+Diagnosis cost four runs because a blocked run reported only
+`exception_type=RuntimeBlockedError` while the conftest resets the event store
+between tests. Both the node and service handlers now report the boundary's
+curated safe constant; `tests/unit/test_boundary_diagnostics.py` (4 tests) fixes
+the accept/reject shapes so no URL, path or credential assignment can reach that
+channel.
+
+Known remaining gap, deliberately unchanged: a `WorkerBoundaryError` that escapes
+the worker adapter's own handlers loses its declared `failure_class`, because
+`nodes.py` honours only `ClassifiedNodeError`. It degrades to
+`orchestration.runtime_error` and hard-blocks even when the boundary declared a
+retryable class. That conflicts with the class-specific retry principle and needs
+its own change with its own acceptance.
+
 ### Current continuation evidence (2026-09-09)
 
 - D/E: normal process and service startup both pass (1082.76s), including
