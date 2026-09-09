@@ -58,6 +58,15 @@ temporary root and fresh database `jarvis_v1_test_hardening_verify`; evidence
 `.tmp/hardening-verify.log`. Canonical demo `.tmp/hardening-demo-v2.log` pending.
 This is an implementation commit, not Phase 1 closure or a readiness verdict.
 
+Published implementation: `fd8bf0c5e0cd8ad9d429ed45ed5bf2f4b863032c`,
+[draft PR #5](https://github.com/ClearPointSolutions/Jarvis-Development/pull/5),
+[exact CI 34314724943](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34314724943)
+in progress. Canonical demo browser acceptance passed in 4.1m. Normal-service
+coverage includes 236 executed lines in `runtime/composition.py`. The long-path
+baseline finished 732 passed / 13 failed / 1 skipped; failures are the old API
+mode fixture (fixed) and reproduced Git for Windows worktree path limits.
+Current short-path full gate has passed the repaired API and M5 fixtures so far.
+
 - Supported local Python: `.venv/Scripts/python.exe` 3.12.14.
 - Supported local Node: `.tmp/toolchains/node-v20.19.0-win-x64/node.exe` 20.19.0.
 - Disposable PostgreSQL 16.10 at loopback 55439; new database
@@ -74,3 +83,9 @@ This is an implementation commit, not Phase 1 closure or a readiness verdict.
 - No guessed homelab contact, legacy mutation, main merge or live deployment.
 - Finish useful local work before requesting exact authorized worker/model,
   disposable publication repository and deployment target details.
+
+CI `34314724943` at `fd8bf0c`: all 749 backend tests passed (no skips),
+86% coverage with the unchanged 80% gate; both normal-entrypoint variants ran.
+The next contract drift gate found missing generated approval/usage API types.
+Regenerated from the unchanged authoritative OpenAPI; contract check and Node
+20.19 TypeScript passed. Full frontend/browser CI remains pending the follow-up.
