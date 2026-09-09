@@ -155,20 +155,31 @@ class OrchestratorService:
         except asyncio.CancelledError:
             raise
         except Exception as error:
-            from jarvis_orchestrator.runtime.errors import RuntimeDependencyError
+            from jarvis_orchestrator.runtime.errors import (
+                RuntimeDependencyError,
+                safe_boundary_code,
+            )
 
             # Never emit native exception text; it may contain credentials/output.
+            # Boundary errors carry a curated safe constant instead, and without
+            # it a blocked run is indistinguishable from any other blocked run.
+            safe_code = safe_boundary_code(error)
             logging.getLogger(__name__).warning(
-                "Runtime exception_type=%s run=%s", type(error).__name__, fence.run_id
+                "Runtime exception_type=%s code=%s run=%s",
+                type(error).__name__,
+                safe_code or "unspecified",
+                fence.run_id,
             )
+            if isinstance(error, RuntimeDependencyError):
+                summary = str(error)
+            elif safe_code is not None:
+                summary = f"Runtime requires reconciliation: {safe_code}"
+            else:
+                summary = "Runtime requires configuration or effect reconciliation"
             try:
                 async with self.ownership.fenced(fence) as (session, run):
                     run.status = "blocked"
-                    run.result_summary = (
-                        str(error)
-                        if isinstance(error, RuntimeDependencyError)
-                        else "Runtime requires configuration or effect reconciliation"
-                    )
+                    run.result_summary = summary
                     run.current_node = None
                     run.completed_at = self.ownership.clock.now()
                     run.version += 1

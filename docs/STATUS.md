@@ -11,6 +11,32 @@ node projections, and truthful runtime instruction delivery. Preserve all
 existing security, coverage, isolation and legacy boundaries. No readiness claim
 until the remaining product and staging gates pass.
 
+## Paid budget gateway and live model acceptance (2026-09-09, later session)
+
+Continued `codex/v1-integration-hardening` from `f4f6355`. The prior session's
+full gate reached 775 backend tests at 85.62% coverage and then stopped at the
+frontend Prettier check; that was a local CRLF artifact in two Playwright specs,
+not a repository defect. The committed bytes are LF, so CI was never affected.
+
+Implemented the durable paid-inference budget gateway (`providers/budget.py`,
+migration `0010`) that replaces the unconditional paid-call refusal. Nine
+PostgreSQL tests and four composition preflight tests pass.
+
+Live local Ollama was actually contacted at loopback `11439`. Connection
+validation reported `network_checked`; the real model satisfied the actual
+`OrganizerOutput` and `TaskPlan` planning schemas; usage was recorded with
+`provenance: "exact"`. Two honest findings came out of that: the stricter
+`ReviewDecision` schema is beyond `qwen3:0.6b` and only intermittently met by
+`qwen3:1.7b`, and an unmatched failure class has no retries, so one malformed
+structured response blocked a whole run. Real composition now refuses, before any
+billed inference, a model node whose bound retry policy lacks the provider and
+infrastructure classes. It also refuses a `github_publish` node: V1 has no
+publication handler, so publication is excluded truthfully rather than failing
+late after real spend.
+
+No OpenAI endpoint, GitHub repository or homelab host was contacted. Paid
+execution and publication remain unproven by design. No readiness claim.
+
 ## Active integration and hardening (2026-09-09)
 
 Branch: `codex/v1-integration-hardening`, clean starting commit `1c61e70`.

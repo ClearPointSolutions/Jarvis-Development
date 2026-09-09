@@ -116,6 +116,30 @@ There is no real publication handler. Real composition refuses a workflow
 containing a `github_publish` node before any inference or worker dispatch.
 Do not publish a workflow with that node for real use.
 
+## The SSH fixture is disposable, not durable
+
+Re-provision the disposable protocol worker before an acceptance run rather than
+reusing a long-lived container. A container reused across many earlier runs
+failed here at the worker boundary with a `WorkerBoundaryError`, which defaults
+to `configuration.invalid`, is therefore not retryable, and blocks the run. It
+reads exactly like an application defect and is not one, so re-provision first
+and only then investigate. CI never sees this because it provisions a fresh
+fixture on every run:
+
+```sh
+python -m scripts.provision_runtime_fixture --directory .tmp/fresh-ssh \
+  --name jarvis-v1-fresh-worker --port 22260
+```
+
+Point `JARVIS_TEST_SSH_DIRECTORY`, `JARVIS_TEST_SSH_CONTAINER` and
+`JARVIS_TEST_SSH_PORT` at what that command creates. Use a database dedicated to
+the run too: queued runs left behind by other suites compete with the service
+under test.
+
+When a probe fails, its JSON now names the exception type alongside the generic
+failure code. `ValidationError` means the private configuration file is wrong;
+it is not a reachability problem.
+
 ## Opt-in live model acceptance
 
 With a reachable allowlisted Ollama and an installed tag:

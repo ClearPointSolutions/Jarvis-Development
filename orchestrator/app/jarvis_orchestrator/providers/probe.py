@@ -83,10 +83,19 @@ def main() -> None:
                 valid = runner.run(probe(args.configuration, args.profile_revision, args.inference))
         else:
             valid = asyncio.run(probe(args.configuration, args.profile_revision, args.inference))
-    except Exception:
-        # Never print DB URLs, credential paths, native HTTP exceptions or model text.
+    except Exception as error:
+        # Never print DB URLs, credential paths, native HTTP exceptions or model
+        # text. The exception's class name carries none of those and is the
+        # difference between a diagnosable failure and an opaque one.
         print(
-            '{"check":"probe","valid":false,"failure_code":"probe_configuration_or_dependency_unavailable"}'
+            json.dumps(
+                {
+                    "check": "probe",
+                    "valid": False,
+                    "failure_code": "probe_configuration_or_dependency_unavailable",
+                    "error_type": type(error).__name__,
+                }
+            )
         )
         valid = False
     raise SystemExit(0 if valid else 2)

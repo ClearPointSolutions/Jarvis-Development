@@ -20,6 +20,7 @@ from jarvis_contracts.enums import FailureClass
 from jarvis_contracts.failures import FailureEvidence, RetryPolicySpec, classify_failure
 from jarvis_contracts.registry import RetryRegistrySpec
 from jarvis_orchestrator.runtime.effects import AmbiguousEffectError, CooperativeCancelError
+from jarvis_orchestrator.runtime.errors import safe_boundary_code
 from jarvis_orchestrator.runtime.ownership import RunFence, RunOwnership, StaleExecutorError
 from jarvis_orchestrator.workflows.factories import (
     MissingWorkflowHandlerError,
@@ -192,7 +193,15 @@ class NodeRuntime:
             except CooperativeCancelError:
                 update = {"cancelled": True, "final": {"status": "cancelled"}}
             except Exception as error:
-                logging.getLogger(__name__).warning("Node exception type=%s", type(error).__name__)
+                # Boundary errors carry a curated safe constant. Dropping it here
+                # leaves a blocked run with no way to tell which boundary refused.
+                code = safe_boundary_code(error) or "unspecified"
+                logging.getLogger(__name__).warning(
+                    "Node exception type=%s code=%s node=%s",
+                    type(error).__name__,
+                    code,
+                    context.node.id,
+                )
                 explicit = error.failure if isinstance(error, ClassifiedNodeError) else None
                 if isinstance(error, MissingWorkflowHandlerError):
                     explicit = FailureClass.CONFIGURATION_INVALID
