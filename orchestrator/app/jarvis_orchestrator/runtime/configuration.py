@@ -1,6 +1,7 @@
 """Private composition manifest; never included in API/generated contracts."""
 
 from pathlib import Path
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -15,6 +16,7 @@ class RepositoryBinding(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
     worker_revision_id: UUID
     project: WorkerProject
+    base_policy: Literal["current", "historical"] = "current"
     combined_commands: tuple[VerificationCommand, ...] = Field(min_length=1, max_length=32)
 
 

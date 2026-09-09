@@ -35,11 +35,18 @@ async def freeze_binding(
             raise RuntimeDependencyError("immutable configuration is unavailable")
         prior = original.effective_spec_json.get("repository_binding")
         if prior is not None:
-            if prior != identity:
+            if prior == identity:
+                return
+            # Add source lifecycle facts to an older bound run without changing
+            # any of its existing authority. Preserve both immutable snapshots.
+            if not (
+                "lifecycle" not in prior
+                and "lifecycle" in identity
+                and prior == {key: value for key, value in identity.items() if key != "lifecycle"}
+            ):
                 raise RuntimeDependencyError(
                     "immutable repository binding changed; reconciliation required"
                 )
-            return
         payload = {**original.effective_spec_json, "repository_binding": identity}
         digest = configuration_digest(run.workflow_version_id, payload)
         frozen = await session.scalar(

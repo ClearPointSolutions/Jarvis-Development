@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from datetime import timedelta
 from pathlib import Path
 from uuid import UUID, uuid5
@@ -30,9 +31,11 @@ from jarvis_orchestrator.runtime.binding import freeze_binding
 from jarvis_orchestrator.runtime.configuration import RealRuntimeConfiguration, RepositoryBinding
 from jarvis_orchestrator.runtime.effects import EffectAdapter
 from jarvis_orchestrator.runtime.errors import RuntimeDependencyError
+from jarvis_orchestrator.runtime.historical import HistoricalPreparation
 from jarvis_orchestrator.runtime.model_selection import select_model
 from jarvis_orchestrator.runtime.ownership import RunFence, RunOwnership
 from jarvis_orchestrator.runtime.planning import PlanningEffect
+from jarvis_orchestrator.runtime.repository_lifecycle import accepted_source
 from jarvis_orchestrator.verification.artifacts import EvidenceArtifacts
 from jarvis_orchestrator.verification.integration import LocalIntegrator
 from jarvis_orchestrator.verification.isolated_executor import IsolatedVerificationExecutor
@@ -154,6 +157,7 @@ class RealComposition:
                 selector = effective_policy(spec, node).worker_selector
                 if selector is None or selector.revision_id != binding.worker_revision_id:
                     raise RuntimeDependencyError("workflow worker differs from repository binding")
+        lifecycle = await accepted_source(owner, fence, binding)
         await freeze_binding(
             owner,
             fence,
@@ -164,7 +168,9 @@ class RealComposition:
                 "worker_revision_id": str(binding.worker_revision_id),
                 "binding_digest": sha256_digest(
                     {
-                        "repository": binding.model_dump(mode="json"),
+                        "repository": binding.model_dump(mode="json", exclude={"base_policy"})
+                        if binding.base_policy == "current"
+                        else binding.model_dump(mode="json"),
                         "deployment": deployment.model_dump(mode="json"),
                         "verification": self.settings.verification_isolation.model_dump(
                             mode="json"
@@ -172,8 +178,17 @@ class RealComposition:
                     }
                 ),
                 "target_digest": sha256_digest(deployment),
+                "lifecycle": lifecycle,
             },
         )
+        source_project = binding.project
+        target = binding.project.model_copy(update={"base_sha": str(lifecycle["worker_base_sha"])})
+        if binding.base_policy == "historical":
+            slug = source_project.slug[:20] + "-history-" + fence.run_id.hex
+            target = target.model_copy(
+                update={"slug": slug, "workspace_root": deployment.workspace_root + "/" + slug}
+            )
+        binding = binding.model_copy(update={"project": target})
         credentials = self.settings.credential_files
         transport = OpenSSHTransport(
             deployment,
@@ -198,7 +213,7 @@ class RealComposition:
             publish_log=WorkerLogPublisher(owner, fence, self.artifact_root),
             artifact_reader=WorkerContextReader(owner, fence, self.artifact_root),
         )
-        run_root = self.settings.source_root / fence.run_id.hex
+        run_root = self.settings.source_root / UUID(str(lifecycle["source_store_id"])).hex
         run_root.mkdir(parents=True, exist_ok=True)
         manager = WorktreeManager(run_root, git_executable=str(self.settings.git_executable))
         executor = IsolatedVerificationExecutor(
@@ -206,8 +221,46 @@ class RealComposition:
             self.settings.verification_isolation.broker_argv,
             self.settings.verification_isolation.image_id,
         )
+        if lifecycle["previous_run_id"] is not None:
+            # Accepted Core merges and worker commits can have different SHAs,
+            # but the next serial worker must start with identical accepted files.
+            repository = run_root / "repository"
+            worker_tree, _ = await manager.git(
+                repository, "rev-parse", binding.project.base_sha + "^{tree}"
+            )
+            core_tree, _ = await manager.git(
+                repository, "rev-parse", str(lifecycle["integration_base_sha"]) + "^{tree}"
+            )
+            if worker_tree != core_tree:
+                raise RuntimeDependencyError(
+                    "accepted Core and worker source differ; synchronization required"
+                )
         artifacts = EvidenceArtifacts(owner, fence, self.artifact_root)
-        request_source = LegacyRequestSource(owner, fence, binding, artifacts)
+        historical = (
+            HistoricalPreparation(
+                owner,
+                fence,
+                deployment,
+                transport,
+                self.settings.source_root,
+                source_project,
+                binding.project,
+                binding.worker_revision_id,
+                lifecycle,
+                git_executable=str(self.settings.git_executable),
+                author_name=self.settings.git_author_name,
+                author_email=self.settings.git_author_email,
+            )
+            if binding.base_policy == "historical"
+            else None
+        )
+        request_source = LegacyRequestSource(
+            owner,
+            fence,
+            binding,
+            artifacts,
+            prepare_workspace=historical.ensure if historical else None,
+        )
         worker_effect = WorkerEffectAdapter(owner, fence, worker, native, request_source.request)
         # All dependency checks complete before Organizer inference or worker dispatch.
         report = await native.validate(worker, worker_effect.context())
@@ -215,6 +268,8 @@ class RealComposition:
             raise RuntimeDependencyError(
                 "worker dependency preflight failed: " + ",".join(report.health.issues)
             )
+        if historical is not None and native.historical_workspace_version != "1.0":
+            raise RuntimeDependencyError("worker lacks isolated historical workspace capability")
         checked: set[UUID] = set()
         reviewer_context: NodeContext | None = None
         reviewer_config: RunnableConfig = {}
@@ -309,7 +364,7 @@ class RealComposition:
             LocalVerificationBinding(
                 workflow_id,
                 binding.project.repository_id,
-                binding.project.base_sha,
+                str(lifecycle["integration_base_sha"]),
                 binding.project.branch,
                 binding.combined_commands,
                 no_remote_path,
@@ -340,13 +395,18 @@ class LegacyRequestSource:
         fence: RunFence,
         binding: RepositoryBinding,
         artifacts: EvidenceArtifacts,
+        *,
+        prepare_workspace: Callable[[], Awaitable[None]] | None = None,
     ) -> None:
         self.owner, self.fence, self.binding = owner, fence, binding
         self.artifacts = artifacts
+        self.prepare_workspace = prepare_workspace
 
     async def request(
         self, state: WorkflowStateV1, context: NodeContext, config: RunnableConfig
     ) -> WorkerInvocationRequest:
+        if self.prepare_workspace is not None:
+            await self.prepare_workspace()
         key = str(state.get("tasks", {}).get("current_task", ""))
         settings = config.get("configurable", {})
         async with self.owner.fenced(self.fence) as (session, run):

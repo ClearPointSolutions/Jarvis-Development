@@ -298,7 +298,15 @@ def main() -> None:
     try:
         if sys.platform == "win32":
             asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-        command = decode_object(sys.argv[1], 196608)
+        if sys.argv[1] == "--stdin":
+            raw = sys.stdin.buffer.read(26 * 1024 * 1024 + 1)
+            if len(raw) > 26 * 1024 * 1024:
+                raise WorkerBoundaryError("request_oversized")
+            command = json.loads(raw)
+            if not isinstance(command, dict) or command.get("operation") != "prepare_historical":
+                raise WorkerBoundaryError("unsupported_stream_operation")
+        else:
+            command = decode_object(sys.argv[1], 196608)
         if command.get("operation") == "supervise":
             launch = WrapperLaunch.model_validate(decode_object(str(command["launch"])))
             asyncio.run(supervise(launch))
@@ -360,6 +368,23 @@ def main() -> None:
                     )
                 )
             )
+        elif command.get("operation") == "prepare_historical":
+            from jarvis_orchestrator.workers.historical import (
+                HistoricalWorkspace,
+                prepare_historical,
+            )
+
+            print(
+                json.dumps(
+                    asyncio.run(
+                        prepare_historical(
+                            HistoricalWorkspace.model_validate(command["request"]),
+                            Path(str(command["workspace_root"])),
+                            Path(str(command["invocation_root"])),
+                        )
+                    )
+                )
+            )
         elif command.get("operation") == "repository":
             from jarvis_orchestrator.workers.workspace import WorktreeManager
 
@@ -390,6 +415,7 @@ def main() -> None:
                     {
                         "wrapper_version": WRAPPER_VERSION,
                         "source_transfer_version": "1.0",
+                        "historical_workspace_version": "1.0",
                         "issues": issues,
                         "capabilities": ["code", "filesystem", "shell", "git", "tests"]
                         if not issues

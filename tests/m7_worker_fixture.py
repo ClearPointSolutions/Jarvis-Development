@@ -115,6 +115,8 @@ class FakeWorkerSSH:
         if operation == "health":
             return {
                 "wrapper_version": "1.0",
+                "source_transfer_version": "1.0",
+                "historical_workspace_version": "1.0",
                 "capabilities": ["code", "git"],
                 "issues": ["runner_path_missing"] if self.scenario == "missing_runner" else [],
             }

@@ -13,6 +13,7 @@ from contextlib import suppress
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+from uuid import UUID
 
 import pytest
 from alembic import command as migration
@@ -28,7 +29,12 @@ from jarvis_contracts.workflow import WorkflowSpec
 from jarvis_contracts.workflow_api import WorkflowCommand, WorkflowCreateRequest, WorkflowDraftWrite
 from jarvis_orchestrator.demo.bootstrap import canonical_workflow
 from jarvis_persistence.checkpoints import bootstrap as bootstrap_checkpoints
-from jarvis_persistence.models import EventModel
+from jarvis_persistence.models import (
+    EventModel,
+    IntegrationHeadModel,
+    RunConfigSnapshotModel,
+    RunModel,
+)
 from tests.integration.test_m2_integrated_api import IntegratedApi, login
 from tests.integration.test_m2_integrated_api import integrated_api as integrated_api
 from tests.runtime_protocol_server import ProtocolHandler
@@ -254,6 +260,35 @@ async def test_normal_real_entrypoint(
             api.owner_id,
             namespace,
         )
+        historical_key = namespace + "-history"
+        historical_doc = await workflow.create(
+            WorkflowCreateRequest(
+                key=historical_key,
+                name="Historical local acceptance",
+                idempotency_key=historical_key,
+            ),
+            api.owner_id,
+            historical_key,
+        )
+        historical_doc = await workflow.save(
+            historical_doc.template.id,
+            WorkflowDraftWrite(
+                expected_version=historical_doc.template.version,
+                idempotency_key=historical_key + "-save",
+                spec=WorkflowSpec.model_validate({**raw, "key": historical_key}),
+            ),
+            api.owner_id,
+            historical_key,
+        )
+        historical_doc = await workflow.publish(
+            historical_doc.template.id,
+            WorkflowCommand(
+                expected_version=historical_doc.template.version,
+                idempotency_key=historical_key + "-publish",
+            ),
+            api.owner_id,
+            historical_key,
+        )
         headers = {"x-csrf-token": (await login(api)).json()["csrf_token"]}
         project = await api.client.post(
             "/api/v1/projects",
@@ -279,7 +314,7 @@ async def test_normal_real_entrypoint(
                 }
             )
         )
-        manifest = {
+        manifest: dict[str, Any] = {
             "verification_isolation": {
                 "broker_argv": [
                     sys.executable,
@@ -341,6 +376,10 @@ async def test_normal_real_entrypoint(
             "git_author_name": "Fixture",
             "git_author_email": "fixture@localhost",
         }
+        manifest["workflows"][str(historical_doc.version.id)] = {
+            **manifest["workflows"][str(doc.version.id)],
+            "base_policy": "historical",
+        }
         path = tmp_path / "runtime.json"
         path.write_text(json.dumps(manifest))
         env = {
@@ -396,6 +435,58 @@ async def test_normal_real_entrypoint(
                     run,
                     (tmp_path / "orchestrator.log").read_text()[-4000:],
                 )
+                extension = await api.client.post(
+                    f"/api/v1/projects/{project.json()['id']}/jobs",
+                    headers=headers,
+                    json={
+                        "workflow_version_id": str(doc.version.id),
+                        "objective": "Extend completed project with BONUS equal to 43",
+                        "mode": "real",
+                        "idempotency_key": namespace + "-extension",
+                    },
+                )
+                assert extension.status_code == 202
+                extension_id = extension.json()["id"]
+                for _ in range(300):
+                    await asyncio.sleep(1)
+                    extension_run = (await api.client.get(f"/api/v1/runs/{extension_id}")).json()
+                    if extension_run["status"] in {"completed", "failed", "blocked"}:
+                        break
+                assert extension_run["status"] == "completed", extension_run
+                worker_git = [
+                    "docker",
+                    "exec",
+                    "--user",
+                    "10001:10001",
+                    os.environ.get("JARVIS_TEST_SSH_CONTAINER", "jarvis-v1-mvp-test-worker"),
+                    "git",
+                    "-C",
+                    worker_root,
+                    "rev-parse",
+                    "HEAD",
+                ]
+                shared_head = subprocess.check_output(worker_git)
+                historical_run = await api.client.post(
+                    f"/api/v1/projects/{project.json()['id']}/jobs",
+                    headers=headers,
+                    json={
+                        "workflow_version_id": str(historical_doc.version.id),
+                        "objective": "Rebuild answer from the explicit historical base",
+                        "mode": "real",
+                        "idempotency_key": namespace + "-historical",
+                    },
+                )
+                assert historical_run.status_code == 202
+                historical_id = historical_run.json()["id"]
+                for _ in range(300):
+                    await asyncio.sleep(1)
+                    historical_state = (
+                        await api.client.get(f"/api/v1/runs/{historical_id}")
+                    ).json()
+                    if historical_state["status"] in {"completed", "failed", "blocked"}:
+                        break
+                assert historical_state["status"] == "completed", historical_state
+                assert subprocess.check_output(worker_git) == shared_head
                 wrong_project = await api.client.post(
                     "/api/v1/projects",
                     headers=headers,
@@ -468,6 +559,64 @@ async def test_normal_real_entrypoint(
             assert refs["profile"] != refs["developer"]
             assert "run.completed" in types
             assert types.count("run.configuration_bound") == 1
+            original_run = await session.get(RunModel, UUID(run_id))
+            extended_run = await session.get(RunModel, UUID(extension_id))
+            assert original_run is not None and extended_run is not None
+            original_config = await session.get(
+                RunConfigSnapshotModel, original_run.config_snapshot_id
+            )
+            extended_config = await session.get(
+                RunConfigSnapshotModel, extended_run.config_snapshot_id
+            )
+            assert original_config is not None and extended_config is not None
+            first_source = original_config.effective_spec_json["repository_binding"]["lifecycle"]
+            second_source = extended_config.effective_spec_json["repository_binding"]["lifecycle"]
+            assert second_source["previous_run_id"] == run_id
+            assert second_source["source_store_id"] == first_source["source_store_id"]
+            original_head = await session.scalar(
+                select(IntegrationHeadModel).where(IntegrationHeadModel.run_id == run_id)
+            )
+            extended_head = await session.scalar(
+                select(IntegrationHeadModel).where(IntegrationHeadModel.run_id == extension_id)
+            )
+            assert original_head is not None and extended_head is not None
+            assert second_source["integration_base_sha"] == original_head.head_sha
+            repository = (
+                Path(manifest["source_root"])
+                / UUID(first_source["source_store_id"]).hex
+                / "repository"
+            )
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(repository),
+                    "merge-base",
+                    "--is-ancestor",
+                    original_head.head_sha,
+                    extended_head.head_sha,
+                ],
+                check=True,
+            )
+            answer = subprocess.check_output(
+                ["git", "-C", str(repository), "show", extended_head.head_sha + ":answer.py"]
+            )
+            bonus = subprocess.check_output(
+                ["git", "-C", str(repository), "show", extended_head.head_sha + ":bonus.py"]
+            )
+            assert answer == b"ANSWER = 42\n" and b"ANSWER + 1" in bonus
+            historical_record = await session.get(RunModel, UUID(historical_id))
+            assert historical_record is not None
+            historical_config = await session.get(
+                RunConfigSnapshotModel, historical_record.config_snapshot_id
+            )
+            assert historical_config is not None
+            historical_source = historical_config.effective_spec_json["repository_binding"][
+                "lifecycle"
+            ]
+            assert historical_source["policy"] == "historical"
+            assert historical_source["worker_base_sha"] == base
+            assert historical_source["source_store_id"] != first_source["source_store_id"]
     finally:
         server.shutdown()
         server.server_close()

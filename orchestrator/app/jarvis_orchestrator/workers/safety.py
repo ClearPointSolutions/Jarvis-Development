@@ -59,6 +59,12 @@ def remote_command(python_path: str, wrapper_path: str, argument: str) -> str:
     return shlex.join((python_path, wrapper_path, argument))
 
 
+def remote_stream_command(python_path: str, wrapper_path: str) -> str:
+    validate_absolute_path(python_path)
+    validate_absolute_path(wrapper_path)
+    return shlex.join((python_path, wrapper_path, "--stdin"))
+
+
 class LegacyResult(ContractModel):
     task_id: str = Field(min_length=1, max_length=80)
     workspace: str = Field(max_length=1024)

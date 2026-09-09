@@ -102,6 +102,7 @@ task.retry_scheduled task.reviewing task.succeeded task.verifying test.completed
 test.started
 thread.created tool.completed tool.failed tool.started worker.cancel_requested worker.cancelled
 worker.health_changed worker.heartbeat worker.invocation_completed worker.invocation_dispatched
+worker.workspace_prepared
 worker.invocation_failed worker.lease_acquired worker.lease_lost workflow.published
 """
 _EVENT_NAMES = _EVENT_NAMES_TEXT.split()
