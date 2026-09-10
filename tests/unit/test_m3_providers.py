@@ -256,6 +256,74 @@ async def test_ollama_inventory_warming_and_native_output(loaded: bool) -> None:
     assert chunks[-1].result and chunks[-1].result.failure is None
 
 
+def test_grammar_safe_schema_drops_assertions_llama_cpp_cannot_compile() -> None:
+    from jarvis_orchestrator.providers.ollama import grammar_safe_schema
+
+    source: dict[str, Any] = {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["key", "tasks"],
+        "properties": {
+            "key": {"type": "string", "pattern": "^[A-Z]{2}-[0-9]+$", "maxLength": 12},
+            "tasks": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 8,
+                "items": {"type": "string", "format": "uri", "minLength": 1},
+            },
+            "count": {"type": "integer", "minimum": 0, "maximum": 100, "multipleOf": 2},
+        },
+    }
+    safe = grammar_safe_schema(source)
+
+    assert safe == {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["key", "tasks"],
+        "properties": {
+            "key": {"type": "string"},
+            "tasks": {"type": "array", "items": {"type": "string"}},
+            "count": {"type": "integer"},
+        },
+    }
+    assert '"pattern"' in json.dumps(source)  # input is not mutated
+
+
+async def test_ollama_structured_request_strips_unsupported_schema_keywords() -> None:
+    sent: dict[str, Any] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path in ("/api/tags", "/api/ps"):
+            return httpx.Response(200, json={"models": [{"name": "configured-model"}]})
+        sent.update(json.loads(request.content))
+        return httpx.Response(
+            200,
+            text=json.dumps(
+                {
+                    "message": {"content": '{"answer":"ok"}'},
+                    "done": True,
+                    "prompt_eval_count": 2,
+                    "eval_count": 2,
+                },
+            ),
+        )
+
+    schema = {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["answer"],
+        "properties": {"answer": {"type": "string", "pattern": "^ok$", "maxLength": 4}},
+    }
+    result = await ollama_adapter(handler).invoke(
+        REQUEST.model_copy(update={"structured_schema": schema})
+    )
+
+    assert result.failure is None
+    assert "pattern" not in json.dumps(sent["format"])
+    assert "maxLength" not in json.dumps(sent["format"])
+    assert sent["format"]["properties"]["answer"] == {"type": "string"}
+
+
 @pytest.mark.parametrize(
     "case", ["missing", "timeout", "unavailable", "malformed", "unknown", "incomplete", "huge"]
 )
