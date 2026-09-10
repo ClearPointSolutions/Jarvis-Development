@@ -238,6 +238,18 @@ configuration directories, an HTTPS public origin and a separately reviewed TLS
 proxy (example included). Ports bind only to host loopback. All volumes/networks
 belong to Compose project `jarvis-v1`. Runtime credentials cannot perform DDL.
 
+First install is scripted (M12A): `scripts/install-homelab.sh` (add
+`--mode production` for the reverse-proxy path) provisions directories, secrets,
+the deployment env file, images, PostgreSQL, roles, migrations, checkpoint
+storage, the API and web, then verifies readiness; `scripts/owner-bootstrap.sh`
+creates the owner through the migrator-identity Compose service;
+`scripts/preflight.sh` validates a configuration. The trusted private-LAN
+overlay `deploy/compose.homelab.yml` publishes the web port on the LAN and runs
+the API in development mode with non-Secure cookies — nothing else is relaxed,
+and production defaults are unchanged. Full procedures are in
+[docs/DEPLOYMENT_RUNBOOK.md](DEPLOYMENT_RUNBOOK.md). The orchestrator still needs
+its private `runtime.json` and is started separately.
+
 `scripts/deploy-core.sh check` performs local preflight without contacting a host.
 Actual `deploy` requires explicit target/key/pin variables and the target-owned
 `/opt/jarvis-v1/shared/deployment.env`. It transfers only a committed Git archive,

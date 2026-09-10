@@ -64,6 +64,25 @@ services:
     ports: ["127.0.0.1:${JARVIS_API_PORT:-18000}:8000"]
     depends_on:
       migrate: {condition: service_completed_successfully}
+  owner-bootstrap:
+    <<: *python
+    restart: "no"
+    profiles: [owner-bootstrap]
+    # One-shot administrative command, not a request handler. It runs as the
+    # database-owning migrator login because creating the first row in
+    # control.users needs an identity with INSERT on that table, and the
+    # least-privilege jarvis_v1_api_login deliberately does not have it. The
+    # container entrypoint resolves DATABASE_URL from the mounted password file,
+    # so `docker compose exec api ...` (which skips the entrypoint) is never
+    # required. Invoke it through `scripts/owner-bootstrap.sh` or directly with
+    # `docker compose --profile owner-bootstrap run --rm owner-bootstrap`.
+    command: [python, -m, jarvis_api.auth.bootstrap, --username, "${JARVIS_OWNER_USERNAME:-owner}"]
+    environment:
+      JARVIS_DATABASE_USER: jarvis_v1_migrator_login
+      JARVIS_DATABASE_PASSWORD_FILE: /run/secrets/migrator_password
+    secrets: [migrator_password]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
   orchestrator:
     <<: *python
     command: [python, -m, jarvis_orchestrator.main]
@@ -93,6 +112,12 @@ services:
     environment:
       HOSTNAME: 0.0.0.0
       PORT: "3000"
+      # The same-origin proxy in web/src/app/api/[...path]/route.ts forwards
+      # /api/... to this URL. On the private Compose network the API service is
+      # reachable as http://api:8000. Without this a normal production stack
+      # answers every /api request with a 503 api.unavailable and no override
+      # file is expected to supply it.
+      JARVIS_API_URL: http://api:8000
     ports: ["127.0.0.1:${JARVIS_WEB_PORT:-13000}:3000"]
     networks: [v1]
     depends_on: [api]
