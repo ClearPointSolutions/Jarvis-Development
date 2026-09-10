@@ -1,6 +1,25 @@
 # Jarvis V1 Side-by-Side Deployment Plan
 
-Status: architecture plan only; this document does not authorize deployment in the architecture turn.
+Status: architecture rationale. The executable operator procedures live in
+[docs/DEPLOYMENT_RUNBOOK.md](DEPLOYMENT_RUNBOOK.md). As of M12A
+(`codex/m12a-deployment-hardening`) the first-install path is scripted:
+
+* `scripts/install-homelab.sh` (`--mode homelab|production`) — directories,
+  secrets, env file, images, PostgreSQL, roles, migrations, checkpoint storage,
+  API, web, readiness;
+* `scripts/provision_secrets.py` — idempotent least-privilege secret files
+  (owner `10001:10001`, mode `0600`);
+* `deploy/compose.homelab.yml` — official trusted private-LAN overlay: LAN web
+  bind + `JARVIS_ENV=development` / `JARVIS_COOKIE_SECURE=false` only; production
+  stays production, HTTPS-only, Secure cookies, loopback ports;
+* `scripts/preflight.sh` — configuration/readiness validation with specific
+  failure messages;
+* `scripts/owner-bootstrap.sh` + the `owner-bootstrap` Compose service — owner
+  creation/recovery under the database-owning migrator identity;
+* `scripts/deploy-core.sh` — unchanged in scope: release promotion and rollback
+  only, plus a `preflight` passthrough.
+
+The numbered procedure in section 8 below is now realised by those scripts.
 
 ## 1. Boundaries
 

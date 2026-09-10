@@ -25,12 +25,41 @@ matrix owns current work and evidence, superseding its historical progress table
 | K publication | No real handler; real composition now refuses a `github_publish` node before any billed inference or worker dispatch | Full allowlisted approval-bound push/PR if publication becomes in scope | Real-mode build raises `RuntimeDependencyError` naming the node | Truthfully excluded from the V1 local MVP, not disguised as working | Excluded and disabled |
 | L pagination | Cursor APIs, bounded first-page UI | Follow cursors and current projections | Run 51+, event 1001+, node 101+, reconnect | No current evidence | Open |
 | M operator UX | Run evidence and partial views | Durable threads, required views, bootstrap, deliverables | Browser desktop/mobile/a11y operator journeys | Current build is not product acceptance | Open |
-| N release | Archive and shared deployment env | Immutable image/config/schema manifest and rollback | Install A, B, restore A identities | No current evidence | Open |
-| O packaging | Images/Compose/basic health | Dependency readiness, authenticated HTTPS/SSE topology | Fresh isolated authenticated install | Historical HTTP 200 insufficient | Open |
+| N release | Archive and shared deployment env; `scripts/deploy-core.sh` scope-limited to promotion/rollback with a `preflight` passthrough | Immutable image/config/schema manifest; restore identities | Install A, B, restore A identities | M12A: scripted first install accepted locally (see M12A section); restore still manual | Partial |
+| O packaging | Images/Compose/health; `deploy/compose.homelab.yml` overlay; `scripts/install-homelab.sh`, `scripts/provision_secrets.py`, `scripts/preflight.sh`, `owner-bootstrap` service | Authenticated HTTPS/SSE topology on a real Core host | Fresh isolated authenticated install | M12A: fresh install → migrate → API+web → proxy `/api/v1/session` 401 → owner bootstrap → browser login, on Windows/Docker Desktop `localhost` (not the Core VM). `tests/deploy/*` (16 tests), `tests/integration/test_bootstrap_identity.py` | Local acceptance passed; real-host HTTPS/SSE open |
 | P restore | Backup script | Quiescence/reconciliation, checksummed isolated restore | Pending workers, partial failures, identity checks | No current evidence | Open |
 | Q operations | Usage aggregation | Health/stalls/retention/export/reconciliation/runbook | Fresh-environment commands and incident recovery | No current evidence | Open |
 
 ## Validation and continuation
+
+### M12A deployment hardening (2026-09-09)
+
+Branch `codex/m12a-deployment-hardening` from `main`
+`b1da87679132bff3cb1d578f009b67c625736473`. Full record in
+[STATUS.md](STATUS.md#m12a-deployment-hardening-2026-09-09) and
+[DEPLOYMENT_RUNBOOK.md](DEPLOYMENT_RUNBOOK.md). Seven deployment defects fixed:
+production `JARVIS_API_URL`, official `deploy/compose.homelab.yml` overlay,
+automated least-privilege secret provisioning, `scripts/install-homelab.sh`
+first install, `owner-bootstrap` Compose service + wrapper on the migrator
+identity, `scripts/preflight.sh`, and `deploy-core.sh` scope reconciliation.
+
+New tests: `tests/deploy/test_compose_contract.py` (text + `docker compose
+config` merged-model), `tests/deploy/test_provision_secrets.py` (9, root +
+non-root Linux), `tests/integration/test_bootstrap_identity.py` (4),
+`tests/integration/test_00_migrations.py` (api/orchestrator lack INSERT on
+`control.users`).
+
+Live acceptance was on the Windows/Docker Desktop workstation against
+`http://localhost:13000`, **not** the Jarvis-Core VM. Proven: merged config
+valid, postgres healthy, `bootstrap` exit 0, `migrate` exit 0 (0001→0010 +
+checkpoints), API + web running, API `/health` 200, web `/` 200,
+`/api/v1/session` through the proxy 401 (not 502/503), owner bootstrap via
+`scripts/owner-bootstrap.sh` exit 0 with no password in output, browser login as
+`owner` reaching Mission Control, readiness `{"status":"ready"}`, no serious
+console errors, no secrets in logs. Teardown was `down` without `-v`.
+
+Unproven here: real Jarvis-Core host, real-host HTTPS/SSE topology, scripted
+restore, orchestrator/OpenHands/Ollama runtime.
 
 ### Live model and paid-budget evidence (2026-09-09, later session)
 
