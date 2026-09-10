@@ -19,9 +19,11 @@ from jarvis_contracts.base import canonical_json
 from jarvis_contracts.enums import FailureClass
 from jarvis_contracts.failures import FailureEvidence, RetryPolicySpec, classify_failure
 from jarvis_contracts.registry import RetryRegistrySpec
+from jarvis_orchestrator.providers.base import BoundaryError
 from jarvis_orchestrator.runtime.effects import AmbiguousEffectError, CooperativeCancelError
 from jarvis_orchestrator.runtime.errors import safe_boundary_code
 from jarvis_orchestrator.runtime.ownership import RunFence, RunOwnership, StaleExecutorError
+from jarvis_orchestrator.workers.safety import WorkerBoundaryError
 from jarvis_orchestrator.workflows.factories import (
     MissingWorkflowHandlerError,
     NodeCallable,
@@ -47,6 +49,27 @@ class ClassifiedNodeError(RuntimeError):
     def __init__(self, failure: FailureClass) -> None:
         super().__init__(failure.value)
         self.failure = failure
+
+
+def boundary_failure_class(error: BaseException) -> FailureClass | None:
+    """The retry class an exception declares as it escapes a node handler.
+
+    Worker/candidate and provider boundaries raise ``WorkerBoundaryError`` /
+    ``BoundaryError`` carrying a fixed ``failure_class`` (timeout, transport,
+    security, ...). If that enum is dropped here the failure degrades to
+    ``orchestration.runtime_error`` and hard-blocks the run even when the
+    boundary declared a retryable class, defeating class-specific retry policy.
+    Only the enum member crosses; the boundary's ``code`` or message never
+    reaches classification or the operator-visible safe code.
+    """
+
+    if isinstance(error, ClassifiedNodeError):
+        return error.failure
+    if isinstance(error, MissingWorkflowHandlerError):
+        return FailureClass.CONFIGURATION_INVALID
+    if isinstance(error, (WorkerBoundaryError, BoundaryError)):
+        return error.failure_class
+    return None
 
 
 def safe_result(value: WorkflowStateV1) -> WorkflowStateV1:
@@ -202,9 +225,7 @@ class NodeRuntime:
                     code,
                     context.node.id,
                 )
-                explicit = error.failure if isinstance(error, ClassifiedNodeError) else None
-                if isinstance(error, MissingWorkflowHandlerError):
-                    explicit = FailureClass.CONFIGURATION_INVALID
+                explicit = boundary_failure_class(error)
                 classified = classify_failure(
                     FailureEvidence(explicit_class=explicit, summary="Node execution failed")
                 )
