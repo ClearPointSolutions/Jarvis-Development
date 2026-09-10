@@ -1,11 +1,29 @@
 #!/usr/bin/env bash
-# Explicit side-by-side deployment. `check` never contacts a target.
+# Immutable-release promotion for an ALREADY-PROVISIONED Jarvis-Core.
+#
+# This script only does three things, and only over SSH to a target that an
+# operator has already set up:
+#   check     local preflight; never contacts a target
+#   deploy    transfer a committed Git archive and switch the `current` release
+#   rollback  switch back to the `previous` release (refuses a schema downgrade)
+#
+# It is NOT first install. The separate lifecycle entry points are:
+#   first install / provisioning   scripts/install-homelab.sh   (+ scripts/provision_secrets.py)
+#   configuration preflight        scripts/preflight.sh
+#   owner creation / recovery      scripts/owner-bootstrap.sh
+#   backup                         scripts/backup-v1.sh
+#   restore                        docs/DEPLOYMENT_RUNBOOK.md (manual, reviewed)
+# See docs/DEPLOYMENT_RUNBOOK.md for how these fit together.
 set -euo pipefail
 mode=${1:-check}
 root=$(cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$root"
 fail() { printf '%s\n' "$1" >&2; exit 2; }
-case "$mode" in check|deploy|rollback) ;; *) fail 'Usage: deploy-core.sh check|deploy|rollback' ;; esac
+case "$mode" in
+  check|deploy|rollback) ;;
+  preflight) shift; exec "$root/scripts/preflight.sh" "$@" ;;
+  *) fail 'Usage: deploy-core.sh check|deploy|rollback|preflight' ;;
+esac
 for tool in git ssh scp tar sha256sum; do command -v "$tool" >/dev/null || fail "Required tool missing: $tool"; done
 sha=$(git rev-parse HEAD)
 [[ "$sha" =~ ^[a-f0-9]{40}$ ]] || fail 'A committed release SHA is required'
@@ -14,8 +32,10 @@ test -f deploy/compose.production.yml || fail 'Production compose file is missin
 if [[ "$mode" == check ]]; then
   printf 'Release: %s\nTarget root: /opt/jarvis-v1\n' "$sha"
   printf '%s\n' 'Local preflight passed. No target contacted.' \
+    'This is release promotion only; run scripts/install-homelab.sh for a first install.' \
     'Before deploy: configure JARVIS_DEPLOY_TARGET, JARVIS_DEPLOY_KEY and JARVIS_DEPLOY_KNOWN_HOSTS.' \
-    'Target prerequisites: Docker Compose, tar, sha256sum, flock, and /opt/jarvis-v1/shared/deployment.env.'
+    'Target prerequisites: a completed first install, Docker Compose, tar, sha256sum, flock,' \
+    'and /opt/jarvis-v1/shared/deployment.env.'
   exit 0
 fi
 target=${JARVIS_DEPLOY_TARGET:?Explicit user@host required}
