@@ -1,5 +1,54 @@
 # Jarvis V1 Status
 
+## M12B real homelab (2026-09-10, in progress)
+
+Branch `codex/m12b-real-homelab` from `codex/m12a-deployment-hardening` HEAD
+`0893c19f7b00673cc568a674fba8b237a7830da3` (M12A is the completed prior phase;
+its exact-commit CI is green, not yet merged, so M12B stacks on it). Fetched
+`origin`; `main` is `b1da876`. Not merged.
+
+### Environment constraint and scope
+
+This session runs on a Windows workstation, not on Jarvis-Core. It has **LAN
+reachability** to the homelab (Ollama `192.168.40.94:11434` answers, Core
+`192.168.40.105:13000` serves the V1 API, Worker `192.168.40.106:22` is open)
+but **no interactive shell** on Jarvis-Core or Jarvis-Worker: the SSH connect
+was denied by the environment's command policy, and there is no owner login for
+Core's Mission Control. The operator chose to land the work that does not need
+that shell now and defer the live run.
+
+**Done this phase (code + real Ollama):**
+
+* **Failure-class propagation fix.** `orchestrator/.../runtime/nodes.py` — a
+  `WorkerBoundaryError` or provider `BoundaryError` that escaped its adapter's
+  handlers lost its declared `failure_class`, degraded to
+  `orchestration.runtime_error` and hard-blocked even when it declared a
+  retryable class. New `boundary_failure_class(error)` extracts the class; only
+  the enum crosses, never the boundary's `code`/message. Retryable → class
+  retry; non-retryable → still blocks, with the accurate class recorded.
+  Regression: 6 unit (`test_boundary_diagnostics.py`) + 2 integration
+  (`test_boundary_retry.py`).
+* **`jarvis-admin runtime build`** (`orchestrator/.../admin.py`, `project.scripts`
+  entry). Assembles + validates the private `RealRuntimeConfiguration` from an
+  operator infrastructure fragment + per-binding descriptors, builds the nested
+  `project_workflows` map, re-checks every cross-reference (worker deployment
+  present, workspace = deployment root + slug, host in allowlist, project ids
+  consistent, no duplicate), atomically installs at `0600` or prints to stdout,
+  and never reads or prints a credential value. `--check-registry` (needs
+  `DATABASE_URL`) verifies each workflow version against its published resolved
+  snapshot for the same worker-selector / provider-retry-class / structured-JSON
+  invariants `RealComposition` enforces at startup — surfaced earlier, preflight
+  not bypassed. Immutable binding unchanged. 13 unit + 5 integration tests.
+* **Real homelab Ollama acceptance** — see the dedicated section below.
+
+**Deferred to a Jarvis-Core-access session (M12C handoff):** V1 wrapper build
+and install on `192.168.40.106` under `/opt/jarvis-worker/v1-wrapper/` (separate
+venv, unchanged legacy runner + `runner_python_path`), the SSH worker boundary
+verification, the isolated verification executor account/broker/image pin on
+Core, non-demo Mission Control registry configuration + workflow publish, the
+complete real disposable-project run, the forced retry, and orchestrator/API/web
+restart recovery. None of these can be done without a shell on Core.
+
 ## M12A deployment hardening (2026-09-09)
 
 Branch `codex/m12a-deployment-hardening` from verified `main`

@@ -10,7 +10,7 @@ GitHub publication is authorized.
 | Requirement | Implementation | Evidence / remaining work |
 | --- | --- | --- |
 | A normal real startup | Private manifest, RealComposition, planning, worker, verification and review bindings | Normal-entrypoint authenticated enqueue + HTTP/SSH fixture passed in 193.32s: task, failing test, retry, PASS review, combined integration and completed history. Restart cases remain |
-| B Ollama | Exact endpoint config, live adapter checks, configurable review timeout, identity/usage checks | Real local Ollama 0.13.1 qwen3:0.6b structured enum call passed; model planning/review NOT RUN |
+| B Ollama | Exact endpoint config, live adapter checks, configurable review timeout, identity/usage checks; M12B grammar-safe schema for llama.cpp `format` | M12B: `test_live_model.py` passes against the actual homelab Ollama `192.168.40.94:11434` (0.33.3) on `qwen3-coder:30b` / `gpt-oss:20b` -- real organizer, architect and reviewer schemas satisfied, exact usage, uninstalled-tag classification. Runtime run against the real worker NOT YET RUN (see docs/M12C_HANDOFF.md) |
 | C separate hosts | Bounded integrity-checked Git bundle transport; local exact candidate verification | 53 source-transfer/M7 unit tests passed; loopback SSH process fixture prepared, acceptance remaining |
 | C source limits | Existing UTF-8 snapshot policy retained, bounded full-history transfer | Binary/LFS/symlink/submodule projects unsupported; preflight/runbook remaining |
 | D M9 approvals | Durable interrupt handler, authenticated decision API, event-bound protected effect and real run UI | Seven PostgreSQL request/decision/expiry/tampering/same-thread reconstruction tests passed. Protected-effect and browser acceptance remain |

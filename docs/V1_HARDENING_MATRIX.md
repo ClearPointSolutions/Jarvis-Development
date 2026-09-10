@@ -18,7 +18,7 @@ matrix owns current work and evidence, superseding its historical progress table
 | D lifecycle | Per-run source, fixed initial SHA | Accepted current base and isolated historical runs | Two jobs preserve accepted history | No current evidence | Open |
 | E transfer | Verified bundle and receipt | Durable promotion intent, local receipt recovery, dependency-independent cancellation | Crash at import/ref/receipt boundaries | No current evidence | Open |
 | F model receipts | Started/completed metadata | Immutable bounded response receipts and reconciliation | Crash after response before domain persistence | No current evidence | Open |
-| G models/routes/budgets | Ollama/OpenAI adapters; durable budget gateway `providers/budget.py` + migration `0010`; provider retry preflight in `runtime/composition.py` | Health/fallback breadth; paid live acceptance needs a real key | 9 budget tests (`tests/integration/test_model_budget.py`), 4 preflight tests (`tests/unit/test_real_preflight.py`), 4 live tests (`tests/integration/test_live_model.py`) | Live `qwen3:1.7b` on loopback 11439: connection `network_checked`, organizer+architect schemas satisfied, exact usage 483/50 tokens, uninstalled tag classified. Paid path is fixture-only. | Local acceptance passed; paid live open |
+| G models/routes/budgets | Ollama/OpenAI adapters; durable budget gateway `providers/budget.py` + migration `0010`; provider retry preflight in `runtime/composition.py`; M12B `OllamaAdapter.grammar_safe_schema()` strips llama.cpp-incompatible schema assertions | Health/fallback breadth; paid live acceptance needs a real key | 9 budget tests, 4 preflight tests, 4 live tests, 2 grammar-schema tests (`tests/unit/test_m3_providers.py`) | M12B: `tests/integration/test_live_model.py` passes end to end against the **actual homelab Ollama** `192.168.40.94:11434` (0.33.3) on `qwen3-coder:30b` and `gpt-oss:20b` -- real connection, `OrganizerOutput`/`TaskPlan`/`ReviewDecision` schemas, exact usage, uninstalled tag classified. Paid path is fixture-only. | Homelab Ollama acceptance passed; paid live open |
 | H instructions | Durable instruction queue; planner consumption | Truthful delivery at supported safe points | Follow-up during coding reaches next request | No current evidence | Open |
 | I capability/limits | Wrapper and UTF-8 seals | Source version, actual model/tools, early project preflight | Capability mismatch and bounded project cases | No current evidence | Open |
 | J approvals | Durable production approval API/UI | Normal-runtime protected effect and browser/restart cases | Reject/expire/tamper/duplicate/crash acceptance | Historical seven tests insufficient | Open |
@@ -31,6 +31,34 @@ matrix owns current work and evidence, superseding its historical progress table
 | Q operations | Usage aggregation | Health/stalls/retention/export/reconciliation/runbook | Fresh-environment commands and incident recovery | No current evidence | Open |
 
 ## Validation and continuation
+
+### M12B real homelab (2026-09-10, partial)
+
+Branch `codex/m12b-real-homelab` from `codex/m12a-deployment-hardening`
+`0893c19`. Full record in [STATUS.md](STATUS.md#m12b-real-homelab-2026-09-10-in-progress)
+and the live-run handoff in [M12C_HANDOFF.md](M12C_HANDOFF.md). Landed without a
+shell on Jarvis-Core:
+
+- **Boundary failure-class fix** in `runtime/nodes.py` (the "known remaining
+  gap" above is now closed). 6 unit + 2 integration tests.
+- **`jarvis-admin runtime build`** (`orchestrator/.../admin.py`) assembles and
+  validates the private runtime manifest from authoritative ids, atomically
+  installs at `0600`, never prints a credential value; `--check-registry`
+  surfaces the startup preflight's model/worker invariants at build time
+  without bypassing it. 13 unit + 5 integration tests.
+- **`OllamaAdapter.grammar_safe_schema()`** strips regex/format/bound assertions
+  the llama.cpp grammar backend cannot compile; the response is still validated
+  against the full Pydantic contract. 2 unit tests.
+- **Actual homelab Ollama acceptance**: `tests/integration/test_live_model.py`
+  passes against `192.168.40.94:11434` (Ollama 0.33.3) on `qwen3-coder:30b` and
+  `gpt-oss:20b` -- real connection, organizer/architect/reviewer schemas, exact
+  usage, uninstalled-tag classification.
+
+Deferred to a Core-access session (M12C_HANDOFF.md): V1 wrapper build/install on
+`192.168.40.106`, the SSH worker boundary check, the isolated verification
+executor account/broker/image pin, non-demo registry configuration + workflow
+publish, the complete real disposable-project run, the forced retry, and
+orchestrator/API/web restart recovery.
 
 ### M12A deployment hardening (2026-09-09)
 
@@ -176,12 +204,16 @@ curated safe constant; `tests/unit/test_boundary_diagnostics.py` (4 tests) fixes
 the accept/reject shapes so no URL, path or credential assignment can reach that
 channel.
 
-Known remaining gap, deliberately unchanged: a `WorkerBoundaryError` that escapes
-the worker adapter's own handlers loses its declared `failure_class`, because
-`nodes.py` honours only `ClassifiedNodeError`. It degrades to
-`orchestration.runtime_error` and hard-blocks even when the boundary declared a
-retryable class. That conflicts with the class-specific retry principle and needs
-its own change with its own acceptance.
+Fixed in M12B (`codex/m12b-real-homelab`): a `WorkerBoundaryError` or provider
+`BoundaryError` that escapes its adapter's own handlers used to lose its
+declared `failure_class` in `nodes.py` (which honoured only `ClassifiedNodeError`),
+degrade to `orchestration.runtime_error` and hard-block even when the boundary
+declared a retryable class. `nodes.py` now extracts the class through
+`boundary_failure_class(error)`; only the enum crosses, never the boundary's
+`code` or message. A retryable class drives class-specific retry policy; a
+non-retryable class still blocks, now recorded with its accurate class.
+Regression: `tests/unit/test_boundary_diagnostics.py` (6),
+`tests/integration/test_boundary_retry.py` (2).
 
 ### Current continuation evidence (2026-09-09)
 
