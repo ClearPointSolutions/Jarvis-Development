@@ -87,6 +87,22 @@ deploy/compose.homelab.yml`.
 * Teardown: `docker compose … down` (no `-v`); disposable volumes then removed
   manually.
 
+### Exact-commit CI
+
+`2886781551c27bf955b02700451e8d774c949eb1` on `codex/m12a-deployment-hardening`
+passed [verify 34425702845](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34425702845),
+every step green including the mandatory real-entrypoint protocol worker
+provisioning and the complete unchanged `scripts/verify.sh`. Not merged to main.
+
+Local pre-push gates: `ruff format --check` (280 files), `ruff check`, `mypy`
+(232 files), secret scan + self-test, a scoped PostgreSQL suite of 674 passed / 9
+skipped (the 9 POSIX-only `provision_secrets` tests, run separately root and
+non-root in a Linux container: 9 + 9 passed), `contracts:check`, frontend
+format/lint/types + 54 tests, and the production web build. The full 822-test
+`pytest --cov` + Playwright + demo stages were left to CI (a pre-existing
+Windows local-run slowness in the real-runtime integration tests, unrelated to
+this change); CI ran them green.
+
 ### Known limitations / unproven
 
 * Acceptance was on Windows/Docker Desktop against `localhost`, not on the

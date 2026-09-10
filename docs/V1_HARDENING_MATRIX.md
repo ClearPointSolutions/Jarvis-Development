@@ -61,6 +61,10 @@ console errors, no secrets in logs. Teardown was `down` without `-v`.
 Unproven here: real Jarvis-Core host, real-host HTTPS/SSE topology, scripted
 restore, orchestrator/OpenHands/Ollama runtime.
 
+Exact-commit CI: `2886781551c27bf955b02700451e8d774c949eb1` passed
+[verify 34425702845](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34425702845),
+full unchanged `scripts/verify.sh`, every step green. Not merged.
+
 ### Live model and paid-budget evidence (2026-09-09, later session)
 
 Local infrastructure actually contacted: Ollama at loopback `11439`
