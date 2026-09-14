@@ -13,6 +13,16 @@ export default function Page() {
       <section className="registry-cards">
         {[
           [
+            "roles",
+            "Agent roles",
+            "Versioned manager, developer, and reviewer responsibilities",
+          ],
+          [
+            "teams",
+            "Team templates",
+            "Fixed versioned manager, developer, reviewer, and workflow bindings",
+          ],
+          [
             "workers",
             "Workers",
             "Capabilities, concurrency, and model binding",

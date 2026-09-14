@@ -41,6 +41,8 @@ function ListInput({
   );
 }
 export const registryTitles: Record<RegistryKind, string> = {
+  agent_role: "Agent roles",
+  team_template: "Team templates",
   worker: "Workers",
   provider_connection: "Providers",
   model_profile: "Models",
@@ -55,6 +57,26 @@ const timeout = {
 };
 export function defaultSpec(kind: RegistryKind): Spec {
   switch (kind) {
+    case "agent_role":
+      return {
+        kind,
+        responsibility: "manager",
+        purpose: "mission_manager",
+        instructions:
+          "Choose mission goals and priorities without executing work.",
+      };
+    case "team_template":
+      return {
+        kind,
+        mode: "demo",
+        manager_role_revision_id: "",
+        manager_profile_revision_id: "",
+        developer_role_revision_id: "",
+        developer_worker_revision_id: "",
+        reviewer_role_revision_id: "",
+        reviewer_profile_revision_id: "",
+        workflow_version_id: "",
+      };
     case "worker":
       return {
         kind,
@@ -175,6 +197,63 @@ const timeouts: Field[] = [
   },
 ];
 const fields: Record<RegistryKind, Field[]> = {
+  agent_role: [
+    {
+      path: "responsibility",
+      label: "Responsibility",
+      options: ["manager", "developer", "reviewer"],
+    },
+    { path: "purpose", label: "Purpose", required: true },
+    {
+      path: "instructions",
+      label: "Bounded role instructions",
+      required: true,
+    },
+  ],
+  team_template: [
+    { path: "mode", label: "Execution mode", options: ["demo", "real"] },
+    {
+      path: "manager_role_revision_id",
+      label: "Manager role revision",
+      reference: "agent_role",
+      required: true,
+    },
+    {
+      path: "manager_profile_revision_id",
+      label: "Manager profile revision",
+      reference: "model_profile",
+      required: true,
+    },
+    {
+      path: "developer_role_revision_id",
+      label: "Developer role revision",
+      reference: "agent_role",
+      required: true,
+    },
+    {
+      path: "developer_worker_revision_id",
+      label: "Exclusive developer worker revision",
+      reference: "worker",
+      required: true,
+    },
+    {
+      path: "reviewer_role_revision_id",
+      label: "Reviewer role revision",
+      reference: "agent_role",
+      required: true,
+    },
+    {
+      path: "reviewer_profile_revision_id",
+      label: "Reviewer profile revision",
+      reference: "model_profile",
+      required: true,
+    },
+    {
+      path: "workflow_version_id",
+      label: "Published workflow version UUID",
+      required: true,
+    },
+  ],
   worker: [
     {
       path: "adapter_kind",
