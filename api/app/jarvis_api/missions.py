@@ -10,6 +10,7 @@ from fastapi import APIRouter, Query, Request
 from pydantic import JsonValue
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.orm import aliased
 from uuid6 import uuid7
 
 from jarvis_api.auth.dependencies import CsrfPrincipal, CurrentPrincipal
@@ -256,28 +257,28 @@ async def create_mission(
             body.mode,
         )
         now = datetime.now(UTC)
+        mission_id, team_id = uuid7(), uuid7()
         mission = MissionModel(
-            id=uuid7(),
+            id=mission_id,
             project_id=body.project_id,
             objective=body.objective,
             constraints_json=list(body.constraints),
             lifecycle="active",
             mode=body.mode,
             directive_version=1,
+            selected_team_version_id=team_id,
             version=1,
             created_at=now,
             updated_at=now,
         )
-        session.add(mission)
-        await session.flush()
         team = MissionTeamVersionModel(
-            id=uuid7(),
-            mission_id=mission.id,
+            id=team_id,
+            mission_id=mission_id,
             version=1,
             selection_json=team_selection.model_dump(mode="json"),
             content_hash=sha256_digest(team_selection.model_dump(mode="json")),
         )
-        session.add(team)
+        session.add_all((mission, team))
         session.add(
             MissionDirectiveModel(
                 id=uuid7(),
@@ -292,7 +293,6 @@ async def create_mission(
             )
         )
         await session.flush()
-        mission.selected_team_version_id = team.id
         result = view(mission, 1)
         await emit(
             session,
@@ -459,6 +459,26 @@ async def create_message(
                 )
             ).all()
         )
+        dependency_keys: dict[UUID, list[str]] = {row.id: [] for row in backlog}
+        if backlog:
+            dependency = aliased(MissionWorkItemModel)
+            pairs = (
+                await session.execute(
+                    select(
+                        MissionWorkItemDependencyModel.work_item_id,
+                        dependency.key,
+                    )
+                    .join(
+                        dependency,
+                        dependency.id == MissionWorkItemDependencyModel.depends_on_work_item_id,
+                    )
+                    .where(
+                        MissionWorkItemDependencyModel.work_item_id.in_([row.id for row in backlog])
+                    )
+                )
+            ).all()
+            for work_item_id, dependency_key in pairs:
+                dependency_keys[work_item_id].append(dependency_key)
         turn = ManagementTurnModel(
             id=uuid7(),
             mission_id=mission.id,
@@ -473,7 +493,16 @@ async def create_message(
                     for row in reversed(histories)
                 ],
                 "backlog": [
-                    {"key": row.key, "title": row.title, "lifecycle": row.lifecycle}
+                    {
+                        "key": row.key,
+                        "title": row.title,
+                        "objective": row.objective,
+                        "acceptance_criteria": row.acceptance_criteria_json,
+                        "priority": row.priority,
+                        "dependencies": dependency_keys[row.id],
+                        "lifecycle": row.lifecycle,
+                        "directive_version": row.directive_version,
+                    }
                     for row in backlog
                 ],
             },
@@ -669,6 +698,14 @@ async def start_item(
             raise ApiProblemError(
                 409, "mission.version_conflict", "Mission changed; refresh and retry"
             )
+        if item.lifecycle != "ready":
+            raise ApiProblemError(409, "mission.item_not_ready", "Work item is not ready")
+        if item.directive_version != mission.directive_version:
+            raise ApiProblemError(
+                409,
+                "mission.item_stale",
+                "Work item was proposed under an older directive; ask the manager to revise it",
+            )
         blocked = await session.scalar(
             select(MissionWorkItemDependencyModel.work_item_id)
             .join(
@@ -689,12 +726,14 @@ async def start_item(
             item.objective
             + "\n\nAcceptance criteria:\n- "
             + "\n- ".join(item.acceptance_criteria_json)
+            + "\n\nMission constraints:\n- "
+            + "\n- ".join(mission.constraints_json or ["No additional constraints"])
         )
     result = await create_job(
         request,
         mission.project_id,
         JobCreate(
-            idempotency_key=body.idempotency_key,
+            idempotency_key=f"mission-work-item:{item.id}",
             workflow_version_id=selection.workflow_version_id,
             objective=objective,
             priority=item.priority,

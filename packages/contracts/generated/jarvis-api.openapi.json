@@ -864,6 +864,8 @@
           "constraints": {
             "default": [],
             "items": {
+              "maxLength": 2000,
+              "minLength": 1,
               "type": "string"
             },
             "maxItems": 40,
@@ -1704,6 +1706,8 @@
           "constraints": {
             "default": [],
             "items": {
+              "maxLength": 2000,
+              "minLength": 1,
               "type": "string"
             },
             "maxItems": 40,
@@ -5214,6 +5218,8 @@
         "properties": {
           "acceptance_criteria": {
             "items": {
+              "maxLength": 2000,
+              "minLength": 1,
               "type": "string"
             },
             "maxItems": 20,
@@ -5224,6 +5230,7 @@
           "dependencies": {
             "default": [],
             "items": {
+              "pattern": "^[A-Z][A-Z0-9_-]{1,39}$",
               "type": "string"
             },
             "maxItems": 20,

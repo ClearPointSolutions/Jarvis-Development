@@ -191,6 +191,8 @@ class MissionManagerService:
         provider: ProviderSpec,
     ) -> ProviderResult:
         assert turn.model_call_id is not None
+        if provider.egress.paid and not turn.allow_paid_inference:
+            raise ValueError("paid_inference_not_authorized")
         digest = sha256_digest(
             {
                 "request": request.model_dump(mode="json"),
@@ -254,8 +256,6 @@ class MissionManagerService:
                     },
                 )
             )
-        if provider.egress.paid and not turn.allow_paid_inference:
-            raise ValueError("paid_inference_not_authorized")
         if self.mode == "demo":
             team = await self.team(turn.team_version_id)
             result = self.demo_result(

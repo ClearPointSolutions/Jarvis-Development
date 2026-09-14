@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import Field, model_validator
@@ -13,6 +13,8 @@ from jarvis_contracts.base import ContractModel
 MissionLifecycle = Literal["active", "waiting", "blocked", "completed", "archived"]
 WorkItemLifecycle = Literal["pending", "ready", "started", "accepted", "blocked", "cancelled"]
 ManagerAction = Literal["explain", "propose", "clarify", "wait"]
+ConstraintText = Annotated[str, Field(min_length=1, max_length=2000)]
+WorkItemKey = Annotated[str, Field(pattern=r"^[A-Z][A-Z0-9_-]{1,39}$")]
 
 
 class FixedTeamSelection(ContractModel):
@@ -29,7 +31,7 @@ class FixedTeamSelection(ContractModel):
 class MissionCreate(ContractModel):
     project_id: UUID
     objective: str = Field(min_length=1, max_length=8000)
-    constraints: tuple[str, ...] = Field(default=(), max_length=40)
+    constraints: tuple[ConstraintText, ...] = Field(default=(), max_length=40)
     mode: Literal["demo", "real"] = "demo"
     team_template_revision_id: UUID
     idempotency_key: str = Field(min_length=8, max_length=120)
@@ -37,7 +39,7 @@ class MissionCreate(ContractModel):
 
 class DirectiveUpdate(ContractModel):
     objective: str = Field(min_length=1, max_length=8000)
-    constraints: tuple[str, ...] = Field(default=(), max_length=40)
+    constraints: tuple[ConstraintText, ...] = Field(default=(), max_length=40)
     expected_version: int = Field(ge=1)
     idempotency_key: str = Field(min_length=8, max_length=120)
 
@@ -79,12 +81,12 @@ class MissionMessagePage(ContractModel):
 
 
 class WorkItemProposal(ContractModel):
-    key: str = Field(pattern=r"^[A-Z][A-Z0-9_-]{1,39}$")
+    key: WorkItemKey
     title: str = Field(min_length=1, max_length=240)
     objective: str = Field(min_length=1, max_length=4000)
-    acceptance_criteria: tuple[str, ...] = Field(min_length=1, max_length=20)
+    acceptance_criteria: tuple[ConstraintText, ...] = Field(min_length=1, max_length=20)
     priority: int = Field(default=0, ge=-100, le=100)
-    dependencies: tuple[str, ...] = Field(default=(), max_length=20)
+    dependencies: tuple[WorkItemKey, ...] = Field(default=(), max_length=20)
 
 
 class ManagerDecision(ContractModel):

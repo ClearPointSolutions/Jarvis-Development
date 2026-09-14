@@ -221,13 +221,16 @@ class MissionModel(MutableRow, Base):
     lifecycle: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
     mode: Mapped[str] = mapped_column(String(10), nullable=False)
     directive_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    selected_team_version_id: Mapped[UUID | None] = mapped_column(
+    selected_team_version_id: Mapped[UUID] = mapped_column(
         ForeignKey(
             f"{CONTROL_SCHEMA}.mission_team_versions.id",
             name="fk_missions_selected_team_version",
             ondelete="RESTRICT",
             use_alter=True,
-        )
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        nullable=False,
     )
     next_message_sequence: Mapped[int] = mapped_column(
         BigInteger, nullable=False, default=0, server_default="0"

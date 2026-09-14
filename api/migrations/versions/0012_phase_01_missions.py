@@ -37,7 +37,7 @@ def upgrade() -> None:
         sa.Column("lifecycle", sa.String(20), nullable=False),
         sa.Column("mode", sa.String(10), nullable=False),
         sa.Column("directive_version", sa.Integer(), nullable=False),
-        sa.Column("selected_team_version_id", sa.UUID()),
+        sa.Column("selected_team_version_id", sa.UUID(), nullable=False),
         sa.Column("next_message_sequence", sa.BigInteger(), server_default="0", nullable=False),
         *timestamps(),
         sa.CheckConstraint(
@@ -79,6 +79,8 @@ def upgrade() -> None:
         source_schema="control",
         referent_schema="control",
         ondelete="RESTRICT",
+        deferrable=True,
+        initially="DEFERRED",
     )
     op.create_table(
         "mission_directives",
@@ -311,6 +313,23 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # Phase-owned immutable records cannot survive once their owner table is
+    # removed. Temporarily remove the legacy immutability triggers, discard only
+    # management-turn-owned rows, then restore the pre-Phase-1 triggers.
+    op.execute("DROP TRIGGER model_response_receipts_immutable ON control.model_response_receipts")
+    op.execute("DELETE FROM control.model_response_receipts WHERE management_turn_id IS NOT NULL")
+    op.execute(
+        "CREATE TRIGGER model_response_receipts_immutable BEFORE UPDATE OR DELETE "
+        "ON control.model_response_receipts FOR EACH ROW "
+        "EXECUTE FUNCTION control.reject_immutable_mutation()"
+    )
+    op.execute("DROP TRIGGER model_calls_immutable ON control.model_calls")
+    op.execute("DELETE FROM control.model_calls WHERE management_turn_id IS NOT NULL")
+    op.execute(
+        "CREATE TRIGGER model_calls_immutable BEFORE UPDATE OR DELETE "
+        "ON control.model_calls FOR EACH ROW "
+        "EXECUTE FUNCTION control.reject_immutable_mutation()"
+    )
     op.drop_constraint(
         "ck_model_response_receipts_exactly_one_owner",
         "model_response_receipts",

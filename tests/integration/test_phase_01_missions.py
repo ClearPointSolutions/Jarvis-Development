@@ -173,8 +173,21 @@ async def test_persistent_mission_manager_stale_turn_and_idempotent_manual_launc
             )
         )
         assert ordered[-1].disposition == "stale"
+    current = (await api.client.get(f"/api/v1/missions/{mission_id}")).json()
+    refreshed = await api.client.post(
+        f"/api/v1/missions/{mission_id}/messages",
+        headers=headers,
+        json={
+            "body": "Refresh the pending backlog for the new directive",
+            "expected_version": current["version"],
+            "idempotency_key": str(uuid7()),
+        },
+    )
+    assert refreshed.status_code == 202
+    await manager.tick()
+    launch_version = (await api.client.get(f"/api/v1/missions/{mission_id}")).json()["version"]
     launch_body = {
-        "expected_mission_version": revised.json()["version"],
+        "expected_mission_version": launch_version,
         "idempotency_key": str(uuid7()),
     }
     path = f"/api/v1/missions/{mission_id}/work-items/{items[0]['id']}/start"
@@ -182,6 +195,12 @@ async def test_persistent_mission_manager_stale_turn_and_idempotent_manual_launc
     assert launched.status_code == 202, launched.text
     repeated = await api.client.post(path, headers=headers, json=launch_body)
     assert repeated.status_code == 202 and repeated.json()["id"] == launched.json()["id"]
+    recovered = await api.client.post(
+        path,
+        headers=headers,
+        json={"expected_mission_version": 1, "idempotency_key": str(uuid7())},
+    )
+    assert recovered.status_code == 202 and recovered.json()["id"] == launched.json()["id"]
     async with session_factory() as session:
         item = await session.get(MissionWorkItemModel, UUID(items[0]["id"]))
         assert item is not None and str(item.run_id) == launched.json()["id"]
