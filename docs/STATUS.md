@@ -1,6 +1,170 @@
 # Jarvis V1 Status
 
-## MVP completion acceptance (2026-09-09 continuation)
+## M12B real homelab (2026-09-10, in progress)
+
+Branch `codex/m12b-real-homelab` from `codex/m12a-deployment-hardening` HEAD
+`0893c19f7b00673cc568a674fba8b237a7830da3` (M12A is the completed prior phase;
+its exact-commit CI is green, not yet merged, so M12B stacks on it). Fetched
+`origin`; `main` is `b1da876`. Not merged.
+
+### Environment constraint and scope
+
+This session runs on a Windows workstation, not on Jarvis-Core. It has **LAN
+reachability** to the homelab (Ollama `192.168.40.94:11434` answers, Core
+`192.168.40.105:13000` serves the V1 API, Worker `192.168.40.106:22` is open)
+but **no interactive shell** on Jarvis-Core or Jarvis-Worker: the SSH connect
+was denied by the environment's command policy, and there is no owner login for
+Core's Mission Control. The operator chose to land the work that does not need
+that shell now and defer the live run.
+
+**Done this phase (code + real Ollama):**
+
+* **Failure-class propagation fix.** `orchestrator/.../runtime/nodes.py` — a
+  `WorkerBoundaryError` or provider `BoundaryError` that escaped its adapter's
+  handlers lost its declared `failure_class`, degraded to
+  `orchestration.runtime_error` and hard-blocked even when it declared a
+  retryable class. New `boundary_failure_class(error)` extracts the class; only
+  the enum crosses, never the boundary's `code`/message. Retryable → class
+  retry; non-retryable → still blocks, with the accurate class recorded.
+  Regression: 6 unit (`test_boundary_diagnostics.py`) + 2 integration
+  (`test_boundary_retry.py`).
+* **`jarvis-admin runtime build`** (`orchestrator/.../admin.py`, `project.scripts`
+  entry). Assembles + validates the private `RealRuntimeConfiguration` from an
+  operator infrastructure fragment + per-binding descriptors, builds the nested
+  `project_workflows` map, re-checks every cross-reference (worker deployment
+  present, workspace = deployment root + slug, host in allowlist, project ids
+  consistent, no duplicate), atomically installs at `0600` or prints to stdout,
+  and never reads or prints a credential value. `--check-registry` (needs
+  `DATABASE_URL`) verifies each workflow version against its published resolved
+  snapshot for the same worker-selector / provider-retry-class / structured-JSON
+  invariants `RealComposition` enforces at startup — surfaced earlier, preflight
+  not bypassed. Immutable binding unchanged. 13 unit + 5 integration tests.
+* **Real homelab Ollama acceptance** — see the dedicated section below.
+
+**Deferred to a Jarvis-Core-access session (M12C handoff):** V1 wrapper build
+and install on `192.168.40.106` under `/opt/jarvis-worker/v1-wrapper/` (separate
+venv, unchanged legacy runner + `runner_python_path`), the SSH worker boundary
+verification, the isolated verification executor account/broker/image pin on
+Core, non-demo Mission Control registry configuration + workflow publish, the
+complete real disposable-project run, the forced retry, and orchestrator/API/web
+restart recovery. None of these can be done without a shell on Core.
+
+## M12A deployment hardening (2026-09-09)
+
+Branch `codex/m12a-deployment-hardening` from verified `main`
+`b1da87679132bff3cb1d578f009b67c625736473` (PR #5 merge; post-merge CI green).
+Fetched `origin`, working tree clean at branch creation. Scope: make V1
+reproducibly installable on a Core machine without weakening the production
+security model. No `/opt/jarvis` contact, no homelab contact, no main merge.
+
+### Deployment defects fixed
+
+1. **Production web → API URL.** `deploy/compose.production.yml` `web` now sets
+   `JARVIS_API_URL=http://api:8000`. Before, a normal production stack answered
+   every `/api/...` with 503 `api.unavailable` unless the operator added an
+   undocumented override. Regression: `tests/deploy/test_compose_contract.py`.
+2. **Official homelab overlay.** `deploy/compose.homelab.yml` — layered on the
+   production file with `-f`. It publishes the web port on `0.0.0.0` via a
+   `ports: !override` (replace, not append) and runs the API with
+   `JARVIS_ENV=development` / `JARVIS_COOKIE_SECURE=false`. Production stays
+   production mode, HTTPS-only origin, Secure cookies, loopback ports; the API
+   maintenance port stays on loopback in homelab too. Merged model validated in
+   `tests/deploy/test_compose_contract.py` via `docker compose config`.
+3. **Secret provisioning.** `scripts/provision_secrets.py` (stdlib only, POSIX
+   only) creates the directory and the five secret files
+   (`bootstrap_password`, `migrator_password`, `api_password`,
+   `orchestrator_password`, `csrf_key`), generates values inside each consumer's
+   length bounds, sets owner `10001` / group `10001` / mode `0600` (dir `0700`),
+   is idempotent, refuses a symlink / non-regular file / out-of-range value
+   (without `--force`), never prints a value, and has a `--check` mode.
+   Regression: `tests/deploy/test_provision_secrets.py` (9 tests, root and
+   non-root).
+4. **First-install command.** `scripts/install-homelab.sh` (`--mode
+   homelab|production`) runs the 13 steps end to end and prints the Mission
+   Control URL and the owner-bootstrap command. It refuses a V1 root under
+   `/opt/jarvis`, never deletes data, never runs `down -v`.
+5. **Owner bootstrap.** New `owner-bootstrap` Compose service (profile-gated) +
+   `scripts/owner-bootstrap.sh`. Runs `python -m jarvis_api.auth.bootstrap` as
+   the database-owning `jarvis_v1_migrator_login` through the container
+   entrypoint (which resolves `DATABASE_URL` from the migrator password file),
+   so `docker compose exec api` is never needed and the least-privilege
+   `jarvis_v1_api_login` gains no `INSERT` on `control.users`. Regressions:
+   `tests/integration/test_00_migrations.py` (api/orchestrator lack INSERT),
+   `tests/integration/test_bootstrap_identity.py` (api role INSERT denied;
+   owning identity can; CLI never prints the password), plus the existing
+   one-time-bootstrap test.
+6. **Preflight.** `scripts/preflight.sh` — PASS/FAIL/SKIP per check with a
+   specific reason (Docker, Compose version, env file, directories, secret
+   readability, `docker compose config`, `JARVIS_API_URL`, one web port,
+   mode-appropriate env/cookie/origin/bind, image refs, and — when running —
+   PostgreSQL, schema revision vs the code pin, API `/health`, web, and
+   `/api/v1/session` → 401). `scripts/deploy-core.sh preflight` delegates to it.
+7. **Deploy script reconciliation.** `scripts/deploy-core.sh` header now states
+   it is release-promotion + rollback only and lists the separate lifecycle
+   entry points; added a `preflight` passthrough. `check` output points to
+   `install-homelab.sh` for first install. `docs/DEPLOYMENT_RUNBOOK.md` is the
+   new authoritative operator doc.
+
+### Live local acceptance actually performed
+
+On the development workstation (Windows 11 + Docker Desktop, Linux containers),
+**not on Jarvis-Core** — this environment has no network path to
+`192.168.40.105`. Target proxied as `http://localhost:13000`. Images
+`jarvis-v1-python:m12a` / `jarvis-v1-web:m12a` built from this checkout.
+Compose project `jarvis-v1`, `-f deploy/compose.production.yml -f
+deploy/compose.homelab.yml`.
+
+* `docker compose config --quiet` on the merged model: OK.
+* `up -d --wait postgres`: healthy.
+* `run --rm bootstrap`: `Dedicated V1 database roles ready`, exit 0.
+* `run --rm migrate`: `alembic upgrade` 0001→0010 then
+  `LangGraph checkpoint schema ready`, exit 0.
+* `up -d --wait api web`: both running; web published `0.0.0.0:13000`, API
+  `127.0.0.1:18000`.
+* API `/health` (with the configured Host): 200. Web `/`: 200.
+* `GET /api/v1/session` through the web proxy: **401 `auth.required`** — reached
+  the API, not a 502/503.
+* `scripts/owner-bootstrap.sh --env-file … --homelab --password-file …`:
+  `Owner bootstrap complete`, exit 0; password absent from output.
+* `POST /api/v1/auth/login` through the proxy: 200, `jarvis_session` cookie set;
+  authenticated `/api/v1/session` 200; authenticated
+  `/api/v1/system/readiness` `{"status":"ready","database":"ready"}`.
+* Browser at `http://localhost:13000`: unauthenticated → "Your session is
+  required"; signed in as `owner` → Mission Control overview renders, only
+  console errors are the expected pre-login 401s. No serious console errors, no
+  secret strings in `api`/`web` logs.
+* Teardown: `docker compose … down` (no `-v`); disposable volumes then removed
+  manually.
+
+### Exact-commit CI
+
+`2886781551c27bf955b02700451e8d774c949eb1` on `codex/m12a-deployment-hardening`
+passed [verify 34425702845](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34425702845),
+every step green including the mandatory real-entrypoint protocol worker
+provisioning and the complete unchanged `scripts/verify.sh`. Not merged to main.
+
+Local pre-push gates: `ruff format --check` (280 files), `ruff check`, `mypy`
+(232 files), secret scan + self-test, a scoped PostgreSQL suite of 674 passed / 9
+skipped (the 9 POSIX-only `provision_secrets` tests, run separately root and
+non-root in a Linux container: 9 + 9 passed), `contracts:check`, frontend
+format/lint/types + 54 tests, and the production web build. The full 822-test
+`pytest --cov` + Playwright + demo stages were left to CI (a pre-existing
+Windows local-run slowness in the real-runtime integration tests, unrelated to
+this change); CI ran them green.
+
+### Known limitations / unproven
+
+* Acceptance was on Windows/Docker Desktop against `localhost`, not on the
+  Jarvis-Core VM at `192.168.40.105:13000`. Docker Desktop bind mounts do not
+  reproduce Unix secret ownership; `provision_secrets.py`'s `0600 10001:10001`
+  behaviour is proven separately on native Linux (root and non-root) via
+  `tests/deploy/test_provision_secrets.py` and a manual container run.
+* The orchestrator is not started by the installer (needs a private
+  `runtime.json`). Real OpenHands / Ollama runtime acceptance is **not** claimed
+  by this phase.
+* Restore is documented in the runbook but not scripted (matrix row P).
+* Node 20.15 on this workstation is below the supported 20.19 line; the web
+  image builds on `node:20.19.0` and CI uses 20.19.0.
 
 Continue the existing integration branch from `dd8c3f8`. Completion requires
 the A–Q matrix, current full verification, browser/operator acceptance, and

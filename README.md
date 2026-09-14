@@ -78,6 +78,35 @@ After building `web`, run `scripts/demo.sh` for the local deterministic demo or
 explicitly configured V1 target and its private configuration; it is a separate
 acceptance gate, not part of the demo.
 
+## Deploy Mission Control on a Core machine
+
+A clean Ubuntu 24.04 Jarvis-Core needs Docker Engine, the Compose v2 plugin
+(**≥ 2.24**), `git`, `python3` and `openssl`. From a checkout under a path that
+is not `/opt/jarvis`:
+
+```sh
+# Trusted private-LAN homelab (HTTP on the LAN, explicit and separate):
+sudo scripts/install-homelab.sh --lan-origin http://192.168.40.105:13000
+scripts/owner-bootstrap.sh --env-file /opt/jarvis-v1/shared/homelab.env --homelab
+# then sign in at http://192.168.40.105:13000
+
+# Production behind a reviewed TLS reverse proxy:
+sudo scripts/install-homelab.sh --mode production \
+  --lan-origin https://jarvis.your-domain.example \
+  --python-image <ref> --web-image <ref>
+scripts/owner-bootstrap.sh --env-file /opt/jarvis-v1/shared/production.env
+```
+
+`install-homelab.sh` creates the V1 directories, provisions secrets
+(`scripts/provision_secrets.py`), writes the deployment env file, builds local
+images if immutable refs are not supplied, starts PostgreSQL, bootstraps the
+database roles, applies migrations and checkpoint storage, starts the API and
+web, and verifies readiness. It never touches `/opt/jarvis`, never deletes data
+and never runs `docker compose down -v`. `scripts/preflight.sh` validates a
+configuration and reports the specific failing check. Full procedures,
+including release promotion, rollback, backup and the secret model, are in
+[the deployment runbook](docs/DEPLOYMENT_RUNBOOK.md).
+
 Start the disposable local PostgreSQL database and include its M1 gates with:
 
 ```sh

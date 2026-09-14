@@ -76,6 +76,12 @@ def test_postgresql_16_migration_round_trip_and_metadata_drift(database_url: str
         assert not connection.scalar(
             text("SELECT has_column_privilege('jarvis_v1_api','control.users','enabled','UPDATE')")
         )
+        # Owner creation needs INSERT on control.users; the runtime logins must
+        # never have it (owner-bootstrap runs as the database-owning migrator).
+        for runtime_role in ("jarvis_v1_api", "jarvis_v1_orchestrator"):
+            assert not connection.scalar(
+                text(f"SELECT has_table_privilege('{runtime_role}','control.users','INSERT')")
+            )
         assert not connection.scalar(
             text("SELECT has_table_privilege('jarvis_v1_readonly','control.sessions','SELECT')")
         )

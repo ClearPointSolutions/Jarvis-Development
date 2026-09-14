@@ -251,3 +251,17 @@ An SSH disconnect is not proof of cancellation. A late result after cancel is re
 ## 13. Health and capability validation
 
 Validation checks DNS/address reachability, pinned host key, authentication, runner/venv existence, writable configured roots, Git version/identity, available tools, and a harmless protocol probe. It returns facts without secrets. Health distinguishes `healthy`, `degraded`, `unavailable`, `misconfigured`, and `unknown`; absence of optional capabilities affects scheduling rather than hard-coded workflow branches.
+
+## 14. M12B homelab wrapper notes
+
+The V1 compatibility wrapper is installed into its **own** virtualenv at
+`/opt/jarvis-worker/v1-wrapper/venv`; the legacy OpenHands env
+`/opt/jarvis-worker/venv` is never modified. In the deployment's
+`OpenHandsDeployment`, `python_path` is the wrapper's Python and
+`runner_python_path` is the **legacy** runner Python
+(`/opt/jarvis-worker/venv/bin/python`) -- the wrapper invokes the unchanged
+`developer_task.py` with the runner Python, never with its own. The concrete
+install and validation steps (health, inspect, start, collect, cancel,
+malformed and duplicate-invocation checks) are in
+[docs/M12C_HANDOFF.md](M12C_HANDOFF.md); as of M12B they have not been run
+against the real `192.168.40.106`.

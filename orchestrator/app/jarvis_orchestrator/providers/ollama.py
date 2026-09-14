@@ -23,6 +23,48 @@ from jarvis_contracts.registry import (
 
 from .base import MAX_BYTES, BaseAdapter, BoundaryError, endpoint
 
+# Ollama compiles a `format` JSON Schema to a llama.cpp GBNF grammar, and that
+# converter rejects several assertion keywords with "failed to parse grammar"
+# (observed on Ollama 0.33.3): regex `pattern`, string `format`, and the
+# numeric/length/size bounds. Dropping them from the grammar does not weaken the
+# contract -- the caller still validates the model's response against the full
+# Pydantic schema, so a response that violates a stripped assertion is rejected
+# and classified as `provider.contract_failure`. Structural keywords
+# (`type`, `properties`, `required`, `enum`, `const`, `items`, `additionalProperties`,
+# `anyOf`/`oneOf`/`allOf`, `$ref`/`$defs`) are kept.
+_GRAMMAR_UNSUPPORTED = frozenset(
+    {
+        "pattern",
+        "format",
+        "minLength",
+        "maxLength",
+        "minItems",
+        "maxItems",
+        "minimum",
+        "maximum",
+        "exclusiveMinimum",
+        "exclusiveMaximum",
+        "multipleOf",
+        "uniqueItems",
+        "minProperties",
+        "maxProperties",
+    }
+)
+
+
+def grammar_safe_schema(schema: JsonValue) -> JsonValue:
+    """Copy a JSON Schema with assertions the llama.cpp grammar cannot compile removed."""
+
+    if isinstance(schema, dict):
+        return {
+            key: grammar_safe_schema(value)
+            for key, value in schema.items()
+            if key not in _GRAMMAR_UNSUPPORTED
+        }
+    if isinstance(schema, list):
+        return [grammar_safe_schema(item) for item in schema]
+    return schema
+
 
 class OllamaAdapter(BaseAdapter):
     def __init__(
@@ -142,7 +184,7 @@ class OllamaAdapter(BaseAdapter):
                     for tool in request.tools
                 ]
             if request.structured_schema is not None:
-                body["format"] = request.structured_schema
+                body["format"] = grammar_safe_schema(request.structured_schema)
             if "keep_alive" in self.profile.parameters:
                 body["keep_alive"] = self.profile.parameters["keep_alive"]
             async with asyncio.timeout(self.provider.timeouts.run_seconds):

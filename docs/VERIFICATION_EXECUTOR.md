@@ -78,3 +78,14 @@ killing expired workloads; it retains container results for receipt recovery.
 The actual-container test terminates the broker process and proves the watchdog
 can enforce the deadline independently. The systemd installation itself still
 requires the isolated packaging gate; it is not claimed as tested on a live host.
+
+## M12B status
+
+The candidate-bound isolated executor, restricted broker transport, immutable
+verification image pin and denial canaries are implemented and covered by
+`tests/integration/test_isolation_broker.py` and the isolation unit suite, but
+have not been stood up on the real Jarvis-Core: the M12B session had no shell
+there. The homelab setup (restricted executor account, fixed-command broker
+key, `known_hosts`, receipt directory, `image_id` from
+`deploy/verification.Dockerfile`, manifest `verification_isolation` entry) and
+the canary run are specified in [docs/M12C_HANDOFF.md](M12C_HANDOFF.md).

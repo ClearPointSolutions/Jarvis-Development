@@ -97,6 +97,36 @@ Free local profiles carry no pricing, so accounting records an unknown cost with
 no amount rather than inventing one. Paid providers are separate: see the budget
 gateway below.
 
+## Actual homelab Ollama acceptance (2026-09-10, M12B)
+
+Endpoint `http://192.168.40.94:11434` (Ollama 0.33.3) contacted directly from
+the M12B session. `/api/tags` lists ~15 installed tags including
+`qwen3-coder:30b`, `gpt-oss:20b`, `qwen3:32b`, `qwen3.5:35b`, `deepseek-r1:32b`.
+
+`tests/integration/test_live_model.py` (opt-in) passes end to end against this
+server on **`qwen3-coder:30b`** and **`gpt-oss:20b`**: real connection
+validation (`network_checked`), the real `OrganizerOutput`, `TaskPlan` and
+`ReviewDecision` schemas satisfied (or the reviewer classified as
+`provider.contract_failure`, never a crash), two immutable receipts, usage
+recorded with `provenance: "exact"` and no invented cost, and an uninstalled tag
+classified rather than raised.
+
+That required one code fix. Ollama compiles a `format` JSON Schema to a
+llama.cpp GBNF grammar, and 0.33.3 rejects regex `pattern`, string `format` and
+the numeric/length/size bounds with HTTP 400 `failed to parse grammar`. Every
+one of `TaskPlan` / `ReviewDecision` carries `pattern`, so before the fix the
+architect and reviewer calls failed as `configuration.invalid` while
+`OrganizerOutput` (a plain string) worked. `OllamaAdapter.grammar_safe_schema()`
+now strips those assertion keywords from the grammar only; the caller still
+validates the model's response against the full Pydantic contract, so a
+response that would violate a stripped assertion is still rejected as
+`provider.contract_failure`.
+
+Model choice for the real run: a single shared profile on `qwen3-coder:30b` (or
+`gpt-oss:20b`) covers organizer, architect and reviewer in this test. Warm
+latency was a few seconds per structured call; a cold model load is 30-60 s, so
+keep `keep_alive` set and rely on the service heartbeat, not a short lease.
+
 ## Paid providers and the budget gateway
 
 A paid provider is refused unless the run's bound route policy authorizes it.
@@ -237,6 +267,26 @@ web/API have no Docker socket. Set immutable image references, private secret an
 configuration directories, an HTTPS public origin and a separately reviewed TLS
 proxy (example included). Ports bind only to host loopback. All volumes/networks
 belong to Compose project `jarvis-v1`. Runtime credentials cannot perform DDL.
+
+First install is scripted (M12A): `scripts/install-homelab.sh` (add
+`--mode production` for the reverse-proxy path) provisions directories, secrets,
+the deployment env file, images, PostgreSQL, roles, migrations, checkpoint
+storage, the API and web, then verifies readiness; `scripts/owner-bootstrap.sh`
+creates the owner through the migrator-identity Compose service;
+`scripts/preflight.sh` validates a configuration.
+
+The private `runtime.json` manifest is assembled with `jarvis-admin runtime
+build --infra I --binding B [--check-registry] --out /opt/jarvis-v1/config/runtime.json`
+(M12B): it builds the nested `project_workflows` map from authoritative ids,
+re-checks worker deployment / workspace path / host allowlist / project
+consistency, optionally verifies the published workflow snapshot against the
+manifest, and installs it at `0600` without printing any credential value.
+Immutable binding is unchanged. The trusted private-LAN
+overlay `deploy/compose.homelab.yml` publishes the web port on the LAN and runs
+the API in development mode with non-Secure cookies — nothing else is relaxed,
+and production defaults are unchanged. Full procedures are in
+[docs/DEPLOYMENT_RUNBOOK.md](DEPLOYMENT_RUNBOOK.md). The orchestrator still needs
+its private `runtime.json` and is started separately.
 
 `scripts/deploy-core.sh check` performs local preflight without contacting a host.
 Actual `deploy` requires explicit target/key/pin variables and the target-owned

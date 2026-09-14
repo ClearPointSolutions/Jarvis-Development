@@ -1,0 +1,52 @@
+# Official trusted private-LAN homelab overlay for Jarvis V1 / Mission Control.
+#
+# This file is an OVERRIDE. It is never used alone; it is always layered on top
+# of deploy/compose.production.yml:
+#
+#   docker compose \
+#     -f deploy/compose.production.yml \
+#     -f deploy/compose.homelab.yml \
+#     --env-file <root>/shared/homelab.env \
+#     --project-name jarvis-v1 up -d
+#
+# It keeps the full production architecture (three least-privilege database
+# logins, non-root read-only Python containers, dropped capabilities, no Docker
+# socket, file-backed secrets, the same images and the same startup order) and
+# changes exactly two things on purpose:
+#
+#   1. Mission Control is published on every interface (0.0.0.0) instead of the
+#      loopback-only bind in the production file, so other machines on a trusted
+#      private LAN can reach it over plain HTTP.
+#   2. The API runs in development mode with non-Secure session cookies, because
+#      a private-LAN deployment is intentionally HTTP and Secure cookies would
+#      never be sent back by the browser.
+#
+# Everything a production reverse-proxy deployment needs stays in the production
+# file untouched: JARVIS_ENV=production, an HTTPS public origin, Secure cookies
+# and loopback-only application ports. Nothing here weakens those defaults; the
+# homelab relaxations exist only in this overlay.
+#
+# The homelab env file must set JARVIS_PUBLIC_ORIGIN to the exact LAN origin the
+# browser uses, including the port, e.g. http://192.168.40.105:13000. The API
+# compares the forwarded Host and Origin to that value verbatim.
+
+name: jarvis-v1
+
+services:
+  api:
+    environment:
+      # Development mode disables the production HTTPS / Secure-cookie / CSRF-key
+      # invariants in api/app/jarvis_api/config.py. It is explicit and confined
+      # to this overlay; the production file still pins JARVIS_ENV=production.
+      JARVIS_ENV: development
+      JARVIS_COOKIE_SECURE: "false"
+
+  web:
+    # `!override` replaces the base port list instead of appending to it, so the
+    # merged model has exactly one publish for container port 3000. Docker
+    # Compose has supported this tag since v2.24 (scripts/preflight.sh checks the
+    # installed version). Default bind is every interface; set JARVIS_WEB_BIND to
+    # narrow it (for example to a single VPN address) and JARVIS_WEB_PORT to move
+    # the published port.
+    ports: !override
+      - "${JARVIS_WEB_BIND:-0.0.0.0}:${JARVIS_WEB_PORT:-13000}:3000"
