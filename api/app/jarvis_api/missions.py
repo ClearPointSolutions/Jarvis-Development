@@ -187,7 +187,10 @@ async def validate_team(
         raise ApiProblemError(422, "mission.mode_mismatch", "Mission and worker modes differ")
     workflow = await session.scalar(
         select(WorkflowVersionModel)
-        .join(WorkflowTemplateModel)
+        .join(
+            WorkflowTemplateModel,
+            WorkflowVersionModel.workflow_template_id == WorkflowTemplateModel.id,
+        )
         .where(
             WorkflowVersionModel.id == team.workflow_version_id,
             WorkflowVersionModel.published_at.is_not(None),
