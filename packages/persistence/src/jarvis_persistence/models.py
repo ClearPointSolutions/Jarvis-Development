@@ -393,9 +393,6 @@ class MissionWorkItemDependencyModel(Base):
     __tablename__ = "mission_work_item_dependencies"
     __table_args__ = (
         CheckConstraint("work_item_id <> depends_on_work_item_id", name="not_self"),
-        UniqueConstraint(
-            "work_item_id", "depends_on_work_item_id", name="uq_mission_work_item_dependency"
-        ),
         {"schema": CONTROL_SCHEMA},
     )
 

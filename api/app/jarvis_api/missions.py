@@ -144,7 +144,7 @@ async def validate_team(
         raise ApiProblemError(422, "mission.mode_mismatch", "Mission and team modes differ")
     team = FixedTeamSelection(
         team_template_revision_id=team_template_revision_id,
-        **template.spec.model_dump(mode="python", exclude={"kind"}),
+        **template.spec.model_dump(mode="python", exclude={"kind", "mode"}),
     )
     roles = [
         (team.manager_role_revision_id, "manager"),

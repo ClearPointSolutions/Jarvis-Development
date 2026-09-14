@@ -249,9 +249,6 @@ def upgrade() -> None:
             "work_item_id <> depends_on_work_item_id",
             name="ck_mission_work_item_dependencies_not_self",
         ),
-        sa.UniqueConstraint(
-            "work_item_id", "depends_on_work_item_id", name="uq_mission_work_item_dependency"
-        ),
         schema="control",
     )
     op.add_column("model_calls", sa.Column("management_turn_id", sa.UUID()), schema="control")
