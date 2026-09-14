@@ -278,7 +278,12 @@ async def create_mission(
             selection_json=team_selection.model_dump(mode="json"),
             content_hash=sha256_digest(team_selection.model_dump(mode="json")),
         )
-        session.add_all((mission, team))
+        # The mission and its selected immutable team version intentionally form
+        # a deferred FK cycle. Flush the mission first so immediate child FKs
+        # (including the initial directive) always observe their parent.
+        session.add(mission)
+        await session.flush()
+        session.add(team)
         session.add(
             MissionDirectiveModel(
                 id=uuid7(),
