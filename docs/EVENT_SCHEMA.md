@@ -8,6 +8,14 @@ review, file, git and artifact events. No source bodies, large logs, secret
 environment values or hidden reasoning are embedded in these payloads.
 See [M8_COMPLETION.md](M8_COMPLETION.md).
 
+Phase 1 registers owner-visible mission observations under the existing event
+envelope: `mission.created`, `mission.directive_revised`, management turn queued,
+started, applied, stale, and failed events, plus work-item created, updated, ready,
+started, accepted, blocked, and cancelled events. They carry bounded identifiers
+and dispositions, not prompts, model reasoning, credentials, or source bodies.
+Mission events are project-scoped; linked execution continues to emit the ordinary
+job/run/task/model/review/approval evidence stream.
+
 Status: normative V1 contract
 Transport: persisted PostgreSQL rows, JSON API, and SSE
 
