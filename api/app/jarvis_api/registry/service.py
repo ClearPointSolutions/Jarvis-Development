@@ -21,6 +21,7 @@ from jarvis_contracts.enums import EventMode, EventSeverity, EventVisibility
 from jarvis_contracts.events import EventSource
 from jarvis_contracts.registry import (
     REGISTRY_SPEC_ADAPTER,
+    AgentRoleSpec,
     ModelProfileSpec,
     ProviderSpec,
     RegistryKind,
@@ -29,6 +30,7 @@ from jarvis_contracts.registry import (
     RegistrySpec,
     RegistryWrite,
     RoutePolicySpec,
+    TeamTemplateSpec,
     ValidationReport,
     WorkerSpec,
 )
@@ -38,6 +40,7 @@ from jarvis_persistence.models import (
     ConfigurationRevisionModel,
     EventGlobalCounterModel,
     ProviderHealthModel,
+    WorkflowVersionModel,
 )
 from jarvis_persistence.repositories import (
     EventRepository,
@@ -295,6 +298,50 @@ class RegistryService:
             )
 
     async def _compatible(self, session: AsyncSession, spec: RegistrySpec) -> None:
+        if isinstance(spec, TeamTemplateSpec):
+            for revision_id, responsibility in (
+                (spec.manager_role_revision_id, "manager"),
+                (spec.developer_role_revision_id, "developer"),
+                (spec.reviewer_role_revision_id, "reviewer"),
+            ):
+                role = await self._revision(session, revision_id, "agent_role", active=True)
+                if (
+                    not isinstance(role.spec, AgentRoleSpec)
+                    or role.spec.responsibility != responsibility
+                ):
+                    raise _problem(422, "incompatible_role", "Team role responsibility mismatch")
+            for revision_id, purpose in (
+                (spec.manager_profile_revision_id, "mission_manager"),
+                (spec.reviewer_profile_revision_id, "reviewer"),
+            ):
+                profile = await self._revision(session, revision_id, "model_profile", active=True)
+                if (
+                    not isinstance(profile.spec, ModelProfileSpec)
+                    or purpose not in profile.spec.purposes
+                    or not profile.spec.structured_json
+                    or profile.spec.context_limit < 16_384
+                ):
+                    raise _problem(422, "incompatible_profile", "Team profile purpose mismatch")
+                await self._compatible(session, profile.spec)
+                provider = await self._revision(
+                    session,
+                    profile.spec.provider_revision_id,
+                    "provider_connection",
+                    active=True,
+                )
+                assert isinstance(provider.spec, ProviderSpec)
+                if (provider.spec.provider_kind == "demo") != (spec.mode == "demo"):
+                    raise _problem(422, "mode_mismatch", "Team provider mode mismatch")
+            worker = await self._revision(
+                session, spec.developer_worker_revision_id, "worker", active=True
+            )
+            if not isinstance(worker.spec, WorkerSpec) or worker.spec.max_concurrency != 1:
+                raise _problem(422, "incompatible_worker", "Team requires an exclusive worker")
+            if (worker.spec.adapter_kind == "demo") != (spec.mode == "demo"):
+                raise _problem(422, "mode_mismatch", "Team worker mode mismatch")
+            workflow = await session.get(WorkflowVersionModel, spec.workflow_version_id)
+            if workflow is None or workflow.published_at is None:
+                raise _problem(422, "incompatible_workflow", "Team workflow must be published")
         if isinstance(spec, ProviderSpec):
             if spec.base_url and spec.base_url not in self.allowed_endpoints:
                 raise _problem(

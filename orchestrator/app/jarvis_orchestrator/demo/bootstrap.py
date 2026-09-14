@@ -25,8 +25,35 @@ async def bootstrap_demo(
 ) -> WorkflowDocument:
     registry = RegistryService(factory)
     refs: dict[str, str] = {}
-    purposes = ["organizer", "architect", "reviewer"]
+    purposes = ["organizer", "architect", "reviewer", "mission_manager"]
     definitions: list[tuple[str, dict[str, Any]]] = [
+        (
+            "manager-role",
+            {
+                "kind": "agent_role",
+                "responsibility": "manager",
+                "purpose": "mission_manager",
+                "instructions": "Choose mission goals and priorities; never execute work.",
+            },
+        ),
+        (
+            "developer-role",
+            {
+                "kind": "agent_role",
+                "responsibility": "developer",
+                "purpose": "code",
+                "instructions": "Implement one bounded work item through the selected worker.",
+            },
+        ),
+        (
+            "reviewer-role",
+            {
+                "kind": "agent_role",
+                "responsibility": "reviewer",
+                "purpose": "reviewer",
+                "instructions": "Independently verify acceptance evidence before completion.",
+            },
+        ),
         ("provider", {"kind": "provider_connection", "provider_kind": "demo"}),
         ("worker", {"kind": "worker", "capabilities": ["code", "git", "tests"]}),
         (
@@ -111,7 +138,7 @@ async def bootstrap_demo(
         owner,
         "demo-bootstrap",
     )
-    return await workflows.publish(
+    doc = await workflows.publish(
         doc.template.id,
         WorkflowCommand(
             expected_version=doc.template.version,
@@ -120,6 +147,27 @@ async def bootstrap_demo(
         owner,
         "demo-bootstrap",
     )
+    team = RegistryWrite.model_validate(
+        {
+            "key": f"{namespace}-team",
+            "display_name": "DEMO fixed development team",
+            "description": "Manager, one exclusive developer worker, and independent reviewer",
+            "spec": {
+                "kind": "team_template",
+                "mode": "demo",
+                "manager_role_revision_id": refs["manager-role"],
+                "manager_profile_revision_id": refs["profile"],
+                "developer_role_revision_id": refs["developer-role"],
+                "developer_worker_revision_id": refs["worker"],
+                "reviewer_role_revision_id": refs["reviewer-role"],
+                "reviewer_profile_revision_id": refs["profile"],
+                "workflow_version_id": doc.version.id,
+            },
+            "idempotency_key": f"{namespace}-bootstrap-team-v1",
+        }
+    )
+    await registry.write("team_template", team, actor_id=owner, correlation_id="demo-bootstrap")
+    return doc
 
 
 def canonical_workflow(refs: dict[str, str]) -> WorkflowSpec:

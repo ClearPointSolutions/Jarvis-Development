@@ -15,6 +15,8 @@ from jarvis_contracts.enums import FailureClass
 from jarvis_contracts.failures import RetryPolicySpec
 
 RegistryKind = Literal[
+    "agent_role",
+    "team_template",
     "worker",
     "provider_connection",
     "model_profile",
@@ -35,6 +37,29 @@ OpaqueReference = Annotated[
         max_length=220,
     ),
 ]
+
+
+class AgentRoleSpec(ContractModel):
+    """Versioned responsibility; execution bindings remain separate."""
+
+    kind: Literal["agent_role"] = "agent_role"
+    responsibility: Literal["manager", "developer", "reviewer"]
+    purpose: Capability
+    instructions: str = Field(min_length=1, max_length=4000)
+
+
+class TeamTemplateSpec(ContractModel):
+    """Fixed mission team whose referenced revisions are resolved at assignment."""
+
+    kind: Literal["team_template"] = "team_template"
+    mode: Literal["demo", "real"]
+    manager_role_revision_id: UUID
+    manager_profile_revision_id: UUID
+    developer_role_revision_id: UUID
+    developer_worker_revision_id: UUID
+    reviewer_role_revision_id: UUID
+    reviewer_profile_revision_id: UUID
+    workflow_version_id: UUID
 
 
 class TimeoutPolicy(ContractModel):
@@ -266,7 +291,9 @@ class PermissionPolicySpec(ContractModel):
 
 
 RegistrySpec = Annotated[
-    WorkerSpec
+    AgentRoleSpec
+    | TeamTemplateSpec
+    | WorkerSpec
     | ProviderSpec
     | ModelProfileSpec
     | RoutePolicySpec

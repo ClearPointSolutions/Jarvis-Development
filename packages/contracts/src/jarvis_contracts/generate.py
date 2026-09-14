@@ -39,6 +39,16 @@ from jarvis_contracts.failures import (
     FailureRecord,
     RetryPolicySpec,
 )
+from jarvis_contracts.missions import (
+    DirectiveUpdate,
+    ManagementTurnPage,
+    MissionCreate,
+    MissionMessageCreate,
+    MissionMessagePage,
+    MissionPage,
+    WorkItemPage,
+    WorkItemStart,
+)
 from jarvis_contracts.operations import RunUsage, SystemHealth
 from jarvis_contracts.registry import (
     AccountingPage,
@@ -113,6 +123,14 @@ from jarvis_contracts.workflow_nodes import (
 
 
 class JarvisContractBundle(ContractModel):
+    mission_create: MissionCreate | None = None
+    mission_page: MissionPage | None = None
+    mission_message_create: MissionMessageCreate | None = None
+    mission_message_page: MissionMessagePage | None = None
+    directive_update: DirectiveUpdate | None = None
+    work_item_page: WorkItemPage | None = None
+    work_item_start: WorkItemStart | None = None
+    management_turn_page: ManagementTurnPage | None = None
     system_health: SystemHealth
     run_usage: RunUsage
     approvals: ApprovalPage

@@ -178,6 +178,45 @@
       "title": "AccountingRecord",
       "type": "object"
     },
+    "AgentRoleSpec": {
+      "additionalProperties": false,
+      "description": "Versioned responsibility; execution bindings remain separate.",
+      "properties": {
+        "instructions": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Instructions",
+          "type": "string"
+        },
+        "kind": {
+          "const": "agent_role",
+          "default": "agent_role",
+          "title": "Kind",
+          "type": "string"
+        },
+        "purpose": {
+          "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+          "title": "Purpose",
+          "type": "string"
+        },
+        "responsibility": {
+          "enum": [
+            "manager",
+            "developer",
+            "reviewer"
+          ],
+          "title": "Responsibility",
+          "type": "string"
+        }
+      },
+      "required": [
+        "responsibility",
+        "purpose",
+        "instructions"
+      ],
+      "title": "AgentRoleSpec",
+      "type": "object"
+    },
     "ApiErrorDetail": {
       "additionalProperties": false,
       "properties": {
@@ -1115,6 +1154,44 @@
       ],
       "title": "DesiredRunState",
       "type": "string"
+    },
+    "DirectiveUpdate": {
+      "additionalProperties": false,
+      "properties": {
+        "constraints": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 40,
+          "title": "Constraints",
+          "type": "array"
+        },
+        "expected_version": {
+          "minimum": 1,
+          "title": "Expected Version",
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 120,
+          "minLength": 8,
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "objective": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Objective",
+          "type": "string"
+        }
+      },
+      "required": [
+        "objective",
+        "expected_version",
+        "idempotency_key"
+      ],
+      "title": "DirectiveUpdate",
+      "type": "object"
     },
     "DispatchConfig": {
       "additionalProperties": false,
@@ -2369,6 +2446,477 @@
         "revoked"
       ],
       "title": "LogoutResponse",
+      "type": "object"
+    },
+    "ManagementTurnPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ManagementTurnView"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "next_after": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next After"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "ManagementTurnPage",
+      "type": "object"
+    },
+    "ManagementTurnView": {
+      "additionalProperties": false,
+      "properties": {
+        "completed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Completed At"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "decision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ManagerDecision"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "directive_version": {
+          "title": "Directive Version",
+          "type": "integer"
+        },
+        "failure_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Failure Code"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "model_call_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Call Id"
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "running",
+            "applied",
+            "stale",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "team_version": {
+          "title": "Team Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "directive_version",
+        "team_version",
+        "created_at"
+      ],
+      "title": "ManagementTurnView",
+      "type": "object"
+    },
+    "ManagerDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "explain",
+            "propose",
+            "clarify",
+            "wait"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "lifecycle": {
+          "default": "active",
+          "enum": [
+            "active",
+            "waiting",
+            "blocked"
+          ],
+          "title": "Lifecycle",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "work_items": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/WorkItemProposal"
+          },
+          "maxItems": 8,
+          "title": "Work Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "action",
+        "message"
+      ],
+      "title": "ManagerDecision",
+      "type": "object"
+    },
+    "MissionCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "constraints": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 40,
+          "title": "Constraints",
+          "type": "array"
+        },
+        "idempotency_key": {
+          "maxLength": 120,
+          "minLength": 8,
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "mode": {
+          "default": "demo",
+          "enum": [
+            "demo",
+            "real"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "objective": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Objective",
+          "type": "string"
+        },
+        "project_id": {
+          "format": "uuid",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "team_template_revision_id": {
+          "format": "uuid",
+          "title": "Team Template Revision Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "objective",
+        "team_template_revision_id",
+        "idempotency_key"
+      ],
+      "title": "MissionCreate",
+      "type": "object"
+    },
+    "MissionMessageCreate": {
+      "additionalProperties": false,
+      "properties": {
+        "allow_paid_inference": {
+          "default": false,
+          "title": "Allow Paid Inference",
+          "type": "boolean"
+        },
+        "body": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Body",
+          "type": "string"
+        },
+        "expected_version": {
+          "minimum": 1,
+          "title": "Expected Version",
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 120,
+          "minLength": 8,
+          "title": "Idempotency Key",
+          "type": "string"
+        }
+      },
+      "required": [
+        "body",
+        "expected_version",
+        "idempotency_key"
+      ],
+      "title": "MissionMessageCreate",
+      "type": "object"
+    },
+    "MissionMessagePage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/MissionMessageView"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "next_after": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next After"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "MissionMessagePage",
+      "type": "object"
+    },
+    "MissionMessageView": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "title": "Body",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "directive_version": {
+          "title": "Directive Version",
+          "type": "integer"
+        },
+        "disposition": {
+          "default": "delivered",
+          "enum": [
+            "queued",
+            "delivered",
+            "stale",
+            "failed"
+          ],
+          "title": "Disposition",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "identity": {
+          "title": "Identity",
+          "type": "string"
+        },
+        "management_turn_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Management Turn Id"
+        },
+        "role": {
+          "enum": [
+            "user",
+            "manager",
+            "system"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "sequence": {
+          "title": "Sequence",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "sequence",
+        "role",
+        "identity",
+        "body",
+        "directive_version",
+        "created_at"
+      ],
+      "title": "MissionMessageView",
+      "type": "object"
+    },
+    "MissionPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/MissionView"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "next_after": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next After"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "MissionPage",
+      "type": "object"
+    },
+    "MissionView": {
+      "additionalProperties": false,
+      "properties": {
+        "constraints": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Constraints",
+          "type": "array"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "directive_version": {
+          "title": "Directive Version",
+          "type": "integer"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "lifecycle": {
+          "enum": [
+            "active",
+            "waiting",
+            "blocked",
+            "completed",
+            "archived"
+          ],
+          "title": "Lifecycle",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "demo",
+            "real"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "objective": {
+          "title": "Objective",
+          "type": "string"
+        },
+        "project_id": {
+          "format": "uuid",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "team_version": {
+          "title": "Team Version",
+          "type": "integer"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "objective",
+        "constraints",
+        "lifecycle",
+        "mode",
+        "version",
+        "directive_version",
+        "team_version",
+        "created_at",
+        "updated_at"
+      ],
+      "title": "MissionView",
       "type": "object"
     },
     "ModelBinding": {
@@ -4295,16 +4843,24 @@
         "spec": {
           "discriminator": {
             "mapping": {
+              "agent_role": "#/$defs/AgentRoleSpec",
               "model_profile": "#/$defs/ModelProfileSpec",
               "permission_policy": "#/$defs/PermissionPolicySpec",
               "provider_connection": "#/$defs/ProviderSpec",
               "retry_policy": "#/$defs/RetryRegistrySpec",
               "route_policy": "#/$defs/RoutePolicySpec",
+              "team_template": "#/$defs/TeamTemplateSpec",
               "worker": "#/$defs/WorkerSpec"
             },
             "propertyName": "kind"
           },
           "oneOf": [
+            {
+              "$ref": "#/$defs/AgentRoleSpec"
+            },
+            {
+              "$ref": "#/$defs/TeamTemplateSpec"
+            },
             {
               "$ref": "#/$defs/WorkerSpec"
             },
@@ -4445,16 +5001,24 @@
         "spec": {
           "discriminator": {
             "mapping": {
+              "agent_role": "#/$defs/AgentRoleSpec",
               "model_profile": "#/$defs/ModelProfileSpec",
               "permission_policy": "#/$defs/PermissionPolicySpec",
               "provider_connection": "#/$defs/ProviderSpec",
               "retry_policy": "#/$defs/RetryRegistrySpec",
               "route_policy": "#/$defs/RoutePolicySpec",
+              "team_template": "#/$defs/TeamTemplateSpec",
               "worker": "#/$defs/WorkerSpec"
             },
             "propertyName": "kind"
           },
           "oneOf": [
+            {
+              "$ref": "#/$defs/AgentRoleSpec"
+            },
+            {
+              "$ref": "#/$defs/TeamTemplateSpec"
+            },
             {
               "$ref": "#/$defs/WorkerSpec"
             },
@@ -6521,6 +7085,73 @@
       "title": "TaskView",
       "type": "object"
     },
+    "TeamTemplateSpec": {
+      "additionalProperties": false,
+      "description": "Fixed mission team whose referenced revisions are resolved at assignment.",
+      "properties": {
+        "developer_role_revision_id": {
+          "format": "uuid",
+          "title": "Developer Role Revision Id",
+          "type": "string"
+        },
+        "developer_worker_revision_id": {
+          "format": "uuid",
+          "title": "Developer Worker Revision Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "team_template",
+          "default": "team_template",
+          "title": "Kind",
+          "type": "string"
+        },
+        "manager_profile_revision_id": {
+          "format": "uuid",
+          "title": "Manager Profile Revision Id",
+          "type": "string"
+        },
+        "manager_role_revision_id": {
+          "format": "uuid",
+          "title": "Manager Role Revision Id",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "demo",
+            "real"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "reviewer_profile_revision_id": {
+          "format": "uuid",
+          "title": "Reviewer Profile Revision Id",
+          "type": "string"
+        },
+        "reviewer_role_revision_id": {
+          "format": "uuid",
+          "title": "Reviewer Role Revision Id",
+          "type": "string"
+        },
+        "workflow_version_id": {
+          "format": "uuid",
+          "title": "Workflow Version Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode",
+        "manager_role_revision_id",
+        "manager_profile_revision_id",
+        "developer_role_revision_id",
+        "developer_worker_revision_id",
+        "reviewer_role_revision_id",
+        "reviewer_profile_revision_id",
+        "workflow_version_id"
+      ],
+      "title": "TeamTemplateSpec",
+      "type": "object"
+    },
     "TimeoutPolicy": {
       "additionalProperties": false,
       "properties": {
@@ -6965,6 +7596,220 @@
         }
       },
       "title": "VerifyConfig",
+      "type": "object"
+    },
+    "WorkItemPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/WorkItemView"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "next_after": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next After"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "WorkItemPage",
+      "type": "object"
+    },
+    "WorkItemProposal": {
+      "additionalProperties": false,
+      "properties": {
+        "acceptance_criteria": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Acceptance Criteria",
+          "type": "array"
+        },
+        "dependencies": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Dependencies",
+          "type": "array"
+        },
+        "key": {
+          "pattern": "^[A-Z][A-Z0-9_-]{1,39}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "objective": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Objective",
+          "type": "string"
+        },
+        "priority": {
+          "default": 0,
+          "maximum": 100,
+          "minimum": -100,
+          "title": "Priority",
+          "type": "integer"
+        },
+        "title": {
+          "maxLength": 240,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "title",
+        "objective",
+        "acceptance_criteria"
+      ],
+      "title": "WorkItemProposal",
+      "type": "object"
+    },
+    "WorkItemStart": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_mission_version": {
+          "minimum": 1,
+          "title": "Expected Mission Version",
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 120,
+          "minLength": 8,
+          "title": "Idempotency Key",
+          "type": "string"
+        }
+      },
+      "required": [
+        "expected_mission_version",
+        "idempotency_key"
+      ],
+      "title": "WorkItemStart",
+      "type": "object"
+    },
+    "WorkItemView": {
+      "additionalProperties": false,
+      "properties": {
+        "acceptance_criteria": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Acceptance Criteria",
+          "type": "array"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "dependencies": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Dependencies",
+          "type": "array"
+        },
+        "directive_version": {
+          "title": "Directive Version",
+          "type": "integer"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "job_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Job Id"
+        },
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "lifecycle": {
+          "enum": [
+            "pending",
+            "ready",
+            "started",
+            "accepted",
+            "blocked",
+            "cancelled"
+          ],
+          "title": "Lifecycle",
+          "type": "string"
+        },
+        "objective": {
+          "title": "Objective",
+          "type": "string"
+        },
+        "priority": {
+          "title": "Priority",
+          "type": "integer"
+        },
+        "run_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Run Id"
+        },
+        "team_version": {
+          "title": "Team Version",
+          "type": "integer"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "key",
+        "title",
+        "objective",
+        "acceptance_criteria",
+        "priority",
+        "dependencies",
+        "lifecycle",
+        "directive_version",
+        "team_version",
+        "created_at"
+      ],
+      "title": "WorkItemView",
       "type": "object"
     },
     "WorkerArtifact": {
@@ -8447,16 +9292,24 @@
         "spec": {
           "discriminator": {
             "mapping": {
+              "agent_role": "#/$defs/AgentRoleSpec",
               "model_profile": "#/$defs/ModelProfileSpec",
               "permission_policy": "#/$defs/PermissionPolicySpec",
               "provider_connection": "#/$defs/ProviderSpec",
               "retry_policy": "#/$defs/RetryRegistrySpec",
               "route_policy": "#/$defs/RoutePolicySpec",
+              "team_template": "#/$defs/TeamTemplateSpec",
               "worker": "#/$defs/WorkerSpec"
             },
             "propertyName": "kind"
           },
           "oneOf": [
+            {
+              "$ref": "#/$defs/AgentRoleSpec"
+            },
+            {
+              "$ref": "#/$defs/TeamTemplateSpec"
+            },
             {
               "$ref": "#/$defs/WorkerSpec"
             },
@@ -9068,6 +9921,17 @@
     "demo_decision_view": {
       "$ref": "#/$defs/DemoDecisionView"
     },
+    "directive_update": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DirectiveUpdate"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "effect": {
       "anyOf": [
         {
@@ -9218,6 +10082,61 @@
       "anyOf": [
         {
           "$ref": "#/$defs/LogoutResponse"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "management_turn_page": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ManagementTurnPage"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "mission_create": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MissionCreate"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "mission_message_create": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MissionMessageCreate"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "mission_message_page": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MissionMessagePage"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "mission_page": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MissionPage"
         },
         {
           "type": "null"
@@ -9534,6 +10453,28 @@
     },
     "verification_execution": {
       "$ref": "#/$defs/VerificationExecution"
+    },
+    "work_item_page": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WorkItemPage"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "work_item_start": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WorkItemStart"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "worker_cancel": {
       "$ref": "#/$defs/CancelResult"

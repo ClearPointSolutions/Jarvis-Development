@@ -52,6 +52,10 @@ class OrchestratorService:
         worker_registry: WorkerRuntimeRegistry | None = None,
         verification_factory: Callable[[RunOwnership, RunFence], EffectAdapter] | None = None,
         real_composition: RealComposition | None = None,
+        manager_lease_seconds: int = 180,
+        manager_max_attempts: int = 2,
+        manager_call_timeout_seconds: int = 120,
+        manager_max_output_tokens: int = 2048,
     ) -> None:
         if (
             not 1 <= max_concurrency <= 64
@@ -72,6 +76,19 @@ class OrchestratorService:
         self.worker_registry = worker_registry
         self.verification_factory = verification_factory
         self.real_composition = real_composition
+        from jarvis_orchestrator.missions import MissionManagerService
+
+        self.mission_manager = MissionManagerService(
+            ownership.sessions,
+            owner=ownership.owner,
+            mode="demo" if demo else "real",
+            provider_config=(real_composition.settings.providers if real_composition else None),
+            lease_seconds=manager_lease_seconds,
+            max_attempts=manager_max_attempts,
+            call_timeout_seconds=manager_call_timeout_seconds,
+            max_output_tokens=manager_max_output_tokens,
+        )
+        self.manager_task: asyncio.Task[None] | None = None
         self.commands = CommandProcessor(ownership)
         self.active: dict[RunFence, asyncio.Task[None]] = {}
 
@@ -99,6 +116,9 @@ class OrchestratorService:
                     await asyncio.wait_for(stop.wait(), self.poll_seconds)
         finally:
             await self.ownership.heartbeat(draining=True)
+            if self.manager_task is not None and not self.manager_task.done():
+                self.manager_task.cancel()
+                await asyncio.gather(self.manager_task, return_exceptions=True)
             if self.active:
                 deadline = asyncio.get_running_loop().time() + self.grace_seconds
                 pending = set(self.active.values())
@@ -121,6 +141,13 @@ class OrchestratorService:
     async def tick(self) -> None:
         await self.ownership.heartbeat()
         await self.commands.poll()
+        if self.manager_task is not None and self.manager_task.done():
+            self.manager_task.result()
+            self.manager_task = None
+        if self.manager_task is None:
+            turn_id = await self.mission_manager.poll()
+            if turn_id is not None:
+                self.manager_task = asyncio.create_task(self.mission_manager.execute(turn_id))
         if self.real_composition is not None:
             from jarvis_orchestrator.runtime.approvals import expire_approvals
 
