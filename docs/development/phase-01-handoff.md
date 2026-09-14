@@ -4,10 +4,13 @@
 
 - Base SHA: `29780ba722f93d72ed725fff64a85b2eef7fda43`
 - Branch: `phase/01-persistent-missions`
-- Final implementation SHA: `7e739cd5d960609e091b61bb0cb4aff29e934d8a`
-- Final branch SHA: record from `git rev-parse HEAD` after the evidence commit
-- CI identity: UNVERIFIED until the draft-PR workflow completes against the exact
-  final commit
+- Draft PR: [#9](https://github.com/ClearPointSolutions/Jarvis-Development/pull/9)
+- Final implementation SHA: `304017e796d1ce2b1cb4b87cc1e8872c2320f67b`
+- Evidence-only documentation follows that implementation SHA; the draft PR is
+  the canonical source for the current branch-tip SHA.
+- CI identity: GitHub Actions workflow `verify`, run `34910019452`, job
+  `104195214391`, passed against exact implementation SHA
+  `304017e796d1ce2b1cb4b87cc1e8872c2320f67b`.
 
 ## IMPLEMENTED
 
@@ -45,6 +48,7 @@ api/app/jarvis_api/auth/routes.py
 api/app/jarvis_api/main.py
 api/app/jarvis_api/missions.py
 api/app/jarvis_api/registry/service.py
+api/migrations/env.py
 api/migrations/versions/0012_phase_01_missions.py
 deploy/compose.production.yml
 docs/ARCHITECTURE.md
@@ -116,8 +120,23 @@ result is inferred from that unavailable prerequisite.
 
 ## CI VERIFIED
 
-UNVERIFIED. Record the workflow name/run ID, exact commit SHA, and result here after
-the feature branch is pushed and the draft PR workflow finishes.
+GitHub Actions workflow `verify`, run
+[`34910019452`](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34910019452),
+job `104195214391`, passed against exact implementation SHA
+`304017e796d1ce2b1cb4b87cc1e8872c2320f67b` on the draft PR. Observed results:
+
+- migration `0001` through `0012`, downgrade/upgrade round trip, metadata drift,
+  least-privilege roles, and LangGraph checkpoint setup passed on PostgreSQL 16;
+- full Python suite: `879 passed, 4 skipped`, 84.42% coverage (required 80%);
+- secret scan, `pip check`, Ruff format/lint, mypy, and generated Pydantic/OpenAPI/
+  TypeScript contract drift checks passed;
+- Prettier, ESLint, TypeScript, Vitest, Next.js production build, and
+  `npm audit --audit-level=high` passed with `0 vulnerabilities`;
+- database-backed Playwright: `11 passed, 1 skipped`, including the Phase 1
+  mission-to-linked-run journey; the separate deterministic demo browser run
+  passed (`1 passed`); API-log and browser-bundle secret canaries were absent;
+- the mandatory disposable real-entrypoint protocol worker was provisioned and
+  the workflow ended with `All enabled verification gates passed.`
 
 ## LIVE VERIFIED
 
@@ -127,10 +146,8 @@ is claimed, and no paid inference was performed.
 
 ## Remaining gates and exact next action
 
-Push the branch, open/update the draft PR, and record exact-commit CI (including
-the PostgreSQL migration/integration/coverage/protocol fixtures). Then, from an explicitly
-authorized V1 staging target, migrate a disposable/current V1 database, configure a
-real manager profile and the published fixed-team workflow, create a real mission,
-authorize one manager turn, explicitly launch one ready item, and retain the linked
-ordinary worker/verifier/reviewer/integration evidence. Leave `/opt/jarvis` and the
-legacy worker environment untouched.
+From an explicitly authorized V1 staging target, migrate a disposable/current V1
+database, configure a real manager profile and the published fixed-team workflow,
+create a real mission, authorize one manager turn, explicitly launch one ready
+item, and retain the linked ordinary worker/verifier/reviewer/integration evidence.
+Leave `/opt/jarvis` and the legacy worker environment untouched.
