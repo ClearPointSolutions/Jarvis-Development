@@ -8,7 +8,8 @@
 - Final branch SHA: the evidence-only documentation commit containing this file;
   record it from the draft PR or `git rev-parse HEAD` (a commit cannot contain
   its own SHA)
-- CI identity: UNVERIFIED
+- CI identity: GitHub Actions `verify` run `34889857600`, successful against
+  `ff28563aa2ffa2a8ef666b7e0b467fabac5faf6c`
 
 ## IMPLEMENTED
 
@@ -65,7 +66,12 @@ result is inferred from any of these unavailable checks.
 
 ## CI VERIFIED
 
-UNVERIFIED pending the corrected exact-commit rerun. GitHub Actions run
+GitHub Actions `verify` run `34889857600` completed successfully against
+`ff28563aa2ffa2a8ef666b7e0b467fabac5faf6c`: all 18 workflow steps passed,
+including `scripts/verify.sh` with the CI PostgreSQL and mandatory
+real-entrypoint protocol-worker fixtures.
+
+Two earlier failed runs were retained as correction evidence. Run
 `34886588243` completed against earlier SHA
 `e190610230f59f5015ee1addd6b584d5eae7bcd3` with `858 passed, 4 skipped` and
 three failures: the new constraint did not use the repository naming
@@ -76,7 +82,7 @@ the failed run is evidence, not a passing gate. Run `34888213064` then reached
 `860 passed, 4 skipped`; its only failure was Alembic detecting that two
 migration server defaults were absent from model metadata. Implementation SHA
 `ab0258aa97af68837b7e81b00b713d3e005fe17b` mirrors those defaults using the
-repository's existing model pattern. Neither failed run is a passing gate.
+repository's existing model pattern. Neither failed run is counted as a pass.
 
 ## LIVE VERIFIED
 
@@ -86,9 +92,9 @@ claimed. No paid inference call was made.
 
 ## Remaining gates and exact next action
 
-On a host with working Docker/PostgreSQL, check out the exact draft-PR SHA, start
-the disposable database, set `TEST_DATABASE_URL`, and run `scripts/verify.sh`
-without skips. Verify that exact SHA in CI. Then run
-`docs/development/phase-00-acceptance.md` from an authorized Jarvis-Core shell
-and replace LIVE UNVERIFIED only with the complete recorded evidence; do not
-merge until those gates are reviewed.
+Run `docs/development/phase-00-acceptance.md` from an authorized Jarvis-Core
+shell and replace LIVE UNVERIFIED only with the complete recorded evidence. A
+host with working local Docker/PostgreSQL may independently repeat
+`scripts/verify.sh`, but the exact-commit CI gate is recorded above. Do not merge
+until the live gate and the two documented locally unavailable checks are
+reviewed.

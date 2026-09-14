@@ -9,7 +9,8 @@ mode, manifest digest, heartbeat freshness, worker/provider/repository/verifier
 configuration, and remains `configured_unverified` until bounded live evidence
 exists. A demo heartbeat cannot satisfy the real gate. Installer and preflight
 probes now validate curl exit status and the exact `auth.required` response
-contract. Live Core/Worker acceptance and exact-commit CI remain open.
+contract. Exact-commit CI run `34889857600` passed after the failures it exposed
+were corrected. Live Core/Worker acceptance remains open.
 
 Authoritative active checklist, 2026-09-09. Branch `codex/v1-integration-hardening`.
 Baseline: fetched main `1c61e70dcc6e526ebb0f0d7076e62a1909a91022`; exact

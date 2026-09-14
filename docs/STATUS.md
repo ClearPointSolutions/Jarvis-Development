@@ -26,9 +26,12 @@ for orchestrator runtime mode/manifest identity/summary; `jarvis-admin runtime
 inspect`; explicit `scripts/start-real-orchestrator.sh`; provider-independent
 cancel construction; and a disposable Phase 0 Python project fixture with a
 non-destructive preparation command. The available unit, compatibility,
-contract, frontend, shell-behavior and mocked-browser checks pass. PostgreSQL,
-full `scripts/verify.sh`, exact-commit CI and Jarvis-Core/Worker acceptance remain
-open for the reasons recorded in `docs/development/phase-00-handoff.md`.
+contract, frontend, shell-behavior and mocked-browser checks pass. Exact-commit
+CI run `34889857600` passed the full PostgreSQL/protocol/browser gate after two
+failed runs exposed and drove corrections to the Phase 0 migration/test
+fixtures. Local Docker remains unavailable and Jarvis-Core/Worker acceptance
+remains open for the reasons recorded in
+`docs/development/phase-00-handoff.md`.
 
 ## M12B real homelab (2026-09-10, in progress)
 
