@@ -4,7 +4,7 @@
 
 - Base SHA: `c0b3a03dc07b435f16c2af73829cfcb4ed42ac19`
 - Branch: `phase/00-operational-baseline`
-- Final implementation SHA: `b49679354b4c50ab24175ace6fb87c83151c7781`
+- Final implementation SHA: `d73b964da736d2aaa20cae1249cc4667c3e3244e`
 - Final branch SHA: the evidence-only documentation commit containing this file;
   record it from the draft PR or `git rev-parse HEAD` (a commit cannot contain
   its own SHA)
@@ -42,7 +42,7 @@ script as the wrapper while retaining the separate legacy runner Python.
   `000`, wrong statuses, arbitrary `401`, unsafe redirects, and refusing a
   repeated project destination without mutation.
 - `.venv/Scripts/python.exe -m ruff format --check .`, `ruff check .`, and
-  `mypy`: passed (`293` formatted files and `240` typed source files at the
+  `mypy`: passed (`294` formatted files and `241` typed source files at the
   recorded runs). `pip check`, the secret scanner/self-test, shared schema
   generation check, and integrated OpenAPI check passed.
 - Under repository-supported Node `v20.19.0`: generated TypeScript contract
@@ -65,7 +65,14 @@ result is inferred from any of these unavailable checks.
 
 ## CI VERIFIED
 
-UNVERIFIED. No exact-commit CI run has completed.
+UNVERIFIED pending the corrected exact-commit rerun. GitHub Actions run
+`34886588243` completed against earlier SHA
+`e190610230f59f5015ee1addd6b584d5eae7bcd3` with `858 passed, 4 skipped` and
+three failures: the new constraint did not use the repository naming
+convention, one older integration assertion retained the pre-Phase-0 readiness
+shape, and Linux exposed missing `0600` modes on fixture credentials. All three
+were corrected in implementation SHA `d73b964da736d2aaa20cae1249cc4667c3e3244e`;
+the failed run is evidence, not a passing gate.
 
 ## LIVE VERIFIED
 
