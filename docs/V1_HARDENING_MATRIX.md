@@ -1,5 +1,16 @@
 # V1 integration and hardening evidence
 
+## Phase 0 readiness correction (2026-09-14)
+
+The active `phase/00-operational-baseline` work corrects the meaning of
+readiness without closing unrelated A-Q rows. Control-plane readiness covers
+API/database/schema/web-proxy only. Real execution reports the persisted runtime
+mode, manifest digest, heartbeat freshness, worker/provider/repository/verifier
+configuration, and remains `configured_unverified` until bounded live evidence
+exists. A demo heartbeat cannot satisfy the real gate. Installer and preflight
+probes now validate curl exit status and the exact `auth.required` response
+contract. Live Core/Worker acceptance and exact-commit CI remain open.
+
 Authoritative active checklist, 2026-09-09. Branch `codex/v1-integration-hardening`.
 Baseline: fetched main `1c61e70dcc6e526ebb0f0d7076e62a1909a91022`; exact
 [CI 34309805401](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34309805401)

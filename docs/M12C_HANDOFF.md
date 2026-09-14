@@ -37,8 +37,7 @@ ssh -i /home/jarvis/.ssh/jarvis_worker -o StrictHostKeyChecking=yes jarvis@192.1
   test ! -e /opt/jarvis-worker/v1-wrapper || echo "wrapper dir exists; reconcile"
   python3 -m venv /opt/jarvis-worker/v1-wrapper/venv
   /opt/jarvis-worker/v1-wrapper/venv/bin/pip install --no-cache-dir /tmp/jarvis_v1-*.whl
-  install -m 0755 -T /opt/jarvis-worker/v1-wrapper/venv/bin/jarvis-worker-wrapper-v1 \
-      /opt/jarvis-worker/v1-wrapper/entry.py 2>/dev/null || true
+  test -x /opt/jarvis-worker/v1-wrapper/venv/bin/jarvis-worker-wrapper-v1
   mkdir -p /opt/jarvis-worker/persistence/v1-invocations
   chmod 0750 /opt/jarvis-worker/persistence/v1-invocations
   rm -f /tmp/jarvis_v1-*.whl
@@ -50,7 +49,7 @@ The wrapper's `OpenHandsDeployment` must set:
 * `python_path = /opt/jarvis-worker/v1-wrapper/venv/bin/python` (the wrapper's own env)
 * `runner_python_path = /opt/jarvis-worker/venv/bin/python` (the **legacy** runner Python — the wrapper invokes `developer_task.py` with this, never its own)
 * `runner_path = /opt/jarvis-worker/developer_task.py`
-* `wrapper_path = /opt/jarvis-worker/v1-wrapper/entry.py`
+* `wrapper_path = /opt/jarvis-worker/v1-wrapper/venv/bin/jarvis-worker-wrapper-v1`
 * `invocation_root = /opt/jarvis-worker/persistence/v1-invocations`
 * `workspace_root = /opt/jarvis-worker/workspaces`
 * `venv_activate = /opt/jarvis-worker/v1-wrapper/venv/bin/activate`
