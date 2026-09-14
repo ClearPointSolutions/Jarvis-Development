@@ -79,6 +79,10 @@ async def system_health(
         component = "demo_only"
         execution = "unconfigured"
         reasons = ("Only a demo orchestrator heartbeat is fresh.",)
+    elif fresh and not real:
+        component = "missing"
+        execution = "unconfigured"
+        reasons = ("The fresh orchestrator did not report a real runtime identity.",)
     elif not fresh and instance is not None:
         component = "stale"
         execution = "not_ready"

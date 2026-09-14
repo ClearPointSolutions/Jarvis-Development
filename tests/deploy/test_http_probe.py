@@ -5,16 +5,18 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 PROBE = ROOT / "scripts" / "lib" / "http-probe.sh"
+BASH_EXECUTABLE = shutil.which("bash")
 
 
 def _bash_available() -> bool:
-    executable = shutil.which("bash")
+    executable = BASH_EXECUTABLE
     if executable is None:
         return False
     try:
@@ -60,6 +62,13 @@ exit "${PROBE_EXIT:-0}"
     return executable
 
 
+def _git_bash_path(path: Path) -> str:
+    value = path.as_posix()
+    if len(value) >= 3 and value[1:3] == ":/":
+        return f"/{value[0].lower()}{value[2:]}"
+    return value
+
+
 def _run(
     tmp_path: Path,
     *,
@@ -70,12 +79,14 @@ def _run(
     contract: str = "auth_required",
     location: str = "",
 ) -> tuple[subprocess.CompletedProcess[str], str]:
-    _fake_curl(tmp_path)
+    fake_curl = _fake_curl(tmp_path)
     arguments = tmp_path / "arguments"
     env = {
         **os.environ,
-        "PATH": f"{tmp_path.as_posix()}:{os.environ.get('PATH', '')}",
-        "PROBE_ARGUMENTS": str(arguments),
+        "PATH": "/usr/bin:/bin",
+        "JARVIS_CURL_BIN": _git_bash_path(fake_curl),
+        "JARVIS_PYTHON_BIN": _git_bash_path(Path(sys.executable)),
+        "PROBE_ARGUMENTS": arguments.as_posix(),
         "PROBE_CODE": code,
         "PROBE_EXIT": str(exit_code),
         "PROBE_BODY": body,
@@ -87,7 +98,10 @@ def _run(
         "jarvis_http_probe 'http://127.0.0.1:13000/api/v1/session' "
         f"'jarvis.example:13000' '{expected_codes}' '{contract}'"
     )
-    result = subprocess.run(["bash", "-c", command], text=True, capture_output=True, env=env)
+    assert BASH_EXECUTABLE is not None
+    result = subprocess.run(
+        [BASH_EXECUTABLE, "-c", command], text=True, capture_output=True, env=env
+    )
     recorded = arguments.read_text(encoding="utf-8") if arguments.exists() else ""
     return result, recorded
 

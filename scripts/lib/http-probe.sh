@@ -9,12 +9,14 @@ jarvis_http_probe() {
   probe_tmp=$(mktemp -d)
   probe_body="$probe_tmp/body"
   probe_headers="$probe_tmp/headers"
+  probe_curl=${JARVIS_CURL_BIN:-curl}
+  probe_python=${JARVIS_PYTHON_BIN:-python3}
   probe_cleanup() {
     rm -f -- "$probe_body" "$probe_headers"
     rmdir -- "$probe_tmp" 2>/dev/null || true
   }
 
-  if probe_code=$(curl --silent --show-error \
+  if probe_code=$("$probe_curl" --silent --show-error \
       --connect-timeout "${JARVIS_PROBE_CONNECT_TIMEOUT:-3}" \
       --max-time "${JARVIS_PROBE_MAX_TIME:-8}" \
       --max-redirs 0 \
@@ -45,7 +47,7 @@ jarvis_http_probe() {
   case "$contract" in
     none) ;;
     auth_required)
-      if ! python3 - "$probe_body" "$probe_headers" <<'PY'
+      if ! "$probe_python" - "$probe_body" "$probe_headers" <<'PY'
 import json
 import sys
 from pathlib import Path
