@@ -171,6 +171,8 @@ class RealComposition:
         spec: WorkflowSpec,
         snapshot: WorkflowResolvedSnapshot,
         workflow_id: UUID,
+        *,
+        dependency_preflight: bool = True,
     ) -> dict[str, EffectAdapter]:
         # V1 has no real publication handler. Refuse before any billed inference
         # or worker dispatch instead of failing at the unreachable publish node.
@@ -316,14 +318,19 @@ class RealComposition:
             prepare_workspace=historical.ensure if historical else None,
         )
         worker_effect = WorkerEffectAdapter(owner, fence, worker, native, request_source.request)
-        # All dependency checks complete before Organizer inference or worker dispatch.
-        report = await native.validate(worker, worker_effect.context())
-        if not report.valid:
-            raise RuntimeDependencyError(
-                "worker dependency preflight failed: " + ",".join(report.health.issues)
-            )
-        if historical is not None and native.historical_workspace_version != "1.0":
-            raise RuntimeDependencyError("worker lacks isolated historical workspace capability")
+        # Cancellation must be constructible while a provider is unavailable.
+        # Ordinary execution still completes every dependency check before any
+        # Organizer inference or worker dispatch.
+        if dependency_preflight:
+            report = await native.validate(worker, worker_effect.context())
+            if not report.valid:
+                raise RuntimeDependencyError(
+                    "worker dependency preflight failed: " + ",".join(report.health.issues)
+                )
+            if historical is not None and native.historical_workspace_version != "1.0":
+                raise RuntimeDependencyError(
+                    "worker lacks isolated historical workspace capability"
+                )
         checked: set[UUID] = set()
         reviewer_context: NodeContext | None = None
         reviewer_config: RunnableConfig = {}
@@ -355,7 +362,7 @@ class RealComposition:
             model = self.model(owner, fence, context, config)
             if not model.profile.structured_json:
                 raise RuntimeDependencyError("planning/review requires a structured JSON profile")
-            if model.adapter.profile_revision_id not in checked:
+            if dependency_preflight and model.adapter.profile_revision_id not in checked:
                 async with asyncio.timeout(self.settings.providers.probe_seconds):
                     status = await model.adapter.validate_connection()
                 async with owner.fenced(fence) as (session, run):

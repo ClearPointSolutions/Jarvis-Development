@@ -6,6 +6,7 @@ import json
 import stat
 import sys
 from pathlib import Path
+from typing import cast
 from uuid import uuid4
 
 import pytest
@@ -177,6 +178,38 @@ def test_install_is_atomic_private_and_symlink_safe(tmp_path: Path) -> None:
         link.symlink_to(target)
         with pytest.raises(admin.ManifestError, match="symlink"):
             admin.install(config, link, force=True)
+
+
+def test_runtime_inspect_reports_configured_not_live_verified(tmp_path: Path) -> None:
+    infra = _infra(tmp_path)
+    credentials = cast(dict[str, object], infra["credential_files"])
+    for path in credentials.values():
+        Path(cast(str, path)).write_text("fixture", encoding="utf-8")
+    config = admin.assemble(infra, [admin.ManifestBinding.model_validate(_binding())])
+    target = tmp_path / "runtime.json"
+    admin.install(config, target, force=False)
+
+    report = admin.inspect_runtime(target)
+
+    assert report["status"] == "configured_unverified"
+    assert report["manifest_sha256"]
+    assert report["verification_image_id"] == "sha256:" + "a" * 64
+    assert "No worker, provider" in str(report["note"])
+
+
+def test_runtime_inspect_rejects_missing_credentials_and_shared_runner_python(
+    tmp_path: Path,
+) -> None:
+    infra = _infra(tmp_path)
+    workers = cast(dict[str, object], infra["workers"])
+    worker = cast(dict[str, object], next(iter(workers.values())))
+    worker["runner_python_path"] = worker["python_path"]
+    config = admin.assemble(infra, [admin.ManifestBinding.model_validate(_binding())])
+    target = tmp_path / "runtime.json"
+    admin.install(config, target, force=False)
+
+    with pytest.raises(admin.ManifestError, match="legacy runner environment"):
+        admin.inspect_runtime(target)
 
 
 def test_cli_stdout_emits_a_reloadable_manifest_and_summary_on_stderr(
