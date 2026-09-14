@@ -101,7 +101,7 @@ case "$compose_version" in
   ''|0.*|1.*|2.[0-9].*|2.1[0-9].*|2.2[0-3].*)
     die "Docker Compose >= 2.24 is required for the homelab '!override' merge (found ${compose_version:-unknown})";;
 esac
-for tool in git python3 openssl; do command -v "$tool" >/dev/null || die "$tool is not installed"; done
+for tool in git python3 openssl curl; do command -v "$tool" >/dev/null || die "$tool is not installed"; done
 docker info >/dev/null 2>&1 || die "the Docker daemon is not reachable"
 
 log "2/13  Validate repository state"
@@ -230,6 +230,8 @@ log "12/13  Start the web app"
 compose up -d --wait web
 
 log "13/13  Verify readiness"
+# shellcheck source=scripts/lib/http-probe.sh
+. "$ROOT_DIR/scripts/lib/http-probe.sh"
 # The API's Host guard rejects a mismatched Host even on /health, so the probe
 # must present the configured public authority.
 authority=${LAN_ORIGIN#*://}
@@ -244,21 +246,25 @@ done
 info "API liveness OK"
 
 probe_host=127.0.0.1
-code=$(curl -fsS -o /dev/null -w '%{http_code}' "http://$probe_host:$WEB_PORT/" 2>/dev/null || true)
-[ -n "$code" ] || die "web app not answering on $probe_host:$WEB_PORT; check 'docker compose logs web'"
+code=$(jarvis_http_probe "http://$probe_host:$WEB_PORT/" "$authority" "200") || \
+  die "web app readiness probe failed; check 'docker compose logs web'"
 info "web app HTTP $code on $probe_host:$WEB_PORT"
 
-session_code=$(curl -fsS -o /dev/null -w '%{http_code}' "http://$probe_host:$WEB_PORT/api/v1/session" 2>/dev/null || true)
-case "$session_code" in
-  401) info "/api/v1/session -> 401 (proxy reached the API; no session yet)";;
-  503) die "/api/v1/session -> 503: the web app has no JARVIS_API_URL (proxy misconfigured)";;
-  502) die "/api/v1/session -> 502: the web app cannot reach the API service";;
-  *)   warn "/api/v1/session -> ${session_code:-no response}; expected 401";;
-esac
+session_code=$(jarvis_http_probe \
+  "http://$probe_host:$WEB_PORT/api/v1/session" "$authority" "401" auth_required) || \
+  die "/api/v1/session failed the Jarvis authentication-required contract"
+info "/api/v1/session -> $session_code (Jarvis auth.required contract verified)"
+
+if [ "$MODE" = production ]; then
+  jarvis_http_probe "${LAN_ORIGIN%/}/" "$authority" "200,307,308" \
+    same_origin_login_redirect >/dev/null || \
+    die "public HTTPS origin failed strict TLS/readiness validation"
+  info "public HTTPS origin passed certificate and same-origin validation"
+fi
 
 cat <<DONE
 
-$(printf '\033[32mMission Control is up.\033[0m')
+$(printf '\033[32mMission Control control plane is up.\033[0m')
 
   URL:            $LAN_ORIGIN
   Mode:           $MODE
@@ -271,6 +277,11 @@ Create the initial owner (interactive password prompt):
   scripts/owner-bootstrap.sh --env-file "$ENV_FILE"$([ "$MODE" = homelab ] && echo ' --homelab')
 
 Then sign in at $LAN_ORIGIN.
+
+Real execution is NOT started by installation. Validate and start the configured
+real orchestrator only after installing runtime.json and its protected files:
+
+  scripts/start-real-orchestrator.sh --mode "$MODE" --env-file "$ENV_FILE"
 
 Non-destructive teardown of V1 services only (data volumes are kept):
 

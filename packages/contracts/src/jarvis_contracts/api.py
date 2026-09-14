@@ -53,7 +53,11 @@ class LivenessResponse(ContractModel):
 
 class ReadinessResponse(ContractModel):
     status: Literal["ready", "not_ready"]
+    scope: Literal["control_plane"] = "control_plane"
+    api: Literal["ready"] = "ready"
     database: Literal["ready", "unavailable", "migration_required"]
+    schema_revision: Literal["ready", "migration_required"] = "ready"
+    execution: Literal["not_evaluated"] = "not_evaluated"
 
 
 class EventPage(ContractModel):

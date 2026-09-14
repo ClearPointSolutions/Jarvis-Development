@@ -48,6 +48,7 @@ def test_orchestrator_serve_waits_for_shutdown() -> None:
             ),
         ),
         patch("jarvis_orchestrator.runtime.configuration.RealRuntimeConfiguration.load"),
+        patch("pathlib.Path.read_bytes", return_value=b"{}"),
         patch("jarvis_orchestrator.runtime.composition.RealComposition") as composition,
         patch("jarvis_orchestrator.main.OrchestratorService", return_value=service),
     ):

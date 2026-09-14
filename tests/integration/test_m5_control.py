@@ -1,3 +1,4 @@
+from unittest.mock import AsyncMock
 from uuid import UUID
 
 import pytest
@@ -86,6 +87,26 @@ async def test_run005_cancel_dominates_ordered_commands(
             "superseded",
             "rejected",
         ]
+
+
+async def test_cancel_constructs_real_control_path_without_dependency_preflight(
+    database_url: str, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """An unavailable model probe must not prevent a durable cancel command."""
+
+    run_id = await prepare_run(session_factory)
+    await enqueue(session_factory, run_id, RunCommandKind.CANCEL)
+    owner, fence = await acquire(session_factory, run_id)
+    composition = AsyncMock()
+    composition.build.return_value = {}
+    composition.approvals.return_value = None
+
+    await OrchestratorService(database_url, owner, real_composition=composition)._execute(fence)
+
+    assert composition.build.await_args.kwargs["dependency_preflight"] is False
+    async with session_factory() as session:
+        run = await session.get(RunModel, run_id)
+        assert run is not None and run.status == "cancelled"
 
 
 async def test_run009_retry_preserves_terminal_history(

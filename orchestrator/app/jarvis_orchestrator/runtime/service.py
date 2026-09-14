@@ -253,7 +253,12 @@ class OrchestratorService:
             if self.demo:
                 raise ValueError("DEMO cannot construct real infrastructure adapters")
             adapters = await self.real_composition.build(
-                self.ownership, fence, spec, snapshot, version.id
+                self.ownership,
+                fence,
+                spec,
+                snapshot,
+                version.id,
+                dependency_preflight=not cancelling,
             )
             decision_handler = await self.real_composition.approvals(
                 self.ownership, fence, spec, version.id

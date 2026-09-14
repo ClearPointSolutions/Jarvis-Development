@@ -1,5 +1,38 @@
 # Jarvis V1 Status
 
+## Phase 0 operational baseline (2026-09-14, code complete; live gate open)
+
+Branch `phase/00-operational-baseline`; fetched base
+`c0b3a03dc07b435f16c2af73829cfcb4ed42ac19` (the same SHA as `origin/main` at
+branch creation). Milestone criteria:
+
+- required HTTP probes reject curl transport failure/HTTP 000, timeouts,
+  unexpected statuses, arbitrary 401 responses and unsafe redirects;
+- control-plane readiness is reported separately from freshness-bounded real
+  execution configuration/capability;
+- private runtime setup is repeatable and validates separate wrapper/runner
+  environments, pinned credential references, repository bindings and the
+  immutable verifier identity without inference;
+- pause/cancel construction does not require a successful provider probe;
+- the deterministic protocol acceptance covers first-attempt test failure,
+  classified retry, accepted integration, continuation and restart/lease
+  recovery, while actual homelab evidence remains explicitly separate;
+- affected tests, generated contracts, frontend checks and the unchanged full
+  gate pass before phase completion.
+
+Implemented: strict shared shell probes used by install/preflight;
+control-plane versus execution-readiness API/UI projections; migration `0011`
+for orchestrator runtime mode/manifest identity/summary; `jarvis-admin runtime
+inspect`; explicit `scripts/start-real-orchestrator.sh`; provider-independent
+cancel construction; and a disposable Phase 0 Python project fixture with a
+non-destructive preparation command. The available unit, compatibility,
+contract, frontend, shell-behavior and mocked-browser checks pass. Exact-commit
+CI run `34889857600` passed the full PostgreSQL/protocol/browser gate after two
+failed runs exposed and drove corrections to the Phase 0 migration/test
+fixtures. Local Docker remains unavailable and Jarvis-Core/Worker acceptance
+remains open for the reasons recorded in
+`docs/development/phase-00-handoff.md`.
+
 ## M12B real homelab (2026-09-10, in progress)
 
 Branch `codex/m12b-real-homelab` from `codex/m12a-deployment-hardening` HEAD

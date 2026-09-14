@@ -101,9 +101,13 @@ scripts/owner-bootstrap.sh --env-file /opt/jarvis-v1/shared/production.env
 (`scripts/provision_secrets.py`), writes the deployment env file, builds local
 images if immutable refs are not supplied, starts PostgreSQL, bootstraps the
 database roles, applies migrations and checkpoint storage, starts the API and
-web, and verifies readiness. It never touches `/opt/jarvis`, never deletes data
-and never runs `docker compose down -v`. `scripts/preflight.sh` validates a
-configuration and reports the specific failing check. Full procedures,
+web, and verifies control-plane readiness. It deliberately does not start the
+real orchestrator or claim worker/provider readiness. After installing a
+private runtime manifest, validate without network/inference using
+`scripts/start-real-orchestrator.sh --validate-only`, then explicitly start it
+with `scripts/start-real-orchestrator.sh`. It never touches `/opt/jarvis`, never
+deletes data and never runs `docker compose down -v`. `scripts/preflight.sh`
+validates a configuration and reports the specific failing check. Full procedures,
 including release promotion, rollback, backup and the secret model, are in
 [the deployment runbook](docs/DEPLOYMENT_RUNBOOK.md).
 

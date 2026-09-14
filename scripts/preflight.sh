@@ -59,6 +59,7 @@ else
   fail "Docker Compose v2 plugin missing"
 fi
 command -v python3 >/dev/null && pass "python3 present" || fail "python3 not installed"
+command -v curl >/dev/null && pass "curl present" || fail "curl not installed"
 if docker info >/dev/null 2>&1; then pass "Docker daemon reachable"; else fail "Docker daemon not reachable"; fi
 
 hdr "Deployment env and directories"
@@ -146,7 +147,7 @@ if [ "$RUNTIME" = force ]; then RUN_LIVE=1
 elif [ "$RUNTIME" = auto ] && docker compose --project-name jarvis-v1 ps --status running -q 2>/dev/null | grep -q .; then RUN_LIVE=1
 fi
 
-hdr "Runtime readiness"
+hdr "Control-plane readiness"
 if [ "$RUN_LIVE" != 1 ]; then
   skip "stack not running (pass --runtime to force these checks)"
 else
@@ -166,16 +167,47 @@ else
   else
     fail "API /health not ready (docker compose logs api)"
   fi
+  # shellcheck source=scripts/lib/http-probe.sh
+  . "$ROOT_DIR/scripts/lib/http-probe.sh"
+  authority=${JARVIS_PUBLIC_ORIGIN#*://}
   wp=${JARVIS_WEB_PORT:-13000}
-  code=$(curl -fsS -o /dev/null -w '%{http_code}' "http://127.0.0.1:$wp/" 2>/dev/null || true)
-  [ -n "$code" ] && pass "web app answers HTTP $code on 127.0.0.1:$wp" || fail "web app not answering on 127.0.0.1:$wp"
-  sc=$(curl -fsS -o /dev/null -w '%{http_code}' "http://127.0.0.1:$wp/api/v1/session" 2>/dev/null || true)
-  case "$sc" in
-    401) pass "/api/v1/session -> 401 (proxy reaches the API)";;
-    503) fail "/api/v1/session -> 503 (web app missing JARVIS_API_URL)";;
-    502) fail "/api/v1/session -> 502 (web app cannot reach the API)";;
-    *)   fail "/api/v1/session -> ${sc:-no response} (expected 401)";;
-  esac
+  if code=$(jarvis_http_probe "http://127.0.0.1:$wp/" "$authority" "200"); then
+    pass "web app answers HTTP $code on the configured local transport"
+  else
+    fail "web app required probe failed on 127.0.0.1:$wp"
+  fi
+  if sc=$(jarvis_http_probe \
+      "http://127.0.0.1:$wp/api/v1/session" "$authority" "401" auth_required); then
+    pass "/api/v1/session -> $sc with the Jarvis auth.required contract"
+  else
+    fail "/api/v1/session did not prove the Jarvis API proxy boundary"
+  fi
+  if [ "$MODE" = production ]; then
+    if jarvis_http_probe "${JARVIS_PUBLIC_ORIGIN%/}/" "$authority" "200,307,308" \
+        same_origin_login_redirect >/dev/null; then
+      pass "public HTTPS origin passes strict TLS and same-origin validation"
+    else
+      fail "public HTTPS origin failed strict TLS/readiness validation"
+    fi
+  fi
+fi
+
+hdr "Execution readiness"
+if [ "$RUN_LIVE" != 1 ]; then
+  skip "stack not running; real execution readiness is unverified"
+elif ! compose ps --status running orchestrator -q 2>/dev/null | grep -q .; then
+  fail "real orchestrator is not running; installation may be control-plane ready only"
+else
+  runtime_file=${JARVIS_ORCHESTRATOR_RUNTIME_FILE:-$CONFIG_DIR/runtime.json}
+  if [ ! -f "$runtime_file" ]; then
+    fail "real runtime manifest missing at $runtime_file"
+  elif compose run --rm --no-deps orchestrator python -m jarvis_orchestrator.admin \
+      runtime inspect --manifest /etc/jarvis-v1/runtime.json >/dev/null 2>&1; then
+    pass "private real runtime manifest and local dependencies validate"
+    skip "worker/provider live capability requires the Phase 0 acceptance procedure"
+  else
+    fail "real runtime manifest or local dependencies failed validation"
+  fi
 fi
 
 hdr "Result"

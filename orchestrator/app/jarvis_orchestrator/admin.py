@@ -33,8 +33,10 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import os
+import stat
 import sys
 from pathlib import Path
 from typing import Any, Literal
@@ -329,6 +331,80 @@ def _runtime_build(args: argparse.Namespace) -> int:
     return 0
 
 
+def inspect_runtime(path: Path) -> dict[str, object]:
+    """Validate repeatable local runtime prerequisites without network or inference."""
+
+    try:
+        config = RealRuntimeConfiguration.load(path)
+        metadata = path.stat()
+    except (OSError, ValueError, ValidationError) as error:
+        raise ManifestError(f"runtime manifest is unavailable or invalid: {error}") from None
+    if not stat.S_ISREG(metadata.st_mode):
+        raise ManifestError("runtime manifest must be a regular file")
+    if os.name == "posix" and stat.S_IMODE(metadata.st_mode) & 0o077:
+        raise ManifestError("runtime manifest must deny all group/other permissions")
+
+    problems: list[str] = []
+    for reference, credential in config.credential_files.items():
+        try:
+            details = credential.stat()
+        except OSError:
+            problems.append(f"credential reference {reference} is unavailable")
+            continue
+        if not stat.S_ISREG(details.st_mode):
+            problems.append(f"credential reference {reference} is not a regular file")
+        elif os.name == "posix" and stat.S_IMODE(details.st_mode) & 0o077:
+            problems.append(f"credential reference {reference} permits group/other access")
+
+    workers: list[dict[str, object]] = []
+    for revision_id, deployment in config.workers.items():
+        if deployment.wrapper_path is None or deployment.python_path is None:
+            problems.append(f"worker {revision_id} has no V1 wrapper executable")
+        if deployment.runner_python_path is None:
+            problems.append(f"worker {revision_id} has no separately configured runner Python")
+        if deployment.python_path == deployment.runner_python_path:
+            problems.append(f"worker {revision_id} reuses the legacy runner environment")
+        for reference in (deployment.ssh_key_ref, deployment.host_key_ref):
+            if str(reference) not in config.credential_files:
+                problems.append(f"worker {revision_id} credential reference is unresolved")
+        workers.append(
+            {
+                "revision_id": str(revision_id),
+                "host_alias": deployment.host_alias,
+                "wrapper_path": deployment.wrapper_path,
+                "runner_path": deployment.runner_path,
+                "wrapper_python": deployment.python_path,
+                "runner_python": deployment.runner_python_path,
+                "strict_host_key_checking": deployment.strict_host_key_checking,
+            }
+        )
+
+    broker = Path(config.verification_isolation.broker_argv[0])
+    if not broker.is_file() or (os.name == "posix" and not os.access(broker, os.X_OK)):
+        problems.append("verification broker executable is unavailable")
+    if not config.project_workflows and not config.workflows:
+        problems.append("no repository binding is configured")
+    if problems:
+        raise ManifestError("runtime local validation failed: " + "; ".join(problems))
+
+    return {
+        "status": "configured_unverified",
+        "manifest_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "workers": workers,
+        "repository_binding_count": sum(len(v) for v in config.project_workflows.values())
+        + len(config.workflows),
+        "provider_endpoint_count": len(config.providers.allowed_endpoints),
+        "verification_image_id": config.verification_isolation.image_id,
+        "verification_broker": str(broker),
+        "note": "No worker, provider, repository, or verifier network probe was performed.",
+    }
+
+
+def _runtime_inspect(args: argparse.Namespace) -> int:
+    sys.stdout.write(json.dumps(inspect_runtime(args.manifest), indent=2, sort_keys=True) + "\n")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="jarvis-admin", description="Jarvis V1 operator tooling")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -353,6 +429,11 @@ def main(argv: list[str] | None = None) -> int:
         help="also verify each workflow version against its snapshot (needs DATABASE_URL)",
     )
     build.set_defaults(func=_runtime_build)
+    inspect = runtime_sub.add_parser(
+        "inspect", help="validate local runtime files without network or inference"
+    )
+    inspect.add_argument("--manifest", required=True, type=Path)
+    inspect.set_defaults(func=_runtime_inspect)
     args = parser.parse_args(argv)
 
     if getattr(args, "func", None) is _runtime_build and not args.stdout and args.out is None:

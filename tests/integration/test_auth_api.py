@@ -375,7 +375,14 @@ async def test_readiness_is_authenticated_and_bootstrap_is_one_time(
     assert (await _login(auth_environment)).status_code == 200
     readiness = await client.get("/api/v1/system/readiness")
     assert readiness.status_code == 200
-    assert readiness.json() == {"status": "ready", "database": "ready"}
+    assert readiness.json() == {
+        "status": "ready",
+        "scope": "control_plane",
+        "api": "ready",
+        "database": "ready",
+        "schema_revision": "ready",
+        "execution": "not_evaluated",
+    }
 
     async with session_factory.begin() as session:
         await session.execute(update(UserModel).where(UserModel.enabled).values(enabled=False))
