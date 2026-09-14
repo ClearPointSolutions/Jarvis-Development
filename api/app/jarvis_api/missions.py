@@ -104,7 +104,9 @@ async def owned(
         )
         .where(MissionModel.id == mission_id, ProjectModel.owner_user_id == user_id)
     )
-    row = (await session.execute(statement.with_for_update() if lock else statement)).one_or_none()
+    row = (
+        await session.execute(statement.with_for_update(of=MissionModel) if lock else statement)
+    ).one_or_none()
     if row is None:
         raise missing()
     return row[0], row[1]
