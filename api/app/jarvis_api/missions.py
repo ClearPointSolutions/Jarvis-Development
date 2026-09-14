@@ -137,14 +137,14 @@ async def validate_team(
     mode: str,
 ) -> FixedTeamSelection:
     registry = cast(RegistryService, request.app.state.registry_service)
-    template = await registry._revision(
+    template = await registry._reference_spec(
         session, team_template_revision_id, "team_template", active=True
     )
-    if not isinstance(template.spec, TeamTemplateSpec) or template.spec.mode != mode:
+    if not isinstance(template, TeamTemplateSpec) or template.mode != mode:
         raise ApiProblemError(422, "mission.mode_mismatch", "Mission and team modes differ")
     team = FixedTeamSelection(
         team_template_revision_id=team_template_revision_id,
-        **template.spec.model_dump(mode="python", exclude={"kind", "mode"}),
+        **template.model_dump(mode="python", exclude={"kind", "mode"}),
     )
     roles = [
         (team.manager_role_revision_id, "manager"),
@@ -152,41 +152,38 @@ async def validate_team(
         (team.reviewer_role_revision_id, "reviewer"),
     ]
     for revision_id, responsibility in roles:
-        record = await registry._revision(session, revision_id, "agent_role", active=True)
-        if (
-            not isinstance(record.spec, AgentRoleSpec)
-            or record.spec.responsibility != responsibility
-        ):
+        role = await registry._reference_spec(session, revision_id, "agent_role", active=True)
+        if not isinstance(role, AgentRoleSpec) or role.responsibility != responsibility:
             raise ApiProblemError(422, "mission.invalid_team", "Team role responsibility mismatch")
     for revision_id, purpose in (
         (team.manager_profile_revision_id, "mission_manager"),
         (team.reviewer_profile_revision_id, "reviewer"),
     ):
-        record = await registry._revision(session, revision_id, "model_profile", active=True)
-        if not isinstance(record.spec, ModelProfileSpec) or purpose not in record.spec.purposes:
+        profile = await registry._reference_spec(session, revision_id, "model_profile", active=True)
+        if not isinstance(profile, ModelProfileSpec) or purpose not in profile.purposes:
             raise ApiProblemError(
                 422, "mission.invalid_team", "Team profiles lack their required purposes"
             )
-        if not record.spec.structured_json or record.spec.context_limit < 16_384:
+        if not profile.structured_json or profile.context_limit < 16_384:
             raise ApiProblemError(
                 422,
                 "mission.invalid_team",
                 "Team profiles require structured JSON and at least 16384 context tokens",
             )
-        provider = await registry._revision(
-            session, record.spec.provider_revision_id, "provider_connection", active=True
+        provider = await registry._reference_spec(
+            session, profile.provider_revision_id, "provider_connection", active=True
         )
-        assert isinstance(provider.spec, ProviderSpec)
-        if (provider.spec.provider_kind == "demo") != (mode == "demo"):
+        assert isinstance(provider, ProviderSpec)
+        if (provider.provider_kind == "demo") != (mode == "demo"):
             raise ApiProblemError(422, "mission.mode_mismatch", "Mission and provider modes differ")
-    worker = await registry._revision(
+    worker = await registry._reference_spec(
         session, team.developer_worker_revision_id, "worker", active=True
     )
-    if not isinstance(worker.spec, WorkerSpec) or worker.spec.max_concurrency != 1:
+    if not isinstance(worker, WorkerSpec) or worker.max_concurrency != 1:
         raise ApiProblemError(
             422, "mission.invalid_team", "Development team requires one exclusive worker"
         )
-    if (worker.spec.adapter_kind == "demo") != (mode == "demo"):
+    if (worker.adapter_kind == "demo") != (mode == "demo"):
         raise ApiProblemError(422, "mission.mode_mismatch", "Mission and worker modes differ")
     workflow = await session.scalar(
         select(WorkflowVersionModel)

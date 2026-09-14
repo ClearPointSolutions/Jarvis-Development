@@ -115,18 +115,9 @@ class RegistryService:
         identity: ConfigurationModel,
         revision: ConfigurationRevisionModel,
     ) -> RegistryRecord:
+        spec = self._typed_spec(revision)
         envelope = revision.spec_json
-        required = {"spec", "display_name", "description", "enabled", "archived"}
-        if set(envelope) != required or revision.schema_version != "1.0":
-            raise _problem(
-                422, "unsupported_revision", "Revision predates the typed registry schema"
-            )
-        try:
-            spec = REGISTRY_SPEC_ADAPTER.validate_python(envelope["spec"])
-        except ValidationError:
-            raise _problem(
-                422, "unsupported_revision", "Revision has an unsupported specification"
-            ) from None
+
         private = await session.get(ConfigurationPrivateRefModel, revision.id)
         health = await session.get(ProviderHealthModel, revision.id)
         worker_runtime = None
@@ -208,6 +199,49 @@ class RegistryService:
                 "circuit_state": health.circuit_state if health else "closed",
             }
         )
+
+    @staticmethod
+    def _typed_spec(revision: ConfigurationRevisionModel) -> RegistrySpec:
+        envelope = revision.spec_json
+        required = {"spec", "display_name", "description", "enabled", "archived"}
+        if set(envelope) != required or revision.schema_version != "1.0":
+            raise _problem(
+                422, "unsupported_revision", "Revision predates the typed registry schema"
+            )
+        try:
+            spec = REGISTRY_SPEC_ADAPTER.validate_python(envelope["spec"])
+        except ValidationError:
+            raise _problem(
+                422, "unsupported_revision", "Revision has an unsupported specification"
+            ) from None
+        return spec
+
+    async def _reference_spec(
+        self,
+        session: AsyncSession,
+        revision_id: UUID,
+        kind: RegistryKind,
+        *,
+        active: bool = False,
+    ) -> RegistrySpec:
+        revision = await session.get(ConfigurationRevisionModel, revision_id)
+        identity = (
+            await session.get(ConfigurationModel, revision.configuration_id) if revision else None
+        )
+        if revision is None or identity is None or identity.kind != kind:
+            raise _problem(422, "invalid_reference", "Referenced revision has an incompatible kind")
+        spec = self._typed_spec(revision)
+        envelope = revision.spec_json
+        if active and (
+            not envelope["enabled"]
+            or envelope["archived"]
+            or not identity.enabled
+            or identity.archived_at
+        ):
+            raise _problem(
+                422, "inactive_reference", "Referenced configuration is disabled or archived"
+            )
+        return spec
 
     async def _revision(
         self,
