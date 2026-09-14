@@ -28,7 +28,7 @@ work items; bounded receipt-backed manager execution; idempotent explicit launch
 through the ordinary job service; normalized events; generated contracts; and the
 mission/team UI. The repository-local non-database test execution completed with
 `678 passed, 10 skipped`; `scripts/verify.sh` did not pass because its no-PostgreSQL
-branch reached only 54.70% coverage (the database integration suite was excluded).
+branch reached only 54.63% coverage (the database integration suite was excluded).
 Static/generated/frontend gates, Vitest (`54 passed`), production build, npm audit,
 and mocked Playwright (`6 passed, 6 database-backed skipped`) pass. PostgreSQL,
 exact-commit CI, and real V1 staging remain UNVERIFIED; see

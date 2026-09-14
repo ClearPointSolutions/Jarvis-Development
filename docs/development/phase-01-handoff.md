@@ -103,7 +103,7 @@ web/tests/e2e/phase-01-missions.spec.ts
   `pip check`, Ruff format/lint, mypy, and executed the non-database suite as
   `678 passed, 10 skipped, 195 deselected`. The script then stopped at the
   unchanged 80% coverage gate because excluding PostgreSQL integration tests left
-  aggregate coverage at 54.70%. This is a FAILED/UNVERIFIED complete gate, not a
+  aggregate coverage at 54.63%. This is a FAILED/UNVERIFIED complete gate, not a
   pass; no threshold or test was weakened.
 - `npm run test:e2e` after a fresh production build: `6 passed, 6 skipped`. The
   skips are the repository's database-backed scenarios requiring the disposable
