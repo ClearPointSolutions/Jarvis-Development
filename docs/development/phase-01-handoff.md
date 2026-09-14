@@ -4,7 +4,7 @@
 
 - Base SHA: `29780ba722f93d72ed725fff64a85b2eef7fda43`
 - Branch: `phase/01-persistent-missions`
-- Final implementation SHA: `56b037c55d5e88c3197628a77fe8a35989f27f7f`
+- Final implementation SHA: `7e739cd5d960609e091b61bb0cb4aff29e934d8a`
 - Final branch SHA: record from `git rev-parse HEAD` after the evidence commit
 - CI identity: UNVERIFIED until the draft-PR workflow completes against the exact
   final commit
@@ -25,7 +25,9 @@
 - Owner/CSRF protected, expected-version and idempotency-aware mission create/list/
   detail/directive/message/turn/work-item/start APIs with pagination for growing
   histories. Manual start uses the existing durable `create_job` service and
-  reconciles retries/crash windows to one linked run.
+  a stable assignment-derived enqueue identity to reconcile double-clicks, changed
+  client keys, and crash windows to one linked run. Only ready items governed by
+  the current directive may launch.
 - Mission list/detail UI with durable manager conversation, explicit queued versus
   delivered/stale/failed state, goal/constraint revision, fixed-team selection,
   backlog/dependency lifecycle, per-turn paid authorization, explicit launch, and

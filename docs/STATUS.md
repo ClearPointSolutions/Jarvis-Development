@@ -22,7 +22,7 @@ criteria:
   browser acceptance, and the normal verification gate; unavailable CI/live
   staging evidence remains explicitly unverified.
 
-Implemented in `02fa41e` and `56b037c`: migration `0012`; registry-backed fixed
+Implemented in `02fa41e`, `56b037c`, and `7e739cd`: migration `0012`; registry-backed fixed
 team templates and role revisions; persistent missions/directives/messages/turns/
 work items; bounded receipt-backed manager execution; idempotent explicit launch
 through the ordinary job service; normalized events; generated contracts; and the
