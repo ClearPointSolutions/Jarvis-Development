@@ -12,7 +12,9 @@ from jarvis_persistence.models import CONTROL_SCHEMA, EVENT_SCHEMA, Base
 
 config = context.config
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # Alembic runs in-process in the migration drift suite. Preserve application
+    # loggers so later API failures still emit their deliberately redacted type.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 
