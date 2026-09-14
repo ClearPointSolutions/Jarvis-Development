@@ -117,7 +117,11 @@ async def test_actual_api_role_readiness_redacted_audit_and_rotated_logout_resta
     assert current_token and current_token != first_token
     assert (await api.client.get("/api/v1/system/readiness")).json() == {
         "status": "ready",
+        "scope": "control_plane",
+        "api": "ready",
         "database": "ready",
+        "schema_revision": "ready",
+        "execution": "not_evaluated",
     }
     async with session_factory() as session:
         old = await session.scalar(

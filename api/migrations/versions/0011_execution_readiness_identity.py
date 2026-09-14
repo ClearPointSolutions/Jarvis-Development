@@ -27,7 +27,7 @@ def upgrade() -> None:
         schema="control",
     )
     op.create_check_constraint(
-        "ck_orchestrator_instances_runtime_mode",
+        op.f("ck_orchestrator_instances_runtime_mode"),
         "orchestrator_instances",
         "runtime_mode IN ('real','demo','unknown')",
         schema="control",
@@ -36,9 +36,11 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_constraint(
-        "ck_orchestrator_instances_runtime_mode",
+        op.f("ck_orchestrator_instances_runtime_mode"),
         "orchestrator_instances",
         schema="control",
+        type_="check",
+        if_exists=True,
     )
     op.drop_column("orchestrator_instances", "runtime_summary_json", schema="control")
     op.drop_column("orchestrator_instances", "runtime_manifest_sha256", schema="control")

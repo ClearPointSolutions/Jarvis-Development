@@ -655,7 +655,10 @@ class IdempotencyRecordModel(Base):
 
 class OrchestratorInstanceModel(Base):
     __tablename__ = "orchestrator_instances"
-    __table_args__ = ({"schema": CONTROL_SCHEMA},)
+    __table_args__ = (
+        CheckConstraint("runtime_mode IN ('real','demo','unknown')", name="runtime_mode"),
+        {"schema": CONTROL_SCHEMA},
+    )
 
     id: Mapped[str] = mapped_column(String(160), primary_key=True)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

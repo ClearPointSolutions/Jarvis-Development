@@ -184,7 +184,9 @@ def test_runtime_inspect_reports_configured_not_live_verified(tmp_path: Path) ->
     infra = _infra(tmp_path)
     credentials = cast(dict[str, object], infra["credential_files"])
     for path in credentials.values():
-        Path(cast(str, path)).write_text("fixture", encoding="utf-8")
+        credential = Path(cast(str, path))
+        credential.write_text("fixture", encoding="utf-8")
+        credential.chmod(0o600)
     config = admin.assemble(infra, [admin.ManifestBinding.model_validate(_binding())])
     target = tmp_path / "runtime.json"
     admin.install(config, target, force=False)
