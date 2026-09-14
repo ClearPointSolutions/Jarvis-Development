@@ -4,7 +4,7 @@
 
 - Base SHA: `c0b3a03dc07b435f16c2af73829cfcb4ed42ac19`
 - Branch: `phase/00-operational-baseline`
-- Final implementation SHA: `d73b964da736d2aaa20cae1249cc4667c3e3244e`
+- Final implementation SHA: `ab0258aa97af68837b7e81b00b713d3e005fe17b`
 - Final branch SHA: the evidence-only documentation commit containing this file;
   record it from the draft PR or `git rev-parse HEAD` (a commit cannot contain
   its own SHA)
@@ -72,7 +72,11 @@ three failures: the new constraint did not use the repository naming
 convention, one older integration assertion retained the pre-Phase-0 readiness
 shape, and Linux exposed missing `0600` modes on fixture credentials. All three
 were corrected in implementation SHA `d73b964da736d2aaa20cae1249cc4667c3e3244e`;
-the failed run is evidence, not a passing gate.
+the failed run is evidence, not a passing gate. Run `34888213064` then reached
+`860 passed, 4 skipped`; its only failure was Alembic detecting that two
+migration server defaults were absent from model metadata. Implementation SHA
+`ab0258aa97af68837b7e81b00b713d3e005fe17b` mirrors those defaults using the
+repository's existing model pattern. Neither failed run is a passing gate.
 
 ## LIVE VERIFIED
 
