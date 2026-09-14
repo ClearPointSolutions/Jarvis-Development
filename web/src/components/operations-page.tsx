@@ -19,8 +19,8 @@ export function OperationsPage() {
         <p className="eyebrow">Operations</p>
         <h1>Health</h1>
         <p>
-          Durable service heartbeats and queue state. A stale heartbeat requires
-          investigation.
+          Control-plane health and real execution readiness are separate. A
+          working login does not prove a coding worker can run.
         </p>
       </header>
       {health.isPending && <p role="status">Loading operational state…</p>}
@@ -34,10 +34,26 @@ export function OperationsPage() {
         <section className="content-card">
           <h2>Services and queue</h2>
           <dl>
+            <dt>Control plane</dt>
+            <dd>{health.data.control_plane}</dd>
             <dt>Database</dt>
             <dd>{health.data.database}</dd>
             <dt>Orchestrator</dt>
             <dd>{health.data.orchestrator}</dd>
+            <dt>Real execution</dt>
+            <dd>{health.data.execution}</dd>
+            <dt>Runtime mode</dt>
+            <dd>{health.data.runtime_mode}</dd>
+            <dt>Runtime manifest</dt>
+            <dd>{health.data.runtime_manifest}</dd>
+            <dt>Selected worker</dt>
+            <dd>{health.data.worker}</dd>
+            <dt>Provider capability</dt>
+            <dd>{health.data.provider}</dd>
+            <dt>Repository binding</dt>
+            <dd>{health.data.repository_binding}</dd>
+            <dt>Verification broker</dt>
+            <dd>{health.data.verification_broker}</dd>
             <dt>Instances accepting work</dt>
             <dd>{health.data.accepting_instances}</dd>
             <dt>Last heartbeat</dt>
@@ -51,6 +67,9 @@ export function OperationsPage() {
               </div>
             ))}
           </dl>
+          {health.data.execution_reasons.map((reason) => (
+            <p key={reason}>{reason}</p>
+          ))}
           <p>
             Heartbeat freshness threshold:{" "}
             {health.data.heartbeat_stale_after_seconds} seconds.

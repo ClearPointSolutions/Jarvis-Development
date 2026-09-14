@@ -302,7 +302,11 @@ export type Name4 = string;
  * @maxItems 32
  */
 export type Tools = ProviderTool[];
+export type Api = "ready";
 export type Database = "ready" | "unavailable" | "migration_required";
+export type Execution = "not_evaluated";
+export type SchemaRevision = "ready" | "migration_required";
+export type Scope1 = "control_plane";
 export type Status4 = "ready" | "not_ready";
 export type Archived = boolean;
 export type CircuitState = "closed" | "open" | "half_open";
@@ -653,12 +657,22 @@ export type Id23 = string;
 export type Role = "owner";
 export type Username1 = string;
 export type AcceptingInstances = number;
+export type ControlPlane = "healthy";
 export type Database1 = "healthy";
+export type Execution1 = "ready" | "configured_unverified" | "not_ready" | "unconfigured";
+export type ExecutionReasons = string[];
 export type ExpiredActiveLeases = number;
 export type HeartbeatStaleAfterSeconds = number;
 export type LastHeartbeatAt1 = string | null;
 export type ObservedAt = string;
 export type Orchestrator = "healthy" | "stale" | "unknown";
+export type Provider = "configured_unverified" | "missing" | "stale" | "demo_only";
+export type RepositoryBinding = "configured" | "missing" | "stale" | "demo_only";
+export type RuntimeManifest = "configured" | "missing" | "stale" | "demo_only";
+export type RuntimeManifestSha256 = string | null;
+export type RuntimeMode = "real" | "demo" | "unknown";
+export type VerificationBroker = "configured_unverified" | "missing" | "stale" | "demo_only";
+export type Worker = "configured_unverified" | "missing" | "stale" | "demo_only";
 export type AcceptanceCriteria1 = string[];
 export type CreatedAt11 = string;
 export type Id24 = string;
@@ -1720,7 +1734,11 @@ export interface Parameters1 {
   [k: string]: JsonValue;
 }
 export interface ReadinessResponse {
+  api?: Api;
   database: Database;
+  execution?: Execution;
+  schema_revision?: SchemaRevision;
+  scope?: Scope1;
   status: Status4;
 }
 export interface RegistryPage {
@@ -2157,13 +2175,23 @@ export interface SessionUser {
 }
 export interface SystemHealth {
   accepting_instances: AcceptingInstances;
+  control_plane?: ControlPlane;
   database?: Database1;
+  execution: Execution1;
+  execution_reasons: ExecutionReasons;
   expired_active_leases: ExpiredActiveLeases;
   heartbeat_stale_after_seconds: HeartbeatStaleAfterSeconds;
   last_heartbeat_at: LastHeartbeatAt1;
   observed_at: ObservedAt;
   orchestrator: Orchestrator;
+  provider: Provider;
+  repository_binding: RepositoryBinding;
   run_counts: RunCounts;
+  runtime_manifest: RuntimeManifest;
+  runtime_manifest_sha256?: RuntimeManifestSha256;
+  runtime_mode: RuntimeMode;
+  verification_broker: VerificationBroker;
+  worker: Worker;
 }
 export interface RunCounts {
   [k: string]: number;

@@ -1712,10 +1712,34 @@ export interface components {
         /** ReadinessResponse */
         ReadinessResponse: {
             /**
+             * Api
+             * @default ready
+             * @constant
+             */
+            api: "ready";
+            /**
              * Database
              * @enum {string}
              */
             database: "ready" | "unavailable" | "migration_required";
+            /**
+             * Execution
+             * @default not_evaluated
+             * @constant
+             */
+            execution: "not_evaluated";
+            /**
+             * Schema Revision
+             * @default ready
+             * @enum {string}
+             */
+            schema_revision: "ready" | "migration_required";
+            /**
+             * Scope
+             * @default control_plane
+             * @constant
+             */
+            scope: "control_plane";
             /**
              * Status
              * @enum {string}
@@ -2306,11 +2330,24 @@ export interface components {
             /** Accepting Instances */
             accepting_instances: number;
             /**
+             * Control Plane
+             * @default healthy
+             * @constant
+             */
+            control_plane: "healthy";
+            /**
              * Database
              * @default healthy
              * @constant
              */
             database: "healthy";
+            /**
+             * Execution
+             * @enum {string}
+             */
+            execution: "ready" | "configured_unverified" | "not_ready" | "unconfigured";
+            /** Execution Reasons */
+            execution_reasons: string[];
             /** Expired Active Leases */
             expired_active_leases: number;
             /** Heartbeat Stale After Seconds */
@@ -2327,10 +2364,42 @@ export interface components {
              * @enum {string}
              */
             orchestrator: "healthy" | "stale" | "unknown";
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "configured_unverified" | "missing" | "stale" | "demo_only";
+            /**
+             * Repository Binding
+             * @enum {string}
+             */
+            repository_binding: "configured" | "missing" | "stale" | "demo_only";
             /** Run Counts */
             run_counts: {
                 [key: string]: number;
             };
+            /**
+             * Runtime Manifest
+             * @enum {string}
+             */
+            runtime_manifest: "configured" | "missing" | "stale" | "demo_only";
+            /** Runtime Manifest Sha256 */
+            runtime_manifest_sha256?: string | null;
+            /**
+             * Runtime Mode
+             * @enum {string}
+             */
+            runtime_mode: "real" | "demo" | "unknown";
+            /**
+             * Verification Broker
+             * @enum {string}
+             */
+            verification_broker: "configured_unverified" | "missing" | "stale" | "demo_only";
+            /**
+             * Worker
+             * @enum {string}
+             */
+            worker: "configured_unverified" | "missing" | "stale" | "demo_only";
         };
         /** TaskPage */
         TaskPage: {

@@ -76,6 +76,9 @@ class RunOwnership:
         clock: Clock | None = None,
         writer: EventWriter | None = None,
         fault: FaultHook = no_fault,
+        runtime_mode: Literal["real", "demo", "unknown"] = "unknown",
+        runtime_manifest_sha256: str | None = None,
+        runtime_summary: dict[str, JsonValue] | None = None,
     ) -> None:
         if not owner or len(owner) > 160 or ttl <= timedelta(0):
             raise ValueError("A bounded owner identity and positive lease TTL are required")
@@ -85,6 +88,9 @@ class RunOwnership:
         self.clock = clock or SystemClock()
         self.writer = writer or runtime_writer()
         self.fault = fault
+        self.runtime_mode = runtime_mode
+        self.runtime_manifest_sha256 = runtime_manifest_sha256
+        self.runtime_summary = runtime_summary or {}
 
     async def register(self) -> None:
         async with self.sessions.begin() as session:
@@ -98,6 +104,9 @@ class RunOwnership:
                     heartbeat_at=now,
                     draining=False,
                     version="0.1.0",
+                    runtime_mode=self.runtime_mode,
+                    runtime_manifest_sha256=self.runtime_manifest_sha256,
+                    runtime_summary_json=self.runtime_summary,
                 )
             )
 

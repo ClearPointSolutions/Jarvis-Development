@@ -1,14 +1,15 @@
 """Dedicated durable orchestrator entrypoint; no public listener or shell."""
 
 import asyncio
+import hashlib
 import logging
 import signal
 import sys
 from datetime import timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
-from pydantic import Field
+from pydantic import Field, JsonValue
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from uuid6 import uuid7
 
@@ -38,6 +39,8 @@ class OrchestratorSettings(BaseSettings):
 async def serve() -> None:
     settings = OrchestratorSettings()
     composition = None
+    runtime_manifest_sha256 = None
+    runtime_summary: dict[str, JsonValue] = {"configured": False}
     if settings.runtime_mode == "demo":
         from jarvis_orchestrator.demo.safety import install_network_guard
 
@@ -60,11 +63,31 @@ async def serve() -> None:
         # Import and filesystem configuration work happens before any lease is
         # claimed, off the event loop. Never extend TTL to hide cold startup work.
         composition = await asyncio.to_thread(load_composition)
+        assert settings.runtime_file is not None
+        manifest_bytes = await asyncio.to_thread(settings.runtime_file.read_bytes)
+        runtime_manifest_sha256 = hashlib.sha256(manifest_bytes).hexdigest()
+        config = composition.settings
+        runtime_summary = {
+            "configured": True,
+            "worker_revision_ids": cast(
+                list[JsonValue], sorted(str(item) for item in config.workers)
+            ),
+            "repository_binding_count": sum(
+                len(workflows) for workflows in config.project_workflows.values()
+            )
+            + len(config.workflows),
+            "provider_endpoint_count": len(config.providers.allowed_endpoints),
+            "verification_image_id": config.verification_isolation.image_id,
+            "verification_broker_configured": bool(config.verification_isolation.broker_argv),
+        }
     engine = create_async_database_engine(settings.database_url)
     ownership = RunOwnership(
         create_async_session_factory(engine),
         owner=str(uuid7()),
         ttl=timedelta(seconds=settings.lease_seconds),
+        runtime_mode=settings.runtime_mode,
+        runtime_manifest_sha256=runtime_manifest_sha256,
+        runtime_summary=runtime_summary,
     )
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()

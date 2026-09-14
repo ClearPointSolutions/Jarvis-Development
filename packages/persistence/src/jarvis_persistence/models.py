@@ -662,6 +662,11 @@ class OrchestratorInstanceModel(Base):
     heartbeat_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     draining: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     version: Mapped[str] = mapped_column(String(40), nullable=False)
+    runtime_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="unknown")
+    runtime_manifest_sha256: Mapped[str | None] = mapped_column(String(64))
+    runtime_summary_json: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict
+    )
 
 
 class RunLeaseModel(Base):

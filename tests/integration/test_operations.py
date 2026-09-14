@@ -39,10 +39,23 @@ async def test_health_requires_owner_and_scopes_runs(
                 heartbeat_at=datetime.now(UTC),
                 draining=False,
                 version="test",
+                runtime_mode="real",
+                runtime_manifest_sha256="a" * 64,
+                runtime_summary_json={
+                    "configured": True,
+                    "worker_revision_ids": ["worker-revision"],
+                    "provider_endpoint_count": 1,
+                    "repository_binding_count": 1,
+                    "verification_broker_configured": True,
+                },
             )
         )
     observed = (await api.client.get("/api/v1/system/health")).json()
     assert observed["orchestrator"] == "healthy"
+    assert observed["control_plane"] == "healthy"
+    assert observed["execution"] == "configured_unverified"
+    assert observed["runtime_manifest"] == "configured"
+    assert observed["provider"] == "configured_unverified"
     assert sum(observed["run_counts"].values()) == sum(baseline["run_counts"].values()) + 1
     async with session_factory.begin() as session:
         await session.execute(
@@ -52,3 +65,5 @@ async def test_health_requires_owner_and_scopes_runs(
         )
     stale = (await api.client.get("/api/v1/system/health")).json()
     assert stale["orchestrator"] == "stale" and stale["accepting_instances"] == 0
+    assert stale["execution"] == "not_ready"
+    assert stale["runtime_manifest"] == "stale"
