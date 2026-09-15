@@ -42,10 +42,14 @@ from jarvis_contracts.failures import (
 from jarvis_contracts.missions import (
     DirectiveUpdate,
     ManagementTurnPage,
+    MissionAutonomyUpdate,
+    MissionControlRequest,
+    MissionControlView,
     MissionCreate,
     MissionMessageCreate,
     MissionMessagePage,
     MissionPage,
+    MissionWakeupPage,
     WorkItemPage,
     WorkItemStart,
 )
@@ -71,6 +75,8 @@ from jarvis_contracts.runtime_api import (
     ProjectPage,
     RunControl,
     RunPage,
+    RunReconciliationReceipt,
+    RunReconciliationRequest,
 )
 from jarvis_contracts.verification import (
     IntegrationHeadPage,
@@ -131,6 +137,10 @@ class JarvisContractBundle(ContractModel):
     work_item_page: WorkItemPage | None = None
     work_item_start: WorkItemStart | None = None
     management_turn_page: ManagementTurnPage | None = None
+    mission_autonomy_update: MissionAutonomyUpdate | None = None
+    mission_control_request: MissionControlRequest | None = None
+    mission_control_view: MissionControlView | None = None
+    mission_wakeup_page: MissionWakeupPage | None = None
     system_health: SystemHealth
     run_usage: RunUsage
     approvals: ApprovalPage
@@ -159,6 +169,8 @@ class JarvisContractBundle(ContractModel):
     job_create: JobCreate | None = None
     job_page: JobPage | None = None
     run_control: RunControl | None = None
+    run_reconciliation_request: RunReconciliationRequest | None = None
+    run_reconciliation_receipt: RunReconciliationReceipt | None = None
     run_page: RunPage | None = None
     workflow_create: WorkflowCreateRequest | None = None
     workflow_command: WorkflowCommand | None = None

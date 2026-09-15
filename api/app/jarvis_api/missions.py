@@ -20,19 +20,26 @@ from jarvis_api.events.normalizer import EventIntent
 from jarvis_api.registry.service import RegistryService, _safe_strings
 from jarvis_api.runtime import create_job
 from jarvis_contracts.base import sha256_digest
-from jarvis_contracts.enums import EventMode, EventSeverity, EventVisibility
+from jarvis_contracts.commands import RunCommandRequest
+from jarvis_contracts.enums import EventMode, EventSeverity, EventVisibility, RunCommandKind
 from jarvis_contracts.events import EventScope, EventSource
 from jarvis_contracts.missions import (
     DirectiveUpdate,
     FixedTeamSelection,
     ManagementTurnPage,
     ManagementTurnView,
+    MissionAutonomyUpdate,
+    MissionControlRequest,
+    MissionControlView,
     MissionCreate,
     MissionMessageCreate,
     MissionMessagePage,
     MissionMessageView,
     MissionPage,
+    MissionResourceLimits,
     MissionView,
+    MissionWakeupPage,
+    MissionWakeupView,
     WorkItemPage,
     WorkItemStart,
     WorkItemView,
@@ -46,13 +53,26 @@ from jarvis_contracts.registry import (
 )
 from jarvis_contracts.runtime_api import JobCreate, RunView
 from jarvis_contracts.workflow_api import WorkflowResolvedSnapshot
-from jarvis_orchestrator.runtime.ownership import lock_events, runtime_writer
+from jarvis_orchestrator.mission_resources import (
+    MissionAdmissionDeniedError,
+    MissionBudgetDeniedError,
+    ensure_controls,
+    release,
+    require_admission,
+    reserve,
+    usage_view,
+)
+from jarvis_orchestrator.runtime.ownership import RunOwnership, lock_events, runtime_writer
 from jarvis_persistence.models import (
+    ConfigurationRevisionModel,
+    EventGlobalCounterModel,
     ManagementTurnModel,
+    MissionAdmissionControlModel,
     MissionDirectiveModel,
     MissionMessageModel,
     MissionModel,
     MissionTeamVersionModel,
+    MissionWakeupModel,
     MissionWorkItemDependencyModel,
     MissionWorkItemModel,
     ProjectModel,
@@ -60,7 +80,11 @@ from jarvis_persistence.models import (
     WorkflowTemplateModel,
     WorkflowVersionModel,
 )
-from jarvis_persistence.repositories import IdempotencyConflictError, IdempotencyRepository
+from jarvis_persistence.repositories import (
+    CommandRepository,
+    IdempotencyConflictError,
+    IdempotencyRepository,
+)
 
 router = APIRouter(prefix="/api/v1/missions", tags=["missions"])
 Limit = Annotated[int, Query(ge=1, le=100)]
@@ -87,8 +111,43 @@ def view(row: MissionModel, team_version: int) -> MissionView:
         version=row.version,
         directive_version=row.directive_version,
         team_version=team_version,
+        autonomous=row.autonomous,
+        waiting_reason=row.waiting_reason,
+        next_action=row.next_action,
+        next_action_basis=row.next_action_basis,
+        user_action_required=row.user_action_required,
         created_at=row.created_at,
         updated_at=row.updated_at,
+    )
+
+
+async def detailed_view(session: AsyncSession, row: MissionModel, team_version: int) -> MissionView:
+    controls = list(
+        await session.scalars(
+            select(MissionAdmissionControlModel).where(
+                MissionAdmissionControlModel.scope_key.in_(
+                    ("global", f"team:{row.selected_team_version_id}", f"mission:{row.id}")
+                )
+            )
+        )
+    )
+    active_directive = await session.scalar(
+        select(MissionWorkItemModel.directive_version)
+        .where(
+            MissionWorkItemModel.mission_id == row.id,
+            MissionWorkItemModel.lifecycle == "started",
+        )
+        .limit(1)
+    )
+    return view(row, team_version).model_copy(
+        update={
+            "controls": {control.scope: control.state for control in controls},
+            "active_work_directive_version": active_directive,
+            "usage": await usage_view(session, row, datetime.now(UTC)),
+            # Legacy worker-managed paid credentials cannot yet be metered by
+            # the control plane; this must remain honest even when autonomy is on.
+            "paid_unattended_available": False,
+        }
     )
 
 
@@ -222,6 +281,33 @@ async def validate_team(
     return team
 
 
+async def autonomous_unpaid_only(session: AsyncSession, selection: FixedTeamSelection) -> bool:
+    """Paid unattended execution stays disabled until worker usage is enforceable."""
+    profile_ids = {
+        selection.manager_profile_revision_id,
+        selection.reviewer_profile_revision_id,
+    }
+    worker_row = await session.get(
+        ConfigurationRevisionModel, selection.developer_worker_revision_id
+    )
+    if worker_row is None:
+        return False
+    worker = WorkerSpec.model_validate(worker_row.spec_json["spec"])
+    profile_ids.update(worker.model_binding.allowed_profile_revision_ids)
+    for profile_id in profile_ids:
+        row = await session.get(ConfigurationRevisionModel, profile_id)
+        if row is None:
+            return False
+        profile = ModelProfileSpec.model_validate(row.spec_json["spec"])
+        provider_row = await session.get(ConfigurationRevisionModel, profile.provider_revision_id)
+        if provider_row is None:
+            return False
+        provider = ProviderSpec.model_validate(provider_row.spec_json["spec"])
+        if provider.egress.paid:
+            return False
+    return True
+
+
 @router.post("", response_model=MissionView, status_code=201)
 async def create_mission(
     request: Request, body: MissionCreate, principal: CsrfPrincipal
@@ -267,6 +353,9 @@ async def create_mission(
             constraints_json=list(body.constraints),
             lifecycle="active",
             mode=body.mode,
+            autonomous=body.autonomous,
+            resource_limits_json=body.limits.model_dump(mode="json"),
+            budget_window_started_at=now,
             directive_version=1,
             selected_team_version_id=team_id,
             version=1,
@@ -285,6 +374,12 @@ async def create_mission(
         # (including the initial directive) always observe their parent.
         session.add(mission)
         await session.flush()
+        if body.autonomous and not await autonomous_unpaid_only(session, team_selection):
+            raise ApiProblemError(
+                422,
+                "mission.paid_unattended_disabled",
+                "Autonomous mode requires entirely unpaid, enforceably bounded model bindings",
+            )
         session.add(team)
         session.add(
             MissionDirectiveModel(
@@ -300,6 +395,7 @@ async def create_mission(
             )
         )
         await session.flush()
+        await ensure_controls(session, mission)
         result = view(mission, 1)
         await emit(
             session,
@@ -344,7 +440,226 @@ async def get_mission(
 ) -> MissionView:
     async with sessions(request, principal)() as session:
         mission, team = await owned(session, mission_id, principal.user_id)
-        return view(mission, team.version)
+        return await detailed_view(session, mission, team.version)
+
+
+@router.put("/{mission_id}/autonomy", response_model=MissionView)
+async def update_autonomy(
+    request: Request,
+    mission_id: UUID,
+    body: MissionAutonomyUpdate,
+    principal: CsrfPrincipal,
+) -> MissionView:
+    async with sessions(request, principal).begin() as session:
+        await lock_events(session)
+        mission, team = await owned(session, mission_id, principal.user_id, lock=True)
+        try:
+            idem, fresh = await IdempotencyRepository().begin(
+                session,
+                scope=f"mission:autonomy:{mission_id}",
+                key=body.idempotency_key,
+                request_digest=sha256_digest(body.model_dump(mode="json")),
+            )
+        except IdempotencyConflictError:
+            raise ApiProblemError(
+                409, "mission.idempotency_conflict", "Idempotency input changed"
+            ) from None
+        if not fresh:
+            return MissionView.model_validate(idem.response_json)
+        if mission.version != body.expected_version:
+            raise ApiProblemError(
+                409, "mission.version_conflict", "Mission changed; refresh and retry"
+            )
+        selection = FixedTeamSelection.model_validate(team.selection_json)
+        if body.enabled and not await autonomous_unpaid_only(session, selection):
+            raise ApiProblemError(
+                422,
+                "mission.paid_unattended_disabled",
+                "Paid or unmetered worker inference cannot run unattended",
+            )
+        mission.autonomous = body.enabled
+        mission.version += 1
+        if body.enabled and mission.lifecycle == "idle":
+            mission.lifecycle = "active"
+        await emit(
+            session,
+            mission,
+            "mission.autonomy_changed",
+            {"mission_id": str(mission.id), "enabled": body.enabled},
+        )
+        result = await detailed_view(session, mission, team.version)
+        idem.state, idem.response_status, idem.response_json = (
+            "completed",
+            200,
+            result.model_dump(mode="json"),
+        )
+        return result
+
+
+@router.post("/{mission_id}/controls", response_model=MissionControlView)
+async def control_mission(
+    request: Request,
+    mission_id: UUID,
+    body: MissionControlRequest,
+    principal: CsrfPrincipal,
+) -> MissionControlView:
+    async with sessions(request, principal).begin() as session:
+        await lock_events(session)
+        mission, team = await owned(session, mission_id, principal.user_id, lock=True)
+        try:
+            idem, fresh = await IdempotencyRepository().begin(
+                session,
+                scope=f"mission:control:{mission_id}",
+                key=body.idempotency_key,
+                request_digest=sha256_digest(body.model_dump(mode="json")),
+            )
+        except IdempotencyConflictError:
+            raise ApiProblemError(
+                409, "mission.idempotency_conflict", "Idempotency input changed"
+            ) from None
+        if not fresh:
+            return MissionControlView.model_validate(idem.response_json)
+        if mission.version != body.expected_version:
+            raise ApiProblemError(
+                409, "mission.version_conflict", "Mission changed; refresh and retry"
+            )
+        await ensure_controls(session, mission)
+        scope_key = {
+            "global": "global",
+            "team": f"team:{team.id}",
+            "mission": f"mission:{mission.id}",
+        }[body.scope]
+        control = await session.scalar(
+            select(MissionAdmissionControlModel)
+            .where(MissionAdmissionControlModel.scope_key == scope_key)
+            .with_for_update()
+        )
+        assert control is not None
+        if body.action == "safe_point":
+            control.safe_point_instruction = body.instruction
+        else:
+            control.state = {
+                "pause": "paused",
+                "resume": "open",
+                "drain": "draining",
+                "cancel": "cancelling",
+            }[body.action]
+        if body.limits is not None:
+            control.resource_limits_json = body.limits.model_dump(mode="json")
+            if body.scope == "mission":
+                mission.resource_limits_json = body.limits.model_dump(mode="json")
+        control.version += 1
+        active = await session.scalar(
+            select(RunModel)
+            .join(MissionWorkItemModel, MissionWorkItemModel.run_id == RunModel.id)
+            .where(
+                MissionWorkItemModel.mission_id == mission.id,
+                MissionWorkItemModel.lifecycle == "started",
+                RunModel.status.not_in(("completed", "failed", "blocked", "cancelled")),
+            )
+            .with_for_update()
+        )
+        command_kind = {
+            "pause": RunCommandKind.PAUSE,
+            "resume": RunCommandKind.RESUME,
+            "cancel": RunCommandKind.CANCEL,
+            "safe_point": RunCommandKind.INSTRUCTION,
+        }.get(body.action)
+        if active is not None and command_kind is not None:
+            receipt = await CommandRepository().enqueue(
+                session,
+                RunCommandRequest(
+                    run_id=active.id,
+                    kind=command_kind,
+                    idempotency_key=f"mission-control:{body.idempotency_key}",
+                    expected_run_version=active.version,
+                    payload={
+                        "actor_id": str(principal.user_id),
+                        **({"instruction": body.instruction} if body.instruction else {}),
+                    },
+                ),
+            )
+            if not receipt.duplicate:
+                active.version += 1
+                await RunOwnership(sessions(request, principal), owner="control-api").event(
+                    session,
+                    active,
+                    "run.command_requested",
+                    {
+                        "command_id": str(receipt.command_id),
+                        "kind": command_kind.value,
+                        "sequence": receipt.sequence,
+                        "actor_id": str(principal.user_id),
+                    },
+                )
+        if body.scope == "mission":
+            if body.action == "pause":
+                mission.lifecycle = "paused"
+                mission.waiting_reason = "admission_paused"
+            elif body.action == "resume":
+                mission.lifecycle = "active"
+                mission.waiting_reason = None
+            elif body.action == "cancel":
+                mission.lifecycle = "cancelling" if active is not None else "cancelled"
+                mission.waiting_reason = "cancellation_requested" if active is not None else None
+            elif body.action == "drain":
+                mission.next_action = "Wait for active work to reach a terminal safe point"
+                mission.next_action_basis = "Mission admission is draining"
+        mission.version += 1
+        await emit(
+            session,
+            mission,
+            "mission.control_changed",
+            {"scope": body.scope, "action": body.action, "state": control.state},
+        )
+        result = MissionControlView(
+            scope=body.scope,
+            state=control.state,
+            instruction=control.safe_point_instruction,
+            limits=control.resource_limits_json,
+            version=control.version,
+        )
+        idem.state, idem.response_status, idem.response_json = (
+            "completed",
+            200,
+            result.model_dump(mode="json"),
+        )
+        return result
+
+
+@router.get("/{mission_id}/wakeups", response_model=MissionWakeupPage)
+async def list_wakeups(
+    request: Request,
+    mission_id: UUID,
+    principal: CurrentPrincipal,
+    after: UUID | None = None,
+    limit: Limit = 50,
+) -> MissionWakeupPage:
+    async with sessions(request, principal)() as session:
+        await owned(session, mission_id, principal.user_id)
+        query = select(MissionWakeupModel).where(MissionWakeupModel.mission_id == mission_id)
+        if after:
+            query = query.where(MissionWakeupModel.id > after)
+        rows = list(
+            (await session.scalars(query.order_by(MissionWakeupModel.id).limit(limit + 1))).all()
+        )
+        return MissionWakeupPage(
+            items=tuple(
+                MissionWakeupView(
+                    id=row.id,
+                    kind=row.kind,
+                    status=row.status,
+                    deduplication_key=row.deduplication_key,
+                    directive_version=row.directive_version,
+                    source_event_cursor=row.source_event_cursor,
+                    management_turn_id=row.management_turn_id,
+                    scheduled_for=row.scheduled_for,
+                    created_at=row.created_at,
+                )
+                for row in rows[:limit]
+            ),
+            next_after=rows[limit - 1].id if len(rows) > limit else None,
+        )
 
 
 @router.put("/{mission_id}/directive", response_model=MissionView)
@@ -372,6 +687,8 @@ async def update_directive(
             raise ApiProblemError(
                 409, "mission.version_conflict", "Mission changed; refresh and retry"
             )
+        if mission.lifecycle in {"cancelling", "cancelled", "completed", "archived"}:
+            raise ApiProblemError(409, "mission.terminal", "Mission no longer accepts direction")
         mission.directive_version += 1
         mission.version += 1
         mission.objective, mission.constraints_json = body.objective, list(body.constraints)
@@ -432,6 +749,8 @@ async def create_message(
             raise ApiProblemError(
                 409, "mission.version_conflict", "Mission changed; refresh and retry"
             )
+        if mission.lifecycle in {"cancelling", "cancelled", "completed", "archived"}:
+            raise ApiProblemError(409, "mission.terminal", "Mission no longer accepts messages")
         mission.next_message_sequence += 1
         message = MissionMessageModel(
             id=uuid7(),
@@ -486,40 +805,66 @@ async def create_message(
             ).all()
             for work_item_id, dependency_key in pairs:
                 dependency_keys[work_item_id].append(dependency_key)
+        snapshot = {
+            "objective": mission.objective,
+            "constraints": mission.constraints_json,
+            "directive_version": mission.directive_version,
+            "team_version": team.version,
+            "messages": [
+                {"role": row.role, "body": row.body, "sequence": row.sequence}
+                for row in reversed(histories)
+            ],
+            "backlog": [
+                {
+                    "key": row.key,
+                    "title": row.title,
+                    "objective": row.objective,
+                    "acceptance_criteria": row.acceptance_criteria_json,
+                    "priority": row.priority,
+                    "dependencies": dependency_keys[row.id],
+                    "lifecycle": row.lifecycle,
+                    "directive_version": row.directive_version,
+                    "run_id": str(row.run_id) if row.run_id else None,
+                }
+                for row in backlog
+            ],
+        }
+        cursor = await session.scalar(
+            select(EventGlobalCounterModel.last_position).where(EventGlobalCounterModel.id == 1)
+        )
+        wakeup = MissionWakeupModel(
+            id=uuid7(),
+            mission_id=mission.id,
+            kind="user_direction",
+            deduplication_key=f"user-direction:{message.id}",
+            directive_version=mission.directive_version,
+            team_version_id=team.id,
+            source_event_cursor=cursor or 0,
+            accepted_target_identity=str(message.id),
+            accepted_source_identity=str(principal.user_id),
+            snapshot_json=snapshot,
+            status="turn_queued",
+            scheduled_for=datetime.now(UTC),
+        )
+        session.add(wakeup)
+        await session.flush()
         turn = ManagementTurnModel(
             id=uuid7(),
             mission_id=mission.id,
             input_message_id=message.id,
             directive_version=mission.directive_version,
             team_version_id=team.id,
-            input_snapshot_json={
-                "objective": mission.objective,
-                "constraints": mission.constraints_json,
-                "messages": [
-                    {"role": row.role, "body": row.body, "sequence": row.sequence}
-                    for row in reversed(histories)
-                ],
-                "backlog": [
-                    {
-                        "key": row.key,
-                        "title": row.title,
-                        "objective": row.objective,
-                        "acceptance_criteria": row.acceptance_criteria_json,
-                        "priority": row.priority,
-                        "dependencies": dependency_keys[row.id],
-                        "lifecycle": row.lifecycle,
-                        "directive_version": row.directive_version,
-                    }
-                    for row in backlog
-                ],
-            },
+            input_snapshot_json=snapshot,
             status="queued",
             mode=mission.mode,
             allow_paid_inference=body.allow_paid_inference,
             claimable_at=datetime.now(UTC),
             attempt_count=0,
+            wakeup_id=wakeup.id,
+            source_event_cursor=cursor or 0,
         )
         session.add(turn)
+        wakeup.management_turn_id = turn.id
         mission.version += 1
         await session.flush()
         message.management_turn_id = turn.id
@@ -685,7 +1030,8 @@ async def list_items(
 async def start_item(
     request: Request, mission_id: UUID, item_id: UUID, body: WorkItemStart, principal: CsrfPrincipal
 ) -> RunView:
-    async with sessions(request, principal)() as session:
+    factory = sessions(request, principal)
+    async with factory.begin() as session:
         mission, team = await owned(session, mission_id, principal.user_id)
         item = await session.scalar(
             select(MissionWorkItemModel).where(
@@ -728,6 +1074,25 @@ async def start_item(
             raise ApiProblemError(
                 409, "mission.dependencies_incomplete", "Dependencies must be accepted before start"
             )
+        try:
+            await require_admission(session, mission, operation="dispatch")
+            limits = MissionResourceLimits.model_validate(mission.resource_limits_json)
+            await reserve(
+                session,
+                mission,
+                action_id=f"job:{item.id}",
+                kind="job_execution",
+                liability={
+                    "active_jobs": 1,
+                    "wall_seconds": min(7_200, limits.max_wall_seconds),
+                },
+                currency=limits.currency,
+                now=datetime.now(UTC),
+            )
+        except MissionAdmissionDeniedError as error:
+            raise ApiProblemError(409, "mission.admission_paused", str(error)) from None
+        except MissionBudgetDeniedError as error:
+            raise ApiProblemError(409, "mission.budget_denied", str(error)) from None
         selection = FixedTeamSelection.model_validate(team.selection_json)
         objective = (
             item.objective
@@ -736,18 +1101,24 @@ async def start_item(
             + "\n\nMission constraints:\n- "
             + "\n- ".join(mission.constraints_json or ["No additional constraints"])
         )
-    result = await create_job(
-        request,
-        mission.project_id,
-        JobCreate(
-            idempotency_key=f"mission-work-item:{item.id}",
-            workflow_version_id=selection.workflow_version_id,
-            objective=objective,
-            priority=item.priority,
-            mode=mission.mode,
-        ),
-        principal,
-    )
+    try:
+        result = await create_job(
+            request,
+            mission.project_id,
+            JobCreate(
+                idempotency_key=f"mission-work-item:{item.id}",
+                workflow_version_id=selection.workflow_version_id,
+                objective=objective,
+                priority=item.priority,
+                mode=mission.mode,
+            ),
+            principal,
+        )
+    except Exception:
+        async with factory.begin() as session:
+            mission, _ = await owned(session, mission_id, principal.user_id, lock=True)
+            await release(session, mission, action_id=f"job:{item_id}", now=datetime.now(UTC))
+        raise
     async with sessions(request, principal).begin() as session:
         await lock_events(session)
         mission, _ = await owned(session, mission_id, principal.user_id, lock=True)

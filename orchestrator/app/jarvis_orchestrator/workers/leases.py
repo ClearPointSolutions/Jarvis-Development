@@ -23,6 +23,10 @@ from jarvis_persistence.models import (
 )
 
 
+class WorkerCapacityUnavailableError(RuntimeError):
+    """All declared slots are occupied or awaiting terminal reconciliation."""
+
+
 class WorkerSlots:
     def __init__(self, ownership: RunOwnership, fence: RunFence) -> None:
         self.ownership = ownership
@@ -106,7 +110,7 @@ class WorkerSlots:
                     },
                 )
                 return self.contract(lease, slot)
-            raise WorkerBoundaryError("worker_capacity_unavailable")
+            raise WorkerCapacityUnavailableError("worker_capacity_unavailable")
 
     @staticmethod
     def contract(lease: WorkerLeaseModel, slot: WorkerSlotModel) -> WorkerSlotFence:

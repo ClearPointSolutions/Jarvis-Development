@@ -3,10 +3,14 @@ import type {
   ManagementTurnPage,
   ManagementTurnView,
   MissionCreate,
+  MissionAutonomyUpdate,
+  MissionControlRequest,
+  MissionControlView,
   MissionMessageCreate,
   MissionMessagePage,
   MissionPage,
   MissionView,
+  MissionWakeupPage,
   RunView,
   WorkItemPage,
   WorkItemStart,
@@ -43,6 +47,18 @@ export function createMissionClient(csrfToken?: string) {
     get: (id: string) => request<MissionView>(`/${encodeURIComponent(id)}`),
     directive: (id: string, body: DirectiveUpdate) =>
       request<MissionView>(`/${encodeURIComponent(id)}/directive`, "PUT", body),
+    autonomy: (id: string, body: MissionAutonomyUpdate) =>
+      request<MissionView>(`/${encodeURIComponent(id)}/autonomy`, "PUT", body),
+    control: (id: string, body: MissionControlRequest) =>
+      request<MissionControlView>(
+        `/${encodeURIComponent(id)}/controls`,
+        "POST",
+        body,
+      ),
+    wakeups: (id: string) =>
+      request<MissionWakeupPage>(
+        `/${encodeURIComponent(id)}/wakeups?limit=100`,
+      ),
     messages: (id: string) =>
       request<MissionMessagePage>(
         `/${encodeURIComponent(id)}/messages?limit=100`,

@@ -54,6 +54,7 @@ export function MissionsPage() {
           .map((value) => value.trim())
           .filter(Boolean),
         mode,
+        autonomous: Boolean(data.get("autonomous")),
         team_template_revision_id: String(data.get("team")),
         idempotency_key: crypto.randomUUID(),
       });
@@ -124,6 +125,14 @@ export function MissionsPage() {
           name="constraints"
           maxLength={8000}
         />
+        <label className="check-field">
+          <input type="checkbox" name="autonomous" />
+          Automatically continue with bounded successive work
+        </label>
+        <p className="field-note">
+          Off by default. Paid or unmetered worker inference cannot be enabled
+          unattended; local/demo work still obeys runtime and mission limits.
+        </p>
         <button className="button button-primary" disabled={busy}>
           Create persistent mission
         </button>

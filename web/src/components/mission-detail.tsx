@@ -41,8 +41,17 @@ export function MissionDetail() {
     enabled,
     refetchInterval: 2000,
   });
+  const wakeups = useQuery({
+    queryKey: ["mission-wakeups", id],
+    queryFn: () => client.wakeups(id),
+    enabled,
+    refetchInterval: 2000,
+  });
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [controlScope, setControlScope] = useState<
+    "mission" | "team" | "global"
+  >("mission");
   async function refresh() {
     await queryClient.invalidateQueries({ queryKey: ["mission"] });
   }
@@ -112,6 +121,70 @@ export function MissionDetail() {
       setBusy(false);
     }
   }
+  async function autonomy(enabled: boolean) {
+    if (!mission.data) return;
+    setBusy(true);
+    try {
+      await client.autonomy(id, {
+        enabled,
+        expected_version: mission.data.version,
+        idempotency_key: crypto.randomUUID(),
+      });
+      setNotice(
+        enabled
+          ? "Bounded automatic continuation enabled."
+          : "Automatic continuation disabled.",
+      );
+      await refresh();
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : "Autonomy update failed",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function control(action: "pause" | "resume" | "drain" | "cancel") {
+    if (!mission.data) return;
+    setBusy(true);
+    try {
+      await client.control(id, {
+        scope: controlScope,
+        action,
+        expected_version: mission.data.version,
+        idempotency_key: crypto.randomUUID(),
+      });
+      setNotice(`${controlScope} ${action} requested.`);
+      await refresh();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Control failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function safePoint(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!mission.data) return;
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    setBusy(true);
+    try {
+      await client.control(id, {
+        scope: controlScope,
+        action: "safe_point",
+        instruction: String(data.get("instruction")),
+        expected_version: mission.data.version,
+        idempotency_key: crypto.randomUUID(),
+      });
+      form.reset();
+      setNotice("Instruction queued for an eligible safe point.");
+      await refresh();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Instruction failed");
+    } finally {
+      setBusy(false);
+    }
+  }
   if (!mission.data)
     return (
       <div className="state-card" role="status">
@@ -130,7 +203,157 @@ export function MissionDetail() {
           {mission.data.mode.toUpperCase()} · {mission.data.lifecycle} · version{" "}
           {mission.data.version}
         </p>
+        <p>
+          Automatic continuation: {mission.data.autonomous ? "ON" : "OFF"} ·
+          Paid unattended:{" "}
+          {mission.data.paid_unattended_available ? "available" : "disabled"}
+        </p>
       </header>
+      <section
+        className="content-card"
+        aria-labelledby="mission-management-state"
+      >
+        <h2 id="mission-management-state">Management state</h2>
+        <dl className="detail-list">
+          <div>
+            <dt>Governing directive</dt>
+            <dd>v{mission.data.directive_version}</dd>
+          </div>
+          <div>
+            <dt>Active work snapshot</dt>
+            <dd>
+              {mission.data.active_work_directive_version
+                ? `directive v${mission.data.active_work_directive_version}`
+                : "none"}
+            </dd>
+          </div>
+          <div>
+            <dt>Next intended action</dt>
+            <dd>{mission.data.next_action ?? "No action scheduled"}</dd>
+          </div>
+          <div>
+            <dt>Basis</dt>
+            <dd>{mission.data.next_action_basis ?? "No persisted basis"}</dd>
+          </div>
+          <div>
+            <dt>Waiting reason</dt>
+            <dd>{mission.data.waiting_reason ?? "Not waiting"}</dd>
+          </div>
+          <div>
+            <dt>User action</dt>
+            <dd>{mission.data.user_action_required ?? "None"}</dd>
+          </div>
+        </dl>
+        <div className="button-row">
+          <button
+            className="button"
+            disabled={busy}
+            onClick={() => void autonomy(!mission.data.autonomous)}
+          >
+            Turn autonomy {mission.data.autonomous ? "off" : "on"}
+          </button>
+          <label>
+            Control scope
+            <select
+              value={controlScope}
+              onChange={(event) =>
+                setControlScope(event.target.value as typeof controlScope)
+              }
+            >
+              <option value="mission">Mission</option>
+              <option value="team">Selected team</option>
+              <option value="global">Global</option>
+            </select>
+          </label>
+          <button
+            className="button"
+            disabled={busy}
+            onClick={() => void control("pause")}
+          >
+            Pause admission
+          </button>
+          <button
+            className="button"
+            disabled={busy}
+            onClick={() => void control("resume")}
+          >
+            Resume admission
+          </button>
+          <button
+            className="button"
+            disabled={busy}
+            onClick={() => void control("drain")}
+          >
+            Drain
+          </button>
+          <button
+            className="button"
+            disabled={busy}
+            onClick={() => void control("cancel")}
+          >
+            Cancel
+          </button>
+        </div>
+        <form className="login-form" onSubmit={safePoint}>
+          <label>
+            Safe-point instruction
+            <textarea name="instruction" required maxLength={2000} />
+          </label>
+          <button className="button" disabled={busy}>
+            Queue instruction
+          </button>
+        </form>
+      </section>
+      {mission.data.usage && (
+        <section className="content-card" aria-labelledby="mission-resources">
+          <h2 id="mission-resources">Resource window</h2>
+          <p>
+            UTC · {mission.data.usage.window_seconds}s window from{" "}
+            {new Date(mission.data.usage.window_started_at).toLocaleString()}
+          </p>
+          <p>
+            {mission.data.usage.unknown_liability
+              ? "Unknown outcomes retain their maximum reserved liability."
+              : "All recorded outcomes have known liability."}
+          </p>
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Resource</th>
+                  <th>Reserved</th>
+                  <th>Actual</th>
+                  <th>Limit</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(
+                  [
+                    "calls",
+                    "input_tokens",
+                    "output_tokens",
+                    "active_jobs",
+                    "wall_seconds",
+                    "iterations",
+                    "new_work_items",
+                  ] as const
+                ).map((key) => (
+                  <tr key={key}>
+                    <th>{key.replaceAll("_", " ")}</th>
+                    <td>{mission.data.usage?.reserved[key] ?? 0}</td>
+                    <td>{mission.data.usage?.actual[key] ?? 0}</td>
+                    <td>
+                      {mission.data.usage?.limits[
+                        `max_${key}` as keyof typeof mission.data.usage.limits
+                      ] ?? "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
       <div className="mission-detail-grid">
         <section className="content-card">
           <h2>Manager conversation</h2>
@@ -242,6 +465,24 @@ export function MissionDetail() {
           Create directive version {mission.data.directive_version + 1}
         </button>
       </form>
+      <section className="content-card">
+        <h2>Durable wakeups</h2>
+        {wakeups.data?.items.length ? (
+          <ol>
+            {wakeups.data.items.map((wakeup) => (
+              <li key={wakeup.id}>
+                {wakeup.kind} · {wakeup.status} · directive v
+                {wakeup.directive_version} ·{" "}
+                {wakeup.source_event_cursor == null
+                  ? "no event cursor"
+                  : `event ${wakeup.source_event_cursor}`}
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p>No wakeups recorded.</p>
+        )}
+      </section>
       {notice && (
         <p className="inline-alert" role="status">
           {notice}

@@ -519,23 +519,14 @@ class LegacyRequestSource:
                     task_id=task.id,
                     attempt_number=previous.attempt_number + 1 if previous else 1,
                     worker_revision_id=self.binding.worker_revision_id,
-                    status="running",
+                    # Capacity is reserved before this becomes a semantic coding
+                    # attempt. A queued logical assignment survives restarts and
+                    # worker saturation without spending an attempt.
+                    status="queued",
                     base_sha=base,
-                    started_at=self.owner.clock.now(),
                 )
                 session.add(attempt)
-                task.status = "running"
                 await session.flush()
-                await self.owner.event(
-                    session,
-                    run,
-                    "task.attempt_started",
-                    {
-                        "task_id": str(task.id),
-                        "task_attempt_id": str(attempt.id),
-                        "attempt": attempt.attempt_number,
-                    },
-                )
             project = self.binding.project.model_copy(update={"base_sha": attempt.base_sha})
             architecture: JsonValue = task.verification_json["architecture"]
             if settings.get("runtime_instructions"):

@@ -30,7 +30,7 @@ from jarvis_contracts.workflow_api import WorkflowResolvedRevision
 from jarvis_orchestrator.runtime.ownership import RunOwnership, StaleExecutorError
 from jarvis_orchestrator.runtime.service import OrchestratorService
 from jarvis_orchestrator.workers.configuration import configured_worker_registry
-from jarvis_orchestrator.workers.leases import WorkerSlots
+from jarvis_orchestrator.workers.leases import WorkerCapacityUnavailableError, WorkerSlots
 from jarvis_orchestrator.workers.safety import WorkerBoundaryError
 from jarvis_orchestrator.workers.transport import TransportResult
 from jarvis_orchestrator.workflows.factories import NodeContext
@@ -417,7 +417,7 @@ async def test_slots_reconcile_expiry_and_fence_old_generation(
         lease = await session.get(WorkerLeaseModel, first.lease_id)
         assert lease is not None
         lease.expires_at = owner.clock.now() - timedelta(seconds=1)
-    with pytest.raises(WorkerBoundaryError, match="capacity"):
+    with pytest.raises(WorkerCapacityUnavailableError, match="capacity"):
         await slots.acquire(request.worker_revision_id, request.task_attempt_id, spec)
     with pytest.raises(WorkerBoundaryError, match="requires_reconciliation"):
         await slots.release(first, reconciled_terminal=False)

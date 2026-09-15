@@ -205,7 +205,9 @@ class MissionModel(MutableRow, Base):
     __tablename__ = "missions"
     __table_args__ = (
         CheckConstraint(
-            "lifecycle IN ('active','waiting','blocked','completed','archived')", name="lifecycle"
+            "lifecycle IN ('active','idle','waiting_for_capacity','waiting_for_approval',"
+            "'blocked','paused','cancelling','cancelled','completed','archived')",
+            name="lifecycle",
         ),
         CheckConstraint("mode IN ('demo','real')", name="mode"),
         CheckConstraint("directive_version > 0", name="directive_version_positive"),
@@ -220,6 +222,19 @@ class MissionModel(MutableRow, Base):
     constraints_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
     lifecycle: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
     mode: Mapped[str] = mapped_column(String(10), nullable=False)
+    autonomous: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    waiting_reason: Mapped[str | None] = mapped_column(String(240))
+    next_action: Mapped[str | None] = mapped_column(String(240))
+    next_action_basis: Mapped[str | None] = mapped_column(String(1024))
+    user_action_required: Mapped[str | None] = mapped_column(String(1024))
+    resource_limits_json: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default="{}"
+    )
+    budget_window_started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
     directive_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     selected_team_version_id: Mapped[UUID] = mapped_column(
         ForeignKey(
@@ -338,6 +353,16 @@ class ManagementTurnModel(Base):
         ForeignKey(f"{CONTROL_SCHEMA}.mission_team_versions.id", ondelete="RESTRICT"),
         nullable=False,
     )
+    wakeup_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey(
+            f"{CONTROL_SCHEMA}.mission_wakeups.id",
+            name="fk_management_turns_wakeup",
+            ondelete="RESTRICT",
+            use_alter=True,
+        ),
+        unique=True,
+    )
+    source_event_cursor: Mapped[int | None] = mapped_column(BigInteger)
     input_snapshot_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="queued")
     mode: Mapped[str] = mapped_column(String(10), nullable=False)
@@ -387,6 +412,10 @@ class MissionWorkItemModel(MutableRow, Base):
     run_id: Mapped[UUID | None] = mapped_column(
         ForeignKey(f"{CONTROL_SCHEMA}.runs.id", ondelete="RESTRICT"), unique=True
     )
+    source_wakeup_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.mission_wakeups.id", ondelete="RESTRICT")
+    )
+    accepted_event_cursor: Mapped[int | None] = mapped_column(BigInteger)
 
 
 class MissionWorkItemDependencyModel(Base):
@@ -402,6 +431,101 @@ class MissionWorkItemDependencyModel(Base):
     depends_on_work_item_id: Mapped[UUID] = mapped_column(
         ForeignKey(f"{CONTROL_SCHEMA}.mission_work_items.id", ondelete="RESTRICT"), primary_key=True
     )
+
+
+class MissionWakeupModel(Base):
+    """Durable, deduplicated reason for a finite management turn."""
+
+    __tablename__ = "mission_wakeups"
+    __table_args__ = (
+        UniqueConstraint("mission_id", "deduplication_key", name="uq_mission_wakeup_dedup"),
+        CheckConstraint(
+            "kind IN ('user_direction','job_completed','job_failed','approval_decided','deadline')",
+            name="kind",
+        ),
+        CheckConstraint(
+            "status IN ('pending','claimed','turn_queued','committed','stale','failed')",
+            name="status",
+        ),
+        Index("ix_mission_wakeups_claim", "status", "scheduled_for", "created_at"),
+        {"schema": CONTROL_SCHEMA},
+    )
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid7)
+    mission_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.missions.id", ondelete="RESTRICT"), nullable=False
+    )
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    deduplication_key: Mapped[str] = mapped_column(String(200), nullable=False)
+    directive_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    team_version_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.mission_team_versions.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    source_event_cursor: Mapped[int | None] = mapped_column(BigInteger)
+    accepted_target_identity: Mapped[str | None] = mapped_column(String(200))
+    accepted_source_identity: Mapped[str | None] = mapped_column(String(200))
+    snapshot_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    outcome_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="pending")
+    scheduled_for: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    claimed_by: Mapped[str | None] = mapped_column(String(160))
+    management_turn_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class MissionAdmissionControlModel(MutableRow, Base):
+    __tablename__ = "mission_admission_controls"
+    __table_args__ = (
+        CheckConstraint("scope IN ('mission','team','global')", name="scope"),
+        CheckConstraint("state IN ('open','paused','draining','cancelling')", name="state"),
+        UniqueConstraint("scope_key", name="uq_mission_admission_scope_key"),
+        {"schema": CONTROL_SCHEMA},
+    )
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid7)
+    scope: Mapped[str] = mapped_column(String(16), nullable=False)
+    scope_key: Mapped[str] = mapped_column(String(200), nullable=False)
+    state: Mapped[str] = mapped_column(String(16), nullable=False, default="open")
+    safe_point_instruction: Mapped[str | None] = mapped_column(String(2000))
+    resource_limits_json: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default="{}"
+    )
+
+
+class MissionResourceReservationModel(Base):
+    """Maximum liability retained until actual usage is known."""
+
+    __tablename__ = "mission_resource_reservations"
+    __table_args__ = (
+        UniqueConstraint("scope_key", "action_id", name="uq_mission_resource_action"),
+        CheckConstraint("status IN ('reserved','reconciled','unknown','released')", name="status"),
+        Index("ix_mission_resource_scope_window", "scope_key", "window_started_at"),
+        {"schema": CONTROL_SCHEMA},
+    )
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid7)
+    mission_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.missions.id", ondelete="RESTRICT"), nullable=False
+    )
+    scope_key: Mapped[str] = mapped_column(String(200), nullable=False)
+    action_id: Mapped[str] = mapped_column(String(200), nullable=False)
+    kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    liability_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    actual_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="reserved")
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    price_unit: Mapped[str] = mapped_column(
+        String(40), nullable=False, default="currency", server_default="currency"
+    )
+    window_started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    reconciled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class ConfigurationModel(MutableRow, Base):

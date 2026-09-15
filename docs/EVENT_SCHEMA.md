@@ -1,5 +1,13 @@
 # Jarvis V1 Normalized Event Schema
 
+Phase 2 registers `mission.autonomy_changed`, `mission.control_changed`,
+`mission.wakeup_created`, `mission.wakeup_claimed`, `management.turn_*`,
+`work_item.*`, `worker.capacity_waiting`, and
+`effect.reconciliation_requested`. Events expose stable mission/run/work/effect
+identities, lifecycle or control state, source cursor, and bounded evidence
+references. They never expose provider prompts, hidden reasoning, credentials,
+raw remote output, or an operator-supplied assertion of an external outcome.
+
 M8 adds `command.normalized` and `git.integration_lease_acquired`,
 `git.integration_lease_renewed`, `git.integration_lease_released` to the normalized
 registry. They expose bounded identities, generations, timestamps and artifact

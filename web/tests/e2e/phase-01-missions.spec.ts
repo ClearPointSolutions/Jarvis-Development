@@ -18,6 +18,9 @@ const ids = {
 async function fixture(page: Page) {
   let created = false;
   let planned = false;
+  let autonomous = false;
+  let lifecycle = "active";
+  let missionVersion = 1;
   await page.route("**/api/v1/session", (route) =>
     route.fulfill({
       contentType: "application/json",
@@ -160,11 +163,43 @@ async function fixture(page: Page) {
       project_id: ids.project,
       objective: "Ship a durable feature",
       constraints: ["Keep evidence"],
-      lifecycle: "active",
+      lifecycle,
       mode: "demo",
-      version: planned ? 2 : 1,
+      version: missionVersion + (planned ? 1 : 0),
       directive_version: 1,
       team_version: 1,
+      autonomous,
+      waiting_reason: lifecycle === "paused" ? "admission_paused" : null,
+      next_action: "Run DEV-001",
+      next_action_basis: "Accepted mission direction",
+      user_action_required: null,
+      active_work_directive_version: null,
+      controls: {
+        global: "open",
+        team: "open",
+        mission: lifecycle === "paused" ? "paused" : "open",
+      },
+      usage: {
+        window_started_at: "2026-09-14T00:00:00Z",
+        window_seconds: 86400,
+        limits: {
+          timezone: "UTC",
+          window_seconds: 86400,
+          max_calls: 20,
+          max_input_tokens: 200000,
+          max_output_tokens: 40000,
+          max_active_jobs: 1,
+          max_wall_seconds: 21600,
+          max_iterations: 20,
+          max_new_work_items: 50,
+          max_cost_amount: "0",
+          currency: "USD",
+        },
+        reserved: {},
+        actual: {},
+        unknown_liability: false,
+      },
+      paid_unattended_available: false,
       created_at: "2026-09-14T20:00:00Z",
       updated_at: "2026-09-14T20:00:00Z",
     };
@@ -195,6 +230,33 @@ async function fixture(page: Page) {
           last_event_position: 0,
           last_run_sequence: 0,
           last_event_at: null,
+        }),
+      });
+    } else if (url.pathname.endsWith("/autonomy") && method === "PUT") {
+      autonomous = Boolean(
+        JSON.parse(route.request().postData() ?? "{}").enabled,
+      );
+      missionVersion += 1;
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          ...mission,
+          autonomous,
+          version: missionVersion,
+        }),
+      });
+    } else if (url.pathname.endsWith("/controls") && method === "POST") {
+      const action = JSON.parse(route.request().postData() ?? "{}").action;
+      lifecycle = action === "pause" ? "paused" : "active";
+      missionVersion += 1;
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          scope: "mission",
+          state: lifecycle === "paused" ? "paused" : "open",
+          instruction: null,
+          limits: mission.usage.limits,
+          version: missionVersion,
         }),
       });
     } else if (url.pathname.endsWith("/messages") && method === "POST") {
@@ -245,6 +307,26 @@ async function fixture(page: Page) {
       await route.fulfill({
         contentType: "application/json",
         body: JSON.stringify({ items: [], next_after: null }),
+      });
+    } else if (url.pathname.endsWith("/wakeups")) {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          items: [
+            {
+              id: ids.manager,
+              kind: "user_direction",
+              status: "committed",
+              deduplication_key: "message:1",
+              directive_version: 1,
+              source_event_cursor: 42,
+              management_turn_id: ids.manager,
+              scheduled_for: "2026-09-14T20:00:00Z",
+              created_at: "2026-09-14T20:00:00Z",
+            },
+          ],
+          next_after: null,
+        }),
       });
     } else if (url.pathname.endsWith("/work-items")) {
       await route.fulfill({
@@ -314,4 +396,22 @@ test("Phase 1 mission creation, durable manager backlog, and explicit linked run
   ).toBeVisible();
   await page.getByRole("button", { name: "Start work item" }).click();
   await expect(page).toHaveURL(`/runs/${ids.run}`);
+});
+
+test("Phase 2 exposes bounded autonomy, controls, usage, and durable wakeups", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.goto(`/missions/${ids.mission}`);
+  await expect(page.getByText("Paid unattended: disabled")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Resource window" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("user_direction · committed · directive v1 · event 42"),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Turn autonomy on" }).click();
+  await expect(page.getByText("Automatic continuation: ON")).toBeVisible();
+  await page.getByRole("button", { name: "Pause admission" }).click();
+  await expect(page.getByText(/DEMO · paused · version/)).toBeVisible();
 });

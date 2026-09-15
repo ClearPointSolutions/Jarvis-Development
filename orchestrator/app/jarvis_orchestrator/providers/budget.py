@@ -31,12 +31,15 @@ from jarvis_persistence.models import ModelBudgetGrantModel, ModelCallModel
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from jarvis_orchestrator.workflows.factories import NodeContext
 
-BUDGET_ESTIMATE_BYTES_PER_TOKEN = 3
-"""Conservative deterministic bound used only for pre-call ceilings.
+PROVIDER_REQUEST_OVERHEAD_TOKENS = 256
+"""Fail-closed envelope allowance in addition to byte-level token liability.
 
-Provider tokenizers are not reproducible here. English UTF-8 text averages about
-four bytes per token, so dividing by three over-estimates the request rather than
-admitting a call that a real tokenizer would price above the configured ceiling.
+The gateway does not pretend an average bytes/token ratio is a hard bound. For
+providers without an approved local tokenizer, every UTF-8 byte is reserved as a
+possible token, plus a fixed request/message envelope and serialized schema/tool
+bytes. This intentionally over-reserves. A provider whose billing can exceed
+this byte-level bound must supply a reviewed provider-specific estimator or is
+not eligible for unattended paid dispatch.
 """
 
 
@@ -56,7 +59,7 @@ def estimate_input_tokens(request: ProviderRequest) -> int:
         size += len(canonical_json(request.structured_schema))
     for tool in request.tools:
         size += len(canonical_json(tool))
-    return max(1, -(-size // BUDGET_ESTIMATE_BYTES_PER_TOKEN))
+    return max(1, size + PROVIDER_REQUEST_OVERHEAD_TOKENS + (64 * len(request.tools)))
 
 
 class BudgetGateway:

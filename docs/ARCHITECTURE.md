@@ -225,6 +225,33 @@ The orchestrator persists intent before every effect and relies on checkpoints a
 
 Node code must follow prepare/dispatch/await/commit phases. Re-entry checks the effect ledger before dispatch. Side effects before a LangGraph interrupt must be idempotent because the interrupted node restarts on resume. These rules align with current LangGraph persistence and interrupt behavior: [persistence](https://docs.langchain.com/oss/python/langgraph/persistence) and [interrupts](https://docs.langchain.com/oss/python/langgraph/interrupts).
 
+### 8.1 Bounded autonomous mission loop
+
+Phase 2 adds an opt-in mission scheduler above the existing run engine; it does
+not execute workflow nodes itself. User direction and terminal run projections
+create durable, deduplicated wakeups. A finite management turn consumes one
+frozen wakeup snapshot, validates a structured decision, and transactionally
+creates bounded work items. The scheduler then enqueues at most one ready item
+through the ordinary immutable job/run path. Polling or idle time never creates
+inference.
+
+Admission is checked at global, selected-team, and mission scope immediately
+before manager inference and worker dispatch. Pause prevents new work; drain,
+safe-point instruction, and cancel use the existing ordered run-command path for
+active work. Capacity saturation leaves the same task-attempt identity queued and
+backs off without consuming a semantic coding attempt. An owner may request
+reconciliation only for an existing ambiguous effect; recovery re-inspects its
+stored external identity and cannot assert an outcome or mint a replacement.
+
+Every unattended action reserves conservative maximum liability at all three
+scopes under row locks before dispatch. UTC-aligned fixed windows cover calls,
+input/output tokens, active jobs, wall time, iterations, work-item creation, and
+compatible currency/price units. Known results reconcile to actual usage;
+ambiguous outcomes retain the maximum. Because the legacy worker can use
+worker-managed credentials outside control-plane metering, paid unattended mode
+remains disabled. Unpaid local worker execution remains bounded by its adapter
+runtime and output limits.
+
 ## 9. Event and projection architecture
 
 Producers submit typed event intents to one normalizer. The normalizer validates schema/version, assigns correlation/causation, redacts recursively, stores oversized fields as artifacts, allocates commit-safe durable ordering under the global event-counter lock, inserts the immutable event, and updates owned projections in the same transaction. All such mutations acquire the global counter before sorted run counters and aggregate rows to avoid deadlocks. A trigger or constrained database role rejects update/delete on event rows.

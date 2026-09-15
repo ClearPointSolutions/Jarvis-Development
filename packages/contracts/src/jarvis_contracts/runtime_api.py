@@ -124,3 +124,19 @@ class RunControl(ContractModel):
         if (self.kind == RunCommandKind.INSTRUCTION) != (self.instruction is not None):
             raise ValueError("Only instruction commands require instruction text")
         return self
+
+
+class RunReconciliationRequest(ContractModel):
+    """Request evidence collection for an existing ambiguous external identity."""
+
+    effect_id: UUID
+    idempotency_key: IdempotencyKey
+    expected_run_version: int = Field(ge=0)
+
+
+class RunReconciliationReceipt(ContractModel):
+    run_id: UUID
+    effect_id: UUID
+    effect_status: Literal["dispatched", "running", "cancel_requested", "unknown"]
+    queued_for_inspection: bool
+    duplicate: bool = False

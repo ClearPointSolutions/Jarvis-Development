@@ -35,6 +35,8 @@ from jarvis_contracts.runtime_api import (
     ProjectView,
     RunControl,
     RunPage,
+    RunReconciliationReceipt,
+    RunReconciliationRequest,
     RunView,
 )
 from jarvis_contracts.verification import IntegrationHeadPage, IntegrationHeadView
@@ -42,6 +44,7 @@ from jarvis_contracts.workflow import WorkflowSpec
 from jarvis_orchestrator.demo.safety import validate_demo_snapshot
 from jarvis_orchestrator.runtime.ownership import RunOwnership, lock_events, runtime_writer
 from jarvis_persistence.models import (
+    EffectModel,
     IntegrationHeadModel,
     JobModel,
     NodeExecutionModel,
@@ -632,6 +635,100 @@ async def control(
                     "actor_id": str(principal.user_id),
                 },
             )
+        return receipt
+
+
+@router.post(
+    "/runs/{run_id}/reconciliation",
+    response_model=RunReconciliationReceipt,
+    status_code=202,
+)
+async def request_reconciliation(
+    request: Request,
+    run_id: UUID,
+    body: RunReconciliationRequest,
+    principal: CsrfPrincipal,
+) -> RunReconciliationReceipt:
+    """Requeue inspection of one existing ambiguous identity without replacing it."""
+
+    factory = sessions(request, principal)
+    async with factory.begin() as session:
+        await lock_events(session)
+        row = (
+            await session.execute(
+                select(RunModel, JobModel)
+                .join(JobModel)
+                .join(ProjectModel)
+                .where(RunModel.id == run_id, ProjectModel.owner_user_id == principal.user_id)
+                .with_for_update(of=RunModel)
+            )
+        ).one_or_none()
+        if row is None:
+            raise missing()
+        run, job = row
+        try:
+            idem, fresh = await IdempotencyRepository().begin(
+                session,
+                scope=f"run:reconciliation:{run_id}",
+                key=body.idempotency_key,
+                request_digest=sha256_digest(body.model_dump(mode="json")),
+            )
+        except IdempotencyConflictError:
+            raise ApiProblemError(
+                409, "run.reconciliation_conflict", "Idempotency input changed"
+            ) from None
+        if not fresh:
+            return RunReconciliationReceipt.model_validate(idem.response_json).model_copy(
+                update={"duplicate": True}
+            )
+        if run.version != body.expected_run_version:
+            raise ApiProblemError(409, "run.version_conflict", "Run changed; refresh and retry")
+        effect = await session.scalar(
+            select(EffectModel).where(
+                EffectModel.id == body.effect_id,
+                EffectModel.run_id == run.id,
+            )
+        )
+        if effect is None:
+            raise missing()
+        if effect.status not in {"dispatched", "running", "cancel_requested", "unknown"}:
+            raise ApiProblemError(
+                409,
+                "run.reconciliation_not_required",
+                "Only a non-terminal external identity can be inspected",
+            )
+        queued = run.status == "blocked"
+        if queued:
+            run.status = "queued"
+            job.status = "queued"
+            run.current_node = None
+            run.completed_at = None
+            run.claimable_at = datetime.now(UTC)
+            run.runtime_json = {**run.runtime_json, "recovering": True}
+        run.version += 1
+        await RunOwnership(factory, owner="control-api").event(
+            session,
+            run,
+            "effect.reconciliation_requested",
+            {
+                "effect_id": str(effect.id),
+                "effect_status": effect.status,
+                "external_identity_present": effect.external_id is not None,
+                "actor_id": str(principal.user_id),
+                "queued_for_inspection": queued,
+            },
+        )
+        receipt = RunReconciliationReceipt(
+            run_id=run.id,
+            effect_id=effect.id,
+            effect_status=effect.status,
+            queued_for_inspection=queued,
+        )
+        idem.state, idem.response_status, idem.response_json = (
+            "completed",
+            202,
+            receipt.model_dump(mode="json"),
+        )
         return receipt
 
 
