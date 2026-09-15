@@ -2,6 +2,22 @@
 
 Status: normative logical model; physical details may be refined by migrations without changing the invariants below.
 
+Phase 2 physical refinement (migration `0013`) extends missions with explicit
+autonomy/lifecycle and management-state projections. `mission_wakeups` stores
+deduplicated event/deadline triggers, the directive/team/source cursor and
+accepted target/source identities, a frozen input snapshot, claim state, and its
+single linked management turn. Management turns and work items retain the wakeup
+and accepted-event provenance that authorized them.
+
+`mission_admission_controls` provides versioned global, selected-team, and
+mission scopes with open/paused/draining/cancelling state, safe-point instruction,
+and resource-limit configuration. `mission_resource_reservations` records one
+maximum-liability reservation per scope and stable action identity. A reservation
+is reserved, reconciled to actual usage, retained as unknown maximum liability,
+or released after proved non-dispatch. Currency, price unit, and UTC-aligned
+window identity are stored rather than inferred. These rows are mutable
+projections/ledgers; normalized events remain the append-only audit trail.
+
 M4 physical refinement (migration `0005`): workflow templates add owner identity
 and a current draft pointer. Workflow versions add an immutable resolved public
 registry snapshot and snapshot hash. `control.workflow_revision_references`
