@@ -581,9 +581,7 @@ async def control_mission(
             )
             if not receipt.duplicate:
                 active.version += 1
-                await RunOwnership(
-                    sessions(request, principal), owner="control-api"
-                ).event(
+                await RunOwnership(sessions(request, principal), owner="control-api").event(
                     session,
                     active,
                     "run.command_requested",
@@ -603,9 +601,7 @@ async def control_mission(
                 mission.waiting_reason = None
             elif body.action == "cancel":
                 mission.lifecycle = "cancelling" if active is not None else "cancelled"
-                mission.waiting_reason = (
-                    "cancellation_requested" if active is not None else None
-                )
+                mission.waiting_reason = "cancellation_requested" if active is not None else None
             elif body.action == "drain":
                 mission.next_action = "Wait for active work to reach a terminal safe point"
                 mission.next_action_basis = "Mission admission is draining"

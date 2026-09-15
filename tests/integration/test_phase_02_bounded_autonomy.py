@@ -143,9 +143,7 @@ async def test_one_direction_creates_two_jobs_then_completes_with_deduped_wakeup
         stored = await session.get(MissionModel, mission_id)
         items = list(
             await session.scalars(
-                select(MissionWorkItemModel).where(
-                    MissionWorkItemModel.mission_id == mission_id
-                )
+                select(MissionWorkItemModel).where(MissionWorkItemModel.mission_id == mission_id)
             )
         )
         assert stored is not None and stored.lifecycle == "completed"
