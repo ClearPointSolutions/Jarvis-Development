@@ -357,6 +357,28 @@ class WorkerEffectAdapter:
                 return EffectObservation(
                     "succeeded", self.output(WorkerResult.model_validate(row.result_json), identity)
                 )
+        # Reconciliation and artifact collection can outlast a slot lease just
+        # like dispatch. Keep renewing through both while preserving every
+        # generation/expiry check; renewal must never revive a stale fence.
+        await self.slots.renew(prepared.request.lease)
+        pending = asyncio.create_task(self._inspect_prepared(prepared, identity))
+        try:
+            while not pending.done():
+                done, _ = await asyncio.wait(
+                    {pending}, timeout=self.ownership.ttl.total_seconds() / 3
+                )
+                if not done:
+                    await self.slots.renew(prepared.request.lease)
+            return await pending
+        finally:
+            if not pending.done():
+                pending.cancel()
+                await asyncio.gather(pending, return_exceptions=True)
+
+    async def _inspect_prepared(
+        self, prepared: PreparedInvocation, identity: str
+    ) -> EffectObservation:
+        handle = self.handle(prepared)
         observation = await self.adapter.reconcile(handle, self.context())
         if observation.state in {"absent", "unknown", "cancelled"}:
             if observation.state == "cancelled":

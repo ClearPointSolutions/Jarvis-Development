@@ -30,6 +30,7 @@ from jarvis_contracts.workflow_api import WorkflowCommand, WorkflowCreateRequest
 from jarvis_orchestrator.demo.bootstrap import canonical_workflow
 from jarvis_persistence.checkpoints import bootstrap as bootstrap_checkpoints
 from jarvis_persistence.models import (
+    AcceptedTargetHeadModel,
     EventModel,
     IntegrationHeadModel,
     RunConfigSnapshotModel,
@@ -80,6 +81,26 @@ async def test_normal_real_entrypoint(
         )
     keys = Path(fixture).resolve()
     api = integrated_api
+
+    async def failure_codes(run_id: str) -> list[dict[str, Any]]:
+        async with session_factory() as session:
+            rows = (
+                await session.scalars(
+                    select(EventModel).where(
+                        EventModel.run_id == run_id,
+                        EventModel.type.in_(("worker.invocation_failed", "failure.classified")),
+                    )
+                )
+            ).all()
+            return [
+                {
+                    key: value
+                    for key, value in row.data_json.items()
+                    if key in {"code", "class", "failure_class"}
+                }
+                for row in rows
+            ]
+
     server = ThreadingHTTPServer(("127.0.0.1", 0), ProtocolHandler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -440,6 +461,7 @@ async def test_normal_real_entrypoint(
                 assert run.get("status") == "completed", (
                     run,
                     (tmp_path / "orchestrator.log").read_text()[-4000:],
+                    await failure_codes(run_id),
                 )
                 extension = await api.client.post(
                     f"/api/v1/projects/{project.json()['id']}/jobs",
@@ -472,6 +494,22 @@ async def test_normal_real_entrypoint(
                     "HEAD",
                 ]
                 shared_head = subprocess.check_output(worker_git)
+                repository_id = UUID(
+                    manifest["workflows"][str(doc.version.id)]["project"]["repository_id"]
+                )
+
+                async def current_target() -> tuple[str, int, int]:
+                    async with session_factory() as session:
+                        row = await session.scalar(
+                            select(AcceptedTargetHeadModel).where(
+                                AcceptedTargetHeadModel.repository_id == repository_id,
+                                AcceptedTargetHeadModel.target_branch == "main",
+                            )
+                        )
+                        assert row is not None
+                        return row.head_sha, row.generation, row.lease_generation
+
+                shared_target = await current_target()
                 historical_run = await api.client.post(
                     f"/api/v1/projects/{project.json()['id']}/jobs",
                     headers=headers,
@@ -493,6 +531,34 @@ async def test_normal_real_entrypoint(
                         break
                 assert historical_state["status"] == "completed", historical_state
                 assert subprocess.check_output(worker_git) == shared_head
+                assert await current_target() == shared_target
+                continued = await api.client.post(
+                    f"/api/v1/projects/{project.json()['id']}/jobs",
+                    headers=headers,
+                    json={
+                        "workflow_version_id": str(doc.version.id),
+                        "objective": "Continue accepted project after historical work",
+                        "mode": "real",
+                        "idempotency_key": namespace + "-continued",
+                    },
+                )
+                assert continued.status_code == 202
+                continued_id = continued.json()["id"]
+                for _ in range(300):
+                    await asyncio.sleep(1)
+                    continued_state = (await api.client.get(f"/api/v1/runs/{continued_id}")).json()
+                    if continued_state["status"] in {"completed", "failed", "blocked"}:
+                        break
+                assert continued_state["status"] == "completed", continued_state
+                async with session_factory() as session:
+                    continued_head = await session.scalar(
+                        select(IntegrationHeadModel).where(
+                            IntegrationHeadModel.run_id == continued_id
+                        )
+                    )
+                    assert (
+                        continued_head is not None and continued_head.base_sha == shared_target[0]
+                    )
                 wrong_project = await api.client.post(
                     "/api/v1/projects",
                     headers=headers,
@@ -551,14 +617,24 @@ async def test_normal_real_entrypoint(
                 and event.data_json.get("verdict") == "PASS"
                 and event.data_json.get("valid") is True
             ]
-            assert len(passing_reviews) == 1
-            assert "git.integration_completed" in types
+            # The retry candidate starts at the worker's failed first commit,
+            # while shared integration still starts at the accepted initial base.
+            # Phase 4 therefore requires a second review of the combined head.
+            assert len(passing_reviews) == 2
+            integration_started = next(e for e in events if e.type == "git.integration_started")
+            integration_completed = next(e for e in events if e.type == "git.integration_completed")
+            assert {e.data_json["reviewed_head_sha"] for e in passing_reviews} == {
+                integration_started.data_json["candidate_sha"],
+                integration_completed.data_json["head_sha"],
+            }
+            assert len({e.data_json["task_attempt_id"] for e in passing_reviews}) == 1
+            assert types.count("git.integration_completed") == 1
             failures = [event for event in events if event.type == "failure.classified"]
             assert [event.data_json["class"] for event in failures] == ["code.test_failure"]
             attempts = [event for event in events if event.type == "task.attempt_started"]
             assert sorted(event.data_json["attempt"] for event in attempts) == [1, 2]
             model_calls = [event for event in events if event.type == "model.call_completed"]
-            assert len(model_calls) == 3
+            assert len(model_calls) == 4  # Organizer, architect, candidate and combined reviews.
             assert all(
                 event.data_json["profile_revision_id"] == refs["profile"] for event in model_calls
             )
@@ -622,6 +698,17 @@ async def test_normal_real_entrypoint(
             ]
             assert historical_source["policy"] == "historical"
             assert historical_source["worker_base_sha"] == base
+            assert historical_source["integration_base_sha"] == base
+            historical_target = "jarvis/history/" + UUID(historical_id).hex
+            assert historical_source["integration_target_branch"] == historical_target
+            historical_head = await session.scalar(
+                select(IntegrationHeadModel).where(IntegrationHeadModel.run_id == historical_id)
+            )
+            assert historical_head is not None
+            assert historical_head.repository_id == original_head.repository_id
+            assert historical_head.target_branch == historical_target
+            assert historical_head.base_sha == base
+            assert historical_head.head_sha != extended_head.head_sha
             assert historical_source["source_store_id"] != first_source["source_store_id"]
     finally:
         server.shutdown()

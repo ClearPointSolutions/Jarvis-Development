@@ -19,12 +19,12 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy import create_engine, text, update
 from sqlalchemy.engine import make_url
-from tests.integration.support import seed_run
+from tests.integration.test_m5_runtime import prepare_run
 
 from jarvis_api.auth.bootstrap import bootstrap_owner
 from jarvis_persistence.checkpoints import postgres_saver
 from jarvis_persistence.database import create_async_database_engine, create_async_session_factory
-from jarvis_persistence.models import ProjectModel
+from jarvis_persistence.models import JobModel, ProjectModel, RunModel
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -36,14 +36,21 @@ async def seed(url: str, password: str) -> str:
     factory = create_async_session_factory(engine)
     try:
         owner, _ = await bootstrap_owner(factory, username="browser-owner", password=password)
-        run = await seed_run(factory)
+        run_id = await prepare_run(factory)
         async with factory.begin() as session:
+            run = await session.get(RunModel, run_id)
+            assert run is not None
+            job = await session.get(JobModel, run.job_id)
+            assert job is not None
+            # This read/replay fixture must not be claimed by the real-mode
+            # control-test service. Its workflow still needs a valid contract.
+            run.mode = "demo"
             await session.execute(
                 update(ProjectModel)
-                .where(ProjectModel.id == run.project_id)
+                .where(ProjectModel.id == job.project_id)
                 .values(owner_user_id=owner)
             )
-        return str(run.run_id)
+        return str(run_id)
     finally:
         await engine.dispose()
 

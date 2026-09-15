@@ -1181,12 +1181,14 @@ class WorkerAssignmentModel(Base):
         ForeignKey(f"{CONTROL_SCHEMA}.task_attempts.id", ondelete="RESTRICT"), nullable=False
     )
     role_key: Mapped[str] = mapped_column(String(64), nullable=False)
-    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     fairness_sequence: Mapped[int] = mapped_column(BigInteger, nullable=False)
     required_capabilities_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
     eligible_pool_snapshot_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     snapshot_hash: Mapped[str] = mapped_column(String(64), nullable=False)
-    status: Mapped[str] = mapped_column(String(16), nullable=False, default="queued")
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="queued", server_default="queued"
+    )
     selected_worker_revision_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
     worker_lease_id: Mapped[UUID | None] = mapped_column(
         ForeignKey(f"{CONTROL_SCHEMA}.worker_leases.id", ondelete="RESTRICT")
@@ -1326,9 +1328,13 @@ class AcceptedTargetHeadModel(Base):
     repository_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
     target_branch: Mapped[str] = mapped_column(String(200), nullable=False)
     head_sha: Mapped[str] = mapped_column(String(40), nullable=False)
-    generation: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    generation: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=0, server_default="0"
+    )
     lease_owner: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
-    lease_generation: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    lease_generation: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=0, server_default="0"
+    )
     lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -1373,7 +1379,9 @@ class MergeCandidateModel(Base):
     verification_identity: Mapped[str] = mapped_column(String(64), nullable=False)
     review_identity: Mapped[str] = mapped_column(String(64), nullable=False)
     directive_identity: Mapped[str] = mapped_column(String(64), nullable=False)
-    status: Mapped[str] = mapped_column(String(16), nullable=False, default="queued")
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="queued", server_default="queued"
+    )
     expected_head_sha: Mapped[str | None] = mapped_column(String(40))
     accepted_generation: Mapped[int | None] = mapped_column(BigInteger)
     conflict_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
@@ -1432,12 +1440,16 @@ class OperationalAlertModel(Base):
     deduplication_key: Mapped[str] = mapped_column(String(240), nullable=False)
     kind: Mapped[str] = mapped_column(String(80), nullable=False)
     severity: Mapped[str] = mapped_column(String(16), nullable=False)
-    status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="active", server_default="active"
+    )
     scope_type: Mapped[str] = mapped_column(String(32), nullable=False)
     scope_id: Mapped[str] = mapped_column(String(200), nullable=False)
     reason: Mapped[str] = mapped_column(String(1024), nullable=False)
-    details_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
-    occurrences: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    details_json: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default="{}"
+    )
+    occurrences: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -1465,9 +1477,15 @@ class NotificationOutboxModel(Base):
     destination_id: Mapped[str] = mapped_column(String(160), nullable=False)
     deduplication_key: Mapped[str] = mapped_column(String(240), nullable=False)
     redacted_payload_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
-    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
-    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    max_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="pending", server_default="pending"
+    )
+    attempt_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    max_attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=5, server_default="5"
+    )
     next_attempt_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_error_code: Mapped[str | None] = mapped_column(String(120))
     created_at: Mapped[datetime] = mapped_column(
@@ -1508,11 +1526,15 @@ class RecoveryGenerationModel(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
-    generation: Mapped[int] = mapped_column(BigInteger, nullable=False, default=1)
+    generation: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=1, server_default="1"
+    )
     automatic_dispatch_enabled: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="true"
     )
-    reason: Mapped[str] = mapped_column(String(1024), nullable=False, default="initial")
+    reason: Mapped[str] = mapped_column(
+        String(1024), nullable=False, default="initial", server_default="initial"
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -1530,7 +1552,9 @@ class BackupManifestModel(Base):
 
     id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid7)
     backup_id: Mapped[str] = mapped_column(String(160), nullable=False)
-    status: Mapped[str] = mapped_column(String(16), nullable=False, default="building")
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="building", server_default="building"
+    )
     recovery_generation: Mapped[int] = mapped_column(BigInteger, nullable=False)
     manifest_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     manifest_sha256: Mapped[str | None] = mapped_column(String(64))
@@ -1555,13 +1579,15 @@ class QualificationRunModel(Base):
     profile: Mapped[str] = mapped_column(String(8), nullable=False)
     environment_identity: Mapped[str] = mapped_column(String(240), nullable=False)
     release_identity: Mapped[str] = mapped_column(String(240), nullable=False)
-    status: Mapped[str] = mapped_column(String(16), nullable=False, default="running")
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="running", server_default="running"
+    )
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     observations_json: Mapped[list[dict[str, Any]]] = mapped_column(
         JSONB, nullable=False, default=list, server_default="[]"
     )
-    notes: Mapped[str] = mapped_column(String(2000), nullable=False, default="")
+    notes: Mapped[str] = mapped_column(String(2000), nullable=False, default="", server_default="")
 
 
 class EventGlobalCounterModel(Base):

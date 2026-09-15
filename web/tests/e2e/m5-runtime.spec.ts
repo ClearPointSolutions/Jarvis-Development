@@ -122,7 +122,7 @@ test("M5 real enqueue, pause, same-thread resume, cancel and accessible acknowle
   await expect(page.getByRole("status")).toContainText("Project created");
   await page
     .getByLabel("Project", { exact: true })
-    .selectOption({ label: "M5 browser project" });
+    .selectOption({ label: "M5 browser project — python" });
   await page.getByLabel("Published workflow").selectOption(version);
   await page.getByLabel("Execution mode").selectOption("real");
   await page

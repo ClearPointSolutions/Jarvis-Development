@@ -357,6 +357,7 @@ class LocalIntegrator:
                 worktree_root=str(merged.root),
                 gate_artifact_id=gate_report,
             )
+            owner.fault("m8_after_integration_head_advance")
             return IntegrationResult("completed", merged, snapshot_artifact, reports)
         finally:
             renewal.cancel()

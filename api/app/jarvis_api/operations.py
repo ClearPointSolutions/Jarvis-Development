@@ -290,8 +290,11 @@ async def _diagnostics(
         )
         stalled_invocations = (
             (
-                await session.scalars(
-                    select(WorkerInvocationModel)
+                await session.execute(
+                    select(
+                        WorkerInvocationModel.last_activity_at,
+                        WorkerInvocationModel.created_at,
+                    )
                     .join(EffectModel, EffectModel.id == WorkerInvocationModel.effect_id)
                     .where(
                         EffectModel.run_id.in_(run_ids),

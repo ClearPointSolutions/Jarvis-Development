@@ -40,6 +40,7 @@ from jarvis_orchestrator.workflows.factories import NodeContext
 from jarvis_orchestrator.workflows.state import WorkflowStateV1
 from jarvis_persistence.checkpoints import postgres_saver
 from jarvis_persistence.models import (
+    AcceptedTargetHeadModel,
     EventModel,
     IntegrationHeadModel,
     RunLeaseModel,
@@ -59,19 +60,26 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.mark.parametrize(
-    "crash_point",
+    "crash_point,historical",
     [
-        None,
-        "m8_after_verification_started",
-        "m8_after_verification_result_persisted",
-        "m8_after_reviewer_dispatched",
-        "m8_after_review_result_persisted",
-        "m8_after_integration_lease_acquired",
-        "m8_during_local_git_integration",
-        "m8_after_combined_gates",
-        "m8_before_integration_head_advance",
-        "verification_failure",
-        "review_failure",
+        (point, False)
+        for point in (
+            None,
+            "m8_after_verification_started",
+            "m8_after_verification_result_persisted",
+            "m8_after_reviewer_dispatched",
+            "m8_after_review_result_persisted",
+            "m8_after_integration_lease_acquired",
+            "m8_during_local_git_integration",
+            "m8_after_combined_gates",
+            "m8_before_integration_head_advance",
+            "verification_failure",
+            "review_failure",
+        )
+    ]
+    + [
+        ("m8_before_integration_head_advance", True),
+        ("m8_after_integration_head_advance", True),
     ],
 )
 async def test_m8_published_runtime_local_git(
@@ -80,6 +88,7 @@ async def test_m8_published_runtime_local_git(
     tmp_path: Path,
     crash_point: str | None,
     integrated_api: IntegratedApi,
+    historical: bool,
 ) -> None:
     failure_mode = crash_point in {"verification_failure", "review_failure"}
     review_calls = 0
@@ -89,6 +98,17 @@ async def test_m8_published_runtime_local_git(
         run_id = request.run_id
     root = tmp_path / "repository"
     base = base_repository(root)
+    target_branch = f"jarvis/history/{run_id.hex}" if historical else "main"
+    if historical:
+        async with session_factory.begin() as session:
+            session.add(
+                AcceptedTargetHeadModel(
+                    repository_id=request.project.repository_id,
+                    target_branch="main",
+                    head_sha="f" * 40,
+                    generation=7,
+                )
+            )
     manager = WorktreeManager(tmp_path)
     worktree, branch = await manager.create(
         root, run_id=run_id, task_key="DEV-001", attempt=1, base_sha=base
@@ -238,7 +258,7 @@ async def test_m8_published_runtime_local_git(
                 workflow_id,
                 request.project.repository_id,
                 base,
-                "main",
+                target_branch,
                 (
                     VerificationCommand(
                         argv=(
@@ -317,9 +337,27 @@ async def test_m8_published_runtime_local_git(
         assert attempt is not None and attempt.status == "succeeded"
         head = await session.get(IntegrationHeadModel, (run_id, request.project.repository_id))
         assert head is not None and head.head_sha != base
+        assert head.target_branch == target_branch and head.base_sha == base
+        if historical:
+            current = await session.scalar(
+                select(AcceptedTargetHeadModel).where(
+                    AcceptedTargetHeadModel.repository_id == request.project.repository_id,
+                    AcceptedTargetHeadModel.target_branch == "main",
+                )
+            )
+            accepted = await session.scalar(
+                select(AcceptedTargetHeadModel).where(
+                    AcceptedTargetHeadModel.repository_id == request.project.repository_id,
+                    AcceptedTargetHeadModel.target_branch == target_branch,
+                )
+            )
+            assert current is not None and current.head_sha == "f" * 40 and current.generation == 7
+            assert accepted is not None and accepted.head_sha == head.head_sha
+            assert accepted.generation == 1
         events = (
             await session.scalars(select(EventModel.type).where(EventModel.run_id == run_id))
         ).all()
+        assert events.count("git.integration_completed") == 1
         for name in (
             "worker.invocation_completed",
             "test.completed",
