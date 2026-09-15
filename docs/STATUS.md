@@ -1,6 +1,6 @@
 # Jarvis V1 Status
 
-## Phase 2 bounded autonomy (2026-09-14, code complete; CI/live gates open)
+## Phase 2 bounded autonomy (2026-09-14, code + CI complete; live gate open)
 
 Branch `phase/02-bounded-autonomy`; fetched clean base
 `5b7a5caefba9d9acccd21085c2232c515ed31dcc` (current `origin/main`, including
@@ -22,19 +22,20 @@ the merged Phase 1 mission work). Milestone criteria:
 - [x] Expose governing directive, active snapshot, next intended action/basis,
   wait/user-action reasons, controls, budgets, reservations, actual/unknown
   usage, observed worker/model evidence, and honest freshness in the API/UI.
-- [ ] Prove two successive useful jobs from one direction, duplicate/crash
+- [x] Prove two successive useful jobs from one direction, duplicate/crash
   convergence, stale-proposal rejection, budget races/unknown charges, capacity
   waits, outages, approval expiry, pause/dispatch races, and idle-no-inference;
   add all deterministic tests to the normal gate.
-- [ ] Run focused and full local gates, browser/console/generated-contract
+- [x] Run focused and full local gates, browser/console/generated-contract
   checks, review the diff, update canonical docs, write the Phase 2 handoff,
   commit cohesively, push the branch, and open/update a draft PR when authorized.
 
 No live staging, paid provider call, legacy-path change, deployment, main merge,
-or repository-protection change is authorized by this milestone. Live and CI
-evidence remain UNVERIFIED until actually observed against the exact final SHA.
+or repository-protection change is authorized by this milestone. Live evidence
+remains UNVERIFIED until actually observed on an authorized V1 staging target.
+Exact branch-tip CI remains mandatory after every commit.
 
-Implemented through `bc397cb`: migration `0013`; opt-in autonomous mission
+Implemented and code-validated through `b83b69c`: migration `0013`; opt-in autonomous mission
 dispatch; durable event/deadline wakeups and frozen provenance; manager response
 receipt recovery and stale-decision rejection; one-active-job enforcement;
 capacity waiting without semantic-attempt consumption; authenticated existing-
@@ -46,8 +47,13 @@ build, and single-worker Chromium gates pass. The repository gate ran `687 passe
 10 skipped, 200 deselected` without PostgreSQL, then correctly stopped at 52.60%
 coverage because the unchanged 80% threshold requires the database integration
 suite. Phase 2's five PostgreSQL tests were collected and skipped solely because
-`TEST_DATABASE_URL` is unavailable. CI and live staging remain UNVERIFIED; see
-`docs/development/phase-02-handoff.md`.
+`TEST_DATABASE_URL` is unavailable. Exact implementation CI run
+[`34921650915`](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34921650915)
+passed PostgreSQL migrations/full Python (`893 passed, 4 skipped`, 82.59%),
+generated contracts, frontend/build/audit, the mandatory protocol fixture, and
+database-backed browser/demo paths. Live staging remains UNVERIFIED; see
+`docs/development/phase-02-handoff.md` and draft PR
+[#10](https://github.com/ClearPointSolutions/Jarvis-Development/pull/10).
 
 ## Phase 1 persistent missions (2026-09-14, code + CI complete; live gate open)
 

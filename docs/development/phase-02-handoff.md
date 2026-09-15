@@ -4,9 +4,11 @@
 
 - Base SHA: `5b7a5caefba9d9acccd21085c2232c515ed31dcc`
 - Branch: `phase/02-bounded-autonomy`
-- Implementation SHA: `bc397cb74510e35478163d3d9fade5fcd1b2d30a`
-- Draft PR: pending authorized push
-- CI identity: UNVERIFIED pending the draft PR workflow
+- Validated implementation SHA: `b83b69c7ebf320a93e1c3055e464836dda3bd801`
+- Draft PR: [#10](https://github.com/ClearPointSolutions/Jarvis-Development/pull/10)
+- Implementation CI: [verify run 34921650915](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34921650915), passed
+- Final branch-tip CI: use the draft PR check attached to the current tip; evidence is
+  valid only when its checked SHA is the current branch SHA
 
 ## IMPLEMENTED
 
@@ -117,10 +119,15 @@ unchanged and `/opt/jarvis` was not touched.
 
 ## CI VERIFIED
 
-UNVERIFIED. Record the exact workflow/run/job and final commit only after the
-authorized draft PR workflow completes successfully, including PostgreSQL 16,
-migration round trip/drift/privileges, the full Python coverage gate, protocol
-fixture, and database-backed browser/demo paths.
+The exact implementation commit `b83b69c7ebf320a93e1c3055e464836dda3bd801`
+passed repository `verify` run
+[`34921650915`](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34921650915).
+That run covered PostgreSQL 16 migration round trip/drift/privileges, the full
+Python suite (`893 passed, 4 live-model skipped`) at the unchanged coverage
+threshold, generated-contract drift, frontend checks/build/audit, the mandatory
+worker protocol fixture, and database-backed browser/demo paths. The draft PR's
+current-tip check is the source of truth after this handoff-only documentation
+commit.
 
 ## LIVE VERIFIED
 
@@ -129,11 +136,9 @@ deployment, real remote invocation, paid provider call, or soak is claimed.
 
 ## Remaining gates and exact next action
 
-Push this branch and open a draft PR, then require the repository `verify` workflow
-to pass against the exact branch tip. If CI exposes a migration/concurrency or
-crash-window defect, fix it on this branch and rerun the exact-commit gate. After
-CI is green, use an explicitly authorized V1 staging target to migrate `/opt/jarvis-v1`,
-run an unpaid local two-job autonomous mission, exercise capacity wait and
-pause/reconciliation during a controlled outage, restart API/orchestrator, and
-retain the run/event/usage evidence. Leave `/opt/jarvis` and the legacy worker
-environment untouched.
+After the draft PR check is green on the current branch tip, use an explicitly
+authorized V1 staging target to migrate `/opt/jarvis-v1`, run an unpaid local
+two-job autonomous mission, exercise capacity wait and pause/reconciliation
+during a controlled outage, restart API/orchestrator, and retain the
+run/event/usage evidence. Leave `/opt/jarvis` and the legacy worker environment
+untouched. Do not merge or deploy from this handoff.
