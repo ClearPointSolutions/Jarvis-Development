@@ -26,6 +26,7 @@ from jarvis_orchestrator.runtime.faults import FaultHook, no_fault
 from jarvis_persistence.models import (
     EventGlobalCounterModel,
     OrchestratorInstanceModel,
+    RecoveryGenerationModel,
     RunLeaseModel,
     RunModel,
 )
@@ -44,6 +45,7 @@ class RunFence:
     run_id: UUID
     owner: str
     generation: int
+    recovery_generation: int = 1
 
 
 def runtime_writer() -> EventWriter:
@@ -164,6 +166,9 @@ class RunOwnership:
             instance = await session.get(OrchestratorInstanceModel, self.owner)
             if instance is None or instance.draining:
                 return None
+            recovery = await session.get(RecoveryGenerationModel, 1)
+            if recovery is None or not recovery.automatic_dispatch_enabled:
+                return None
             now = self.clock.now()
             if capacity is not None:
                 active = await session.scalar(
@@ -224,7 +229,7 @@ class RunOwnership:
             run.status = "claiming"
             run.version += 1
             await self.event(session, run, "run.claimed")
-            return RunFence(run.id, self.owner, lease.generation)
+            return RunFence(run.id, self.owner, lease.generation, recovery.generation)
 
     @asynccontextmanager
     async def fenced(self, fence: RunFence) -> AsyncIterator[tuple[AsyncSession, RunModel]]:
@@ -241,6 +246,7 @@ class RunOwnership:
                 )
                 .with_for_update()
             )
+            recovery = await session.get(RecoveryGenerationModel, 1)
             if (
                 run is None
                 or run.status in TERMINAL
@@ -248,6 +254,9 @@ class RunOwnership:
                 or lease.owner_instance_id != fence.owner
                 or lease.generation != fence.generation
                 or lease.expires_at <= self.clock.now()
+                or recovery is None
+                or recovery.generation != fence.recovery_generation
+                or not recovery.automatic_dispatch_enabled
             ):
                 raise StaleExecutorError("Expired, superseded or terminal run executor")
             yield session, run

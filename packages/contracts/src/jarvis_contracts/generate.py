@@ -55,7 +55,23 @@ from jarvis_contracts.missions import (
     WorkItemPage,
     WorkItemStart,
 )
-from jarvis_contracts.operations import RunUsage, SystemHealth
+from jarvis_contracts.operations import (
+    AlertEvaluationRequest,
+    AlertEvaluationResult,
+    AlertPage,
+    EmergencyStopRequest,
+    EmergencyStopResult,
+    OperationalDiagnostics,
+    QualificationRecord,
+    QualificationStart,
+    QualificationUpdate,
+    RecoveryControlRequest,
+    RecoveryControlResult,
+    RetentionPreview,
+    RetentionPreviewRequest,
+    RunUsage,
+    SystemHealth,
+)
 from jarvis_contracts.registry import (
     AccountingPage,
     ProviderChunk,
@@ -150,6 +166,19 @@ class JarvisContractBundle(ContractModel):
     mission_team_versions: MissionTeamVersionPage | None = None
     system_health: SystemHealth
     run_usage: RunUsage
+    operational_diagnostics: OperationalDiagnostics | None = None
+    operational_alerts: AlertPage | None = None
+    alert_evaluation_request: AlertEvaluationRequest | None = None
+    alert_evaluation_result: AlertEvaluationResult | None = None
+    emergency_stop_request: EmergencyStopRequest | None = None
+    emergency_stop_result: EmergencyStopResult | None = None
+    retention_preview_request: RetentionPreviewRequest | None = None
+    retention_preview: RetentionPreview | None = None
+    recovery_control_request: RecoveryControlRequest | None = None
+    recovery_control_result: RecoveryControlResult | None = None
+    qualification_start: QualificationStart | None = None
+    qualification_record: QualificationRecord | None = None
+    qualification_update: QualificationUpdate | None = None
     approvals: ApprovalPage
     approval_decision: ApprovalDecisionRequest
     integration_heads: IntegrationHeadPage

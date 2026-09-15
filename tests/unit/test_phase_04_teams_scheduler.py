@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from uuid import UUID
 
 import pytest
 from pydantic import ValidationError
@@ -14,7 +15,9 @@ from jarvis_orchestrator.workers.scheduler import (
 )
 
 
-def request(*, mission_id=None, priority=0, sequence=1) -> AssignmentRequest:
+def request(
+    *, mission_id: UUID | None = None, priority: int = 0, sequence: int = 1
+) -> AssignmentRequest:
     return AssignmentRequest(
         id=uuid7(),
         mission_id=mission_id or uuid7(),
@@ -31,7 +34,13 @@ PROJECT, PROFILE = uuid7(), uuid7()
 NOW = datetime(2026, 9, 15, tzinfo=UTC)
 
 
-def worker(*, resource="host-a", revision=None, used=0, health="healthy") -> EligibleWorker:
+def worker(
+    *,
+    resource: str = "host-a",
+    revision: UUID | None = None,
+    used: int = 0,
+    health: str = "healthy",
+) -> EligibleWorker:
     return EligibleWorker(
         revision_id=revision or uuid7(),
         physical_resource_id=resource,

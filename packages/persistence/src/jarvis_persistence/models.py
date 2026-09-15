@@ -1413,6 +1413,157 @@ class ArtifactModel(Base):
     )
 
 
+class OperationalAlertModel(Base):
+    """Durable deduplicated incident lifecycle; recovery updates the projection."""
+
+    __tablename__ = "operational_alerts"
+    __table_args__ = (
+        UniqueConstraint("owner_user_id", "deduplication_key", name="uq_operational_alert_dedup"),
+        CheckConstraint("severity IN ('warning','critical')", name="severity"),
+        CheckConstraint("status IN ('active','recovered')", name="status"),
+        Index("ix_operational_alerts_owner_status", "owner_user_id", "status", "last_seen_at"),
+        {"schema": CONTROL_SCHEMA},
+    )
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid7)
+    owner_user_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.users.id", ondelete="RESTRICT"), nullable=False
+    )
+    deduplication_key: Mapped[str] = mapped_column(String(240), nullable=False)
+    kind: Mapped[str] = mapped_column(String(80), nullable=False)
+    severity: Mapped[str] = mapped_column(String(16), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
+    scope_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    scope_id: Mapped[str] = mapped_column(String(200), nullable=False)
+    reason: Mapped[str] = mapped_column(String(1024), nullable=False)
+    details_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    occurrences: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    recovered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class NotificationOutboxModel(Base):
+    """Authorized outbound notification attempts; in-app alerts need no outbox row."""
+
+    __tablename__ = "notification_outbox"
+    __table_args__ = (
+        UniqueConstraint(
+            "destination_id", "deduplication_key", name="uq_notification_outbox_dedup"
+        ),
+        CheckConstraint("status IN ('pending','delivering','delivered','failed')", name="status"),
+        CheckConstraint("attempt_count >= 0 AND max_attempts > 0", name="attempt_bounds"),
+        Index("ix_notification_outbox_claim", "status", "next_attempt_at"),
+        {"schema": CONTROL_SCHEMA},
+    )
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid7)
+    alert_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.operational_alerts.id", ondelete="RESTRICT"), nullable=False
+    )
+    destination_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    deduplication_key: Mapped[str] = mapped_column(String(240), nullable=False)
+    redacted_payload_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    max_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    next_attempt_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_error_code: Mapped[str | None] = mapped_column(String(120))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class RetentionTombstoneModel(Base):
+    """Permanent replay identity retained after bounded content cleanup."""
+
+    __tablename__ = "retention_tombstones"
+    __table_args__ = (
+        UniqueConstraint(
+            "identity_scope", "identity_digest", name="uq_retention_tombstone_identity"
+        ),
+        CheckConstraint("char_length(identity_digest) = 64", name="identity_digest"),
+        {"schema": CONTROL_SCHEMA},
+    )
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid7)
+    identity_scope: Mapped[str] = mapped_column(String(120), nullable=False)
+    identity_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    resource_kind: Mapped[str] = mapped_column(String(80), nullable=False)
+    owner_user_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.users.id", ondelete="RESTRICT"), nullable=False
+    )
+    deleted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    provenance_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+
+
+class RecoveryGenerationModel(Base):
+    __tablename__ = "recovery_generations"
+    __table_args__ = (
+        CheckConstraint("id = 1", name="singleton"),
+        CheckConstraint("generation > 0", name="generation_positive"),
+        {"schema": CONTROL_SCHEMA},
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
+    generation: Mapped[int] = mapped_column(BigInteger, nullable=False, default=1)
+    automatic_dispatch_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+    reason: Mapped[str] = mapped_column(String(1024), nullable=False, default="initial")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class BackupManifestModel(Base):
+    __tablename__ = "backup_manifests"
+    __table_args__ = (
+        UniqueConstraint("backup_id", name="uq_backup_manifest_backup_id"),
+        CheckConstraint(
+            "status IN ('building','complete','invalid','restored','blocked')", name="status"
+        ),
+        {"schema": CONTROL_SCHEMA},
+    )
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid7)
+    backup_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="building")
+    recovery_generation: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    manifest_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    manifest_sha256: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class QualificationRunModel(Base):
+    __tablename__ = "qualification_runs"
+    __table_args__ = (
+        CheckConstraint("profile IN ('24h','72h','7d')", name="profile"),
+        CheckConstraint("status IN ('running','passed','failed','cancelled')", name="status"),
+        {"schema": CONTROL_SCHEMA},
+    )
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid7)
+    owner_user_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.users.id", ondelete="RESTRICT"), nullable=False
+    )
+    profile: Mapped[str] = mapped_column(String(8), nullable=False)
+    environment_identity: Mapped[str] = mapped_column(String(240), nullable=False)
+    release_identity: Mapped[str] = mapped_column(String(240), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="running")
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    observations_json: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default="[]"
+    )
+    notes: Mapped[str] = mapped_column(String(2000), nullable=False, default="")
+
+
 class EventGlobalCounterModel(Base):
     __tablename__ = "event_global_counter"
     __table_args__ = (
