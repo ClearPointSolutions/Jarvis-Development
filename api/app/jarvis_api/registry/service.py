@@ -32,6 +32,7 @@ from jarvis_contracts.registry import (
     RoutePolicySpec,
     TeamTemplateSpec,
     ValidationReport,
+    WorkerPoolSpec,
     WorkerSpec,
 )
 from jarvis_persistence.models import (
@@ -369,13 +370,35 @@ class RegistryService:
             worker = await self._revision(
                 session, spec.developer_worker_revision_id, "worker", active=True
             )
-            if not isinstance(worker.spec, WorkerSpec) or worker.spec.max_concurrency != 1:
-                raise _problem(422, "incompatible_worker", "Team requires an exclusive worker")
+            if not isinstance(worker.spec, WorkerSpec):
+                raise _problem(422, "incompatible_worker", "Team worker is invalid")
             if (worker.spec.adapter_kind == "demo") != (spec.mode == "demo"):
                 raise _problem(422, "mode_mismatch", "Team worker mode mismatch")
+            for member in spec.members:
+                role = await self._revision(
+                    session, member.role_revision_id, "agent_role", active=True
+                )
+                if not isinstance(role.spec, AgentRoleSpec):
+                    raise _problem(422, "incompatible_role", "Team member role is invalid")
+                await self._revision(
+                    session, member.model_route_revision_id, "route_policy", active=True
+                )
+                await self._revision(
+                    session, member.permission_policy_revision_id, "permission_policy", active=True
+                )
+                for pool_id in member.worker_pool_revision_ids:
+                    await self._revision(session, pool_id, "worker_pool", active=True)
             workflow = await session.get(WorkflowVersionModel, spec.workflow_version_id)
             if workflow is None or workflow.published_at is None:
                 raise _problem(422, "incompatible_workflow", "Team workflow must be published")
+        if isinstance(spec, WorkerPoolSpec):
+            for revision_id in spec.worker_revision_ids:
+                worker = await self._revision(session, revision_id, "worker", active=True)
+                assert isinstance(worker.spec, WorkerSpec)
+                if not set(spec.required_capabilities) <= set(worker.spec.capabilities):
+                    raise _problem(
+                        422, "incompatible_worker", "Worker lacks pool-required capabilities"
+                    )
         if isinstance(spec, ProviderSpec):
             if spec.base_url and spec.base_url not in self.allowed_endpoints:
                 raise _problem(

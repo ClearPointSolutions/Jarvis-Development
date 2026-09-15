@@ -49,6 +49,8 @@ from jarvis_contracts.missions import (
     MissionMessageCreate,
     MissionMessagePage,
     MissionPage,
+    MissionTeamUpdate,
+    MissionTeamVersionPage,
     MissionWakeupPage,
     WorkItemPage,
     WorkItemStart,
@@ -144,6 +146,8 @@ class JarvisContractBundle(ContractModel):
     mission_control_request: MissionControlRequest | None = None
     mission_control_view: MissionControlView | None = None
     mission_wakeup_page: MissionWakeupPage | None = None
+    mission_team_update: MissionTeamUpdate | None = None
+    mission_team_versions: MissionTeamVersionPage | None = None
     system_health: SystemHealth
     run_usage: RunUsage
     approvals: ApprovalPage

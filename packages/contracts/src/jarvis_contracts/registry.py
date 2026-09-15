@@ -25,6 +25,7 @@ RegistryKind = Literal[
     "retry_policy",
     "permission_policy",
     "execution_profile",
+    "worker_pool",
 ]
 ProviderKind = Literal["openai", "ollama", "demo"]
 Locality = Literal["local", "local_lan", "remote"]
@@ -32,6 +33,7 @@ DataClassification = Literal["public", "internal", "confidential", "restricted"]
 HealthStatus = Literal["healthy", "degraded", "unavailable", "misconfigured", "unknown"]
 Decision = Literal["allow", "deny", "require_approval"]
 Capability = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_.-]{0,63}$")]
+PhysicalResourceId = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$")]
 OpaqueReference = Annotated[
     str,
     Field(
@@ -45,9 +47,37 @@ class AgentRoleSpec(ContractModel):
     """Versioned responsibility; execution bindings remain separate."""
 
     kind: Literal["agent_role"] = "agent_role"
-    responsibility: Literal["manager", "developer", "reviewer"]
+    responsibility: Literal["manager", "developer", "reviewer", "specialist"]
     purpose: Capability
     instructions: str = Field(min_length=1, max_length=4000)
+
+
+class TeamMemberSpec(ContractModel):
+    """A capability request. Scheduling chooses a concrete permitted worker."""
+
+    key: Capability
+    role_revision_id: UUID
+    model_route_revision_id: UUID
+    worker_pool_revision_ids: tuple[UUID, ...] = Field(default=(), min_length=1, max_length=16)
+    required_capabilities: tuple[Capability, ...] = Field(default=(), max_length=32)
+    allowed_tools: tuple[Capability, ...] = Field(min_length=1, max_length=64)
+    permission_policy_revision_id: UUID
+    may_review: bool = False
+    may_execute: bool = True
+
+    @model_validator(mode="after")
+    def independent_review(self) -> TeamMemberSpec:
+        if self.may_review and self.may_execute:
+            raise ValueError("a protected reviewer cannot execute the work it reviews")
+        return self
+
+
+class TeamBudgetPolicy(ContractModel):
+    max_active_assignments: int = Field(default=2, ge=1, le=128)
+    max_execution_seconds: int = Field(default=14_400, ge=1, le=31_536_000)
+    max_inference_calls: int = Field(default=100, ge=0, le=1_000_000)
+    reserve_management_slots: int = Field(default=1, ge=0, le=32)
+    reserve_review_slots: int = Field(default=1, ge=0, le=32)
 
 
 class TeamTemplateSpec(ContractModel):
@@ -62,6 +92,38 @@ class TeamTemplateSpec(ContractModel):
     reviewer_role_revision_id: UUID
     reviewer_profile_revision_id: UUID
     workflow_version_id: UUID
+    members: tuple[TeamMemberSpec, ...] = Field(default=(), max_length=32)
+    budgets: TeamBudgetPolicy = Field(default_factory=TeamBudgetPolicy)
+    escalation_policy_revision_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def member_roles(self) -> TeamTemplateSpec:
+        if not self.members:
+            return self
+        keys = [member.key for member in self.members]
+        if len(keys) != len(set(keys)):
+            raise ValueError("team member keys must be unique")
+        if not any(member.may_review for member in self.members):
+            raise ValueError("a customizable team requires an independent reviewer")
+        if not any(member.may_execute for member in self.members):
+            raise ValueError("a customizable team requires an execution member")
+        return self
+
+
+class WorkerPoolSpec(ContractModel):
+    """Versioned allowlist of explicitly registered worker revisions."""
+
+    kind: Literal["worker_pool"] = "worker_pool"
+    worker_revision_ids: tuple[UUID, ...] = Field(min_length=1, max_length=128)
+    permitted_project_ids: tuple[UUID, ...] = Field(default=(), max_length=256)
+    required_capabilities: tuple[Capability, ...] = Field(default=(), max_length=32)
+    health_freshness_seconds: int = Field(default=60, ge=5, le=3600)
+
+    @model_validator(mode="after")
+    def unique_workers(self) -> WorkerPoolSpec:
+        if len(set(self.worker_revision_ids)) != len(self.worker_revision_ids):
+            raise ValueError("worker pool revisions must be unique")
+        return self
 
 
 class TimeoutPolicy(ContractModel):
@@ -94,6 +156,11 @@ class WorkerSpec(ContractModel):
     model_binding: ModelBinding = Field(default_factory=ModelBinding)
     # Opaque deployment manifest; paths/host credentials are server-managed, never echoed.
     deployment_configured: bool = False
+    physical_resource_id: PhysicalResourceId | None = None
+    permitted_project_ids: tuple[UUID, ...] = Field(default=(), max_length=256)
+    execution_profile_revision_ids: tuple[UUID, ...] = Field(default=(), max_length=32)
+    observed_build_digest: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    observed_wrapper_version: str | None = Field(default=None, max_length=80)
 
     @model_validator(mode="after")
     def adapter_binding(self) -> WorkerSpec:
@@ -301,7 +368,8 @@ RegistrySpec = Annotated[
     | RoutePolicySpec
     | RetryRegistrySpec
     | PermissionPolicySpec
-    | ExecutionProfileSpec,
+    | ExecutionProfileSpec
+    | WorkerPoolSpec,
     Field(discriminator="kind"),
 ]
 REGISTRY_SPEC_ADAPTER: TypeAdapter[RegistrySpec] = TypeAdapter(RegistrySpec)

@@ -203,7 +203,8 @@
           "enum": [
             "manager",
             "developer",
-            "reviewer"
+            "reviewer",
+            "specialist"
           ],
           "title": "Responsibility",
           "type": "string"
@@ -2233,6 +2234,109 @@
       "title": "FinalizeConfig",
       "type": "object"
     },
+    "FixedTeamSelection": {
+      "additionalProperties": false,
+      "properties": {
+        "budgets": {
+          "$ref": "#/$defs/TeamBudgetPolicy"
+        },
+        "developer_role_revision_id": {
+          "format": "uuid",
+          "title": "Developer Role Revision Id",
+          "type": "string"
+        },
+        "developer_worker_revision_id": {
+          "format": "uuid",
+          "title": "Developer Worker Revision Id",
+          "type": "string"
+        },
+        "eligible_worker_revision_ids": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Eligible Worker Revision Ids",
+          "type": "array"
+        },
+        "escalation_policy_revision_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Escalation Policy Revision Id"
+        },
+        "manager_profile_revision_id": {
+          "format": "uuid",
+          "title": "Manager Profile Revision Id",
+          "type": "string"
+        },
+        "manager_role_revision_id": {
+          "format": "uuid",
+          "title": "Manager Role Revision Id",
+          "type": "string"
+        },
+        "members": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/TeamMemberSpec"
+          },
+          "title": "Members",
+          "type": "array"
+        },
+        "reviewer_profile_revision_id": {
+          "format": "uuid",
+          "title": "Reviewer Profile Revision Id",
+          "type": "string"
+        },
+        "reviewer_role_revision_id": {
+          "format": "uuid",
+          "title": "Reviewer Role Revision Id",
+          "type": "string"
+        },
+        "team_template_revision_id": {
+          "format": "uuid",
+          "title": "Team Template Revision Id",
+          "type": "string"
+        },
+        "worker_pool_snapshot_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Worker Pool Snapshot Hash"
+        },
+        "workflow_version_id": {
+          "format": "uuid",
+          "title": "Workflow Version Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "team_template_revision_id",
+        "manager_role_revision_id",
+        "manager_profile_revision_id",
+        "developer_role_revision_id",
+        "developer_worker_revision_id",
+        "reviewer_role_revision_id",
+        "reviewer_profile_revision_id",
+        "workflow_version_id"
+      ],
+      "title": "FixedTeamSelection",
+      "type": "object"
+    },
     "IdempotencyContract": {
       "additionalProperties": false,
       "properties": {
@@ -3416,6 +3520,104 @@
         }
       },
       "title": "MissionResourceLimits",
+      "type": "object"
+    },
+    "MissionTeamUpdate": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_version": {
+          "minimum": 1,
+          "title": "Expected Version",
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 120,
+          "minLength": 8,
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "team_template_revision_id": {
+          "format": "uuid",
+          "title": "Team Template Revision Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "team_template_revision_id",
+        "expected_version",
+        "idempotency_key"
+      ],
+      "title": "MissionTeamUpdate",
+      "type": "object"
+    },
+    "MissionTeamVersionPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/MissionTeamVersionView"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "next_after": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next After"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "MissionTeamVersionPage",
+      "type": "object"
+    },
+    "MissionTeamVersionView": {
+      "additionalProperties": false,
+      "properties": {
+        "active": {
+          "title": "Active",
+          "type": "boolean"
+        },
+        "content_hash": {
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "selection": {
+          "$ref": "#/$defs/FixedTeamSelection"
+        },
+        "version": {
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "selection",
+        "content_hash",
+        "active",
+        "created_at"
+      ],
+      "title": "MissionTeamVersionView",
       "type": "object"
     },
     "MissionUsageView": {
@@ -5807,7 +6009,8 @@
               "retry_policy": "#/$defs/RetryRegistrySpec",
               "route_policy": "#/$defs/RoutePolicySpec",
               "team_template": "#/$defs/TeamTemplateSpec",
-              "worker": "#/$defs/WorkerSpec"
+              "worker": "#/$defs/WorkerSpec",
+              "worker_pool": "#/$defs/WorkerPoolSpec"
             },
             "propertyName": "kind"
           },
@@ -5838,6 +6041,9 @@
             },
             {
               "$ref": "#/$defs/ExecutionProfileSpec"
+            },
+            {
+              "$ref": "#/$defs/WorkerPoolSpec"
             }
           ],
           "title": "Spec"
@@ -5969,7 +6175,8 @@
               "retry_policy": "#/$defs/RetryRegistrySpec",
               "route_policy": "#/$defs/RoutePolicySpec",
               "team_template": "#/$defs/TeamTemplateSpec",
-              "worker": "#/$defs/WorkerSpec"
+              "worker": "#/$defs/WorkerSpec",
+              "worker_pool": "#/$defs/WorkerPoolSpec"
             },
             "propertyName": "kind"
           },
@@ -6000,6 +6207,9 @@
             },
             {
               "$ref": "#/$defs/ExecutionProfileSpec"
+            },
+            {
+              "$ref": "#/$defs/WorkerPoolSpec"
             }
           ],
           "title": "Spec"
@@ -8350,10 +8560,131 @@
       "title": "TaskView",
       "type": "object"
     },
+    "TeamBudgetPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "max_active_assignments": {
+          "default": 2,
+          "maximum": 128,
+          "minimum": 1,
+          "title": "Max Active Assignments",
+          "type": "integer"
+        },
+        "max_execution_seconds": {
+          "default": 14400,
+          "maximum": 31536000,
+          "minimum": 1,
+          "title": "Max Execution Seconds",
+          "type": "integer"
+        },
+        "max_inference_calls": {
+          "default": 100,
+          "maximum": 1000000,
+          "minimum": 0,
+          "title": "Max Inference Calls",
+          "type": "integer"
+        },
+        "reserve_management_slots": {
+          "default": 1,
+          "maximum": 32,
+          "minimum": 0,
+          "title": "Reserve Management Slots",
+          "type": "integer"
+        },
+        "reserve_review_slots": {
+          "default": 1,
+          "maximum": 32,
+          "minimum": 0,
+          "title": "Reserve Review Slots",
+          "type": "integer"
+        }
+      },
+      "title": "TeamBudgetPolicy",
+      "type": "object"
+    },
+    "TeamMemberSpec": {
+      "additionalProperties": false,
+      "description": "A capability request. Scheduling chooses a concrete permitted worker.",
+      "properties": {
+        "allowed_tools": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "title": "Allowed Tools",
+          "type": "array"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "may_execute": {
+          "default": true,
+          "title": "May Execute",
+          "type": "boolean"
+        },
+        "may_review": {
+          "default": false,
+          "title": "May Review",
+          "type": "boolean"
+        },
+        "model_route_revision_id": {
+          "format": "uuid",
+          "title": "Model Route Revision Id",
+          "type": "string"
+        },
+        "permission_policy_revision_id": {
+          "format": "uuid",
+          "title": "Permission Policy Revision Id",
+          "type": "string"
+        },
+        "required_capabilities": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Required Capabilities",
+          "type": "array"
+        },
+        "role_revision_id": {
+          "format": "uuid",
+          "title": "Role Revision Id",
+          "type": "string"
+        },
+        "worker_pool_revision_ids": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "title": "Worker Pool Revision Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "key",
+        "role_revision_id",
+        "model_route_revision_id",
+        "allowed_tools",
+        "permission_policy_revision_id"
+      ],
+      "title": "TeamMemberSpec",
+      "type": "object"
+    },
     "TeamTemplateSpec": {
       "additionalProperties": false,
       "description": "Fixed mission team whose referenced revisions are resolved at assignment.",
       "properties": {
+        "budgets": {
+          "$ref": "#/$defs/TeamBudgetPolicy"
+        },
         "developer_role_revision_id": {
           "format": "uuid",
           "title": "Developer Role Revision Id",
@@ -8363,6 +8694,19 @@
           "format": "uuid",
           "title": "Developer Worker Revision Id",
           "type": "string"
+        },
+        "escalation_policy_revision_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Escalation Policy Revision Id"
         },
         "kind": {
           "const": "team_template",
@@ -8379,6 +8723,15 @@
           "format": "uuid",
           "title": "Manager Role Revision Id",
           "type": "string"
+        },
+        "members": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/TeamMemberSpec"
+          },
+          "maxItems": 32,
+          "title": "Members",
+          "type": "array"
         },
         "mode": {
           "enum": [
@@ -9124,6 +9477,18 @@
           "title": "Acceptance Criteria",
           "type": "array"
         },
+        "assignment_status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assignment Status"
+        },
         "created_at": {
           "format": "date-time",
           "title": "Created At",
@@ -9175,6 +9540,18 @@
           "title": "Lifecycle",
           "type": "string"
         },
+        "merge_queue_status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Merge Queue Status"
+        },
         "objective": {
           "title": "Objective",
           "type": "string"
@@ -9182,6 +9559,18 @@
         "priority": {
           "title": "Priority",
           "type": "integer"
+        },
+        "queued_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Queued Reason"
         },
         "run_id": {
           "anyOf": [
@@ -9196,9 +9585,40 @@
           "default": null,
           "title": "Run Id"
         },
+        "selected_model_profile_revision_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Selected Model Profile Revision Id"
+        },
+        "selected_worker_revision_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Selected Worker Revision Id"
+        },
         "team_version": {
           "title": "Team Version",
           "type": "integer"
+        },
+        "team_version_id": {
+          "format": "uuid",
+          "title": "Team Version Id",
+          "type": "string"
         },
         "title": {
           "title": "Title",
@@ -9216,6 +9636,7 @@
         "lifecycle",
         "directive_version",
         "team_version",
+        "team_version_id",
         "created_at"
       ],
       "title": "WorkItemView",
@@ -9392,6 +9813,16 @@
     "WorkerInvocationRequest": {
       "additionalProperties": false,
       "properties": {
+        "allowed_tools": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "title": "Allowed Tools",
+          "type": "array"
+        },
         "architecture_artifact_id": {
           "anyOf": [
             {
@@ -9442,6 +9873,19 @@
           "minLength": 1,
           "title": "Objective",
           "type": "string"
+        },
+        "permission_policy_revision_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Permission Policy Revision Id"
         },
         "project": {
           "$ref": "#/$defs/WorkerProject"
@@ -9584,6 +10028,60 @@
         }
       },
       "title": "WorkerLimits",
+      "type": "object"
+    },
+    "WorkerPoolSpec": {
+      "additionalProperties": false,
+      "description": "Versioned allowlist of explicitly registered worker revisions.",
+      "properties": {
+        "health_freshness_seconds": {
+          "default": 60,
+          "maximum": 3600,
+          "minimum": 5,
+          "title": "Health Freshness Seconds",
+          "type": "integer"
+        },
+        "kind": {
+          "const": "worker_pool",
+          "default": "worker_pool",
+          "title": "Kind",
+          "type": "string"
+        },
+        "permitted_project_ids": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "maxItems": 256,
+          "title": "Permitted Project Ids",
+          "type": "array"
+        },
+        "required_capabilities": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Required Capabilities",
+          "type": "array"
+        },
+        "worker_revision_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "maxItems": 128,
+          "minItems": 1,
+          "title": "Worker Revision Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "worker_revision_ids"
+      ],
+      "title": "WorkerPoolSpec",
       "type": "object"
     },
     "WorkerProject": {
@@ -9925,6 +10423,19 @@
           "title": "Lease Id",
           "type": "string"
         },
+        "physical_resource_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Physical Resource Id"
+        },
         "run_generation": {
           "exclusiveMinimum": 0,
           "title": "Run Generation",
@@ -9987,6 +10498,16 @@
           "title": "Execution Host Label",
           "type": "string"
         },
+        "execution_profile_revision_ids": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Execution Profile Revision Ids",
+          "type": "array"
+        },
         "kind": {
           "const": "worker",
           "default": "worker",
@@ -10012,6 +10533,55 @@
         },
         "model_binding": {
           "$ref": "#/$defs/ModelBinding"
+        },
+        "observed_build_digest": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed Build Digest"
+        },
+        "observed_wrapper_version": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed Wrapper Version"
+        },
+        "permitted_project_ids": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "maxItems": 256,
+          "title": "Permitted Project Ids",
+          "type": "array"
+        },
+        "physical_resource_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Physical Resource Id"
         },
         "timeouts": {
           "$ref": "#/$defs/TimeoutPolicy"
@@ -10753,7 +11323,8 @@
               "retry_policy": "#/$defs/RetryRegistrySpec",
               "route_policy": "#/$defs/RoutePolicySpec",
               "team_template": "#/$defs/TeamTemplateSpec",
-              "worker": "#/$defs/WorkerSpec"
+              "worker": "#/$defs/WorkerSpec",
+              "worker_pool": "#/$defs/WorkerPoolSpec"
             },
             "propertyName": "kind"
           },
@@ -10784,6 +11355,9 @@
             },
             {
               "$ref": "#/$defs/ExecutionProfileSpec"
+            },
+            {
+              "$ref": "#/$defs/WorkerPoolSpec"
             }
           ],
           "title": "Spec"
@@ -11649,6 +12223,28 @@
       "anyOf": [
         {
           "$ref": "#/$defs/MissionPage"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "mission_team_update": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MissionTeamUpdate"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "mission_team_versions": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MissionTeamVersionPage"
         },
         {
           "type": "null"

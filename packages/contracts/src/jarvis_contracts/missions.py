@@ -10,6 +10,7 @@ from uuid import UUID
 from pydantic import Field, model_validator
 
 from jarvis_contracts.base import ContractModel
+from jarvis_contracts.registry import TeamBudgetPolicy, TeamMemberSpec
 
 MissionLifecycle = Literal[
     "active",
@@ -38,6 +39,11 @@ class FixedTeamSelection(ContractModel):
     reviewer_role_revision_id: UUID
     reviewer_profile_revision_id: UUID
     workflow_version_id: UUID
+    members: tuple[TeamMemberSpec, ...] = ()
+    budgets: TeamBudgetPolicy = Field(default_factory=TeamBudgetPolicy)
+    escalation_policy_revision_id: UUID | None = None
+    eligible_worker_revision_ids: tuple[UUID, ...] = ()
+    worker_pool_snapshot_hash: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
 
 
 class MissionResourceLimits(ContractModel):
@@ -75,6 +81,26 @@ class MissionCreate(ContractModel):
     autonomous: bool = False
     limits: MissionResourceLimits = Field(default_factory=MissionResourceLimits)
     idempotency_key: str = Field(min_length=8, max_length=120)
+
+
+class MissionTeamUpdate(ContractModel):
+    team_template_revision_id: UUID
+    expected_version: int = Field(ge=1)
+    idempotency_key: str = Field(min_length=8, max_length=120)
+
+
+class MissionTeamVersionView(ContractModel):
+    id: UUID
+    version: int
+    selection: FixedTeamSelection
+    content_hash: str
+    active: bool
+    created_at: datetime
+
+
+class MissionTeamVersionPage(ContractModel):
+    items: tuple[MissionTeamVersionView, ...]
+    next_after: UUID | None = None
 
 
 class DirectiveUpdate(ContractModel):
@@ -246,8 +272,14 @@ class WorkItemView(ContractModel):
     lifecycle: WorkItemLifecycle
     directive_version: int
     team_version: int
+    team_version_id: UUID
     job_id: UUID | None = None
     run_id: UUID | None = None
+    selected_worker_revision_id: UUID | None = None
+    selected_model_profile_revision_id: UUID | None = None
+    assignment_status: str | None = None
+    queued_reason: str | None = None
+    merge_queue_status: str | None = None
     created_at: datetime
 
 
