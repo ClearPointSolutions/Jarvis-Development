@@ -862,7 +862,8 @@
         "retry_policy",
         "permission_policy",
         "branch_policy",
-        "project_settings"
+        "project_settings",
+        "execution_profile"
       ],
       "title": "ConfigurationKind",
       "type": "string"
@@ -1144,6 +1145,192 @@
         }
       },
       "title": "DemoFixture",
+      "type": "object"
+    },
+    "DependencyPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "cache_max_mb": {
+          "default": 512,
+          "maximum": 4096,
+          "minimum": 0,
+          "title": "Cache Max Mb",
+          "type": "integer"
+        },
+        "lifecycle_scripts": {
+          "const": "deny",
+          "default": "deny",
+          "title": "Lifecycle Scripts",
+          "type": "string"
+        },
+        "lockfiles": {
+          "default": [],
+          "items": {
+            "enum": [
+              "requirements.lock",
+              "package-lock.json"
+            ],
+            "type": "string"
+          },
+          "title": "Lockfiles",
+          "type": "array"
+        },
+        "manager": {
+          "default": "none",
+          "enum": [
+            "none",
+            "pip",
+            "npm"
+          ],
+          "title": "Manager",
+          "type": "string"
+        },
+        "registry_allowlist": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z0-9.-]+$",
+            "type": "string"
+          },
+          "title": "Registry Allowlist",
+          "type": "array"
+        },
+        "require_integrity": {
+          "default": true,
+          "title": "Require Integrity",
+          "type": "boolean"
+        },
+        "require_lockfile": {
+          "default": true,
+          "title": "Require Lockfile",
+          "type": "boolean"
+        }
+      },
+      "title": "DependencyPolicy",
+      "type": "object"
+    },
+    "DependencyPreparationEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "dependency_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Dependency Digest",
+          "type": "string"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finished At"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "image_id": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "title": "Image Id",
+          "type": "string"
+        },
+        "lifecycle_scripts": {
+          "const": "denied",
+          "default": "denied",
+          "title": "Lifecycle Scripts",
+          "type": "string"
+        },
+        "lockfile_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Lockfile Digest",
+          "type": "string"
+        },
+        "lockfile_path": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Lockfile Path",
+          "type": "string"
+        },
+        "output_artifact_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Output Artifact Id"
+        },
+        "output_truncated": {
+          "default": false,
+          "title": "Output Truncated",
+          "type": "boolean"
+        },
+        "profile_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Profile Digest",
+          "type": "string"
+        },
+        "profile_revision_id": {
+          "format": "uuid",
+          "title": "Profile Revision Id",
+          "type": "string"
+        },
+        "registry_hosts": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Registry Hosts",
+          "type": "array"
+        },
+        "snapshot_id": {
+          "format": "uuid",
+          "title": "Snapshot Id",
+          "type": "string"
+        },
+        "source_sha": {
+          "pattern": "^[a-f0-9]{40}$",
+          "title": "Source Sha",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "prepared",
+            "failed",
+            "unknown"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "snapshot_id",
+        "source_sha",
+        "profile_revision_id",
+        "profile_digest",
+        "image_id",
+        "lockfile_path",
+        "lockfile_digest",
+        "dependency_digest",
+        "registry_hosts",
+        "status",
+        "started_at"
+      ],
+      "title": "DependencyPreparationEvidence",
       "type": "object"
     },
     "DesiredRunState": {
@@ -1706,6 +1893,131 @@
       ],
       "title": "EventVisibility",
       "type": "string"
+    },
+    "ExecutionProfileSpec": {
+      "additionalProperties": false,
+      "description": "Versioned public profile policy. Runtime evidence binds its resolved image ID.",
+      "properties": {
+        "dependencies": {
+          "$ref": "#/$defs/DependencyPolicy"
+        },
+        "image_reference": {
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Image Reference",
+          "type": "string"
+        },
+        "kind": {
+          "const": "execution_profile",
+          "default": "execution_profile",
+          "title": "Kind",
+          "type": "string"
+        },
+        "max_files": {
+          "default": 1000,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Max Files",
+          "type": "integer"
+        },
+        "max_source_bytes": {
+          "default": 4194304,
+          "maximum": 67108864,
+          "minimum": 1024,
+          "title": "Max Source Bytes",
+          "type": "integer"
+        },
+        "network": {
+          "$ref": "#/$defs/NetworkPolicy"
+        },
+        "profile_key": {
+          "enum": [
+            "python-pytest-v1",
+            "node-build-v1",
+            "browser-acceptance-v1"
+          ],
+          "title": "Profile Key",
+          "type": "string"
+        },
+        "profile_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Profile Version",
+          "type": "string"
+        },
+        "project_types": {
+          "items": {
+            "enum": [
+              "python",
+              "node",
+              "full_stack"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Project Types",
+          "type": "array"
+        },
+        "resources": {
+          "$ref": "#/$defs/ResourceBounds"
+        },
+        "source_formats": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "title": "Source Formats",
+          "type": "array"
+        },
+        "supported_commands": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "title": "Supported Commands",
+          "type": "array"
+        },
+        "tool_versions": {
+          "additionalProperties": {
+            "maxLength": 80,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxProperties": 32,
+          "minProperties": 1,
+          "title": "Tool Versions",
+          "type": "object"
+        }
+      },
+      "required": [
+        "profile_key",
+        "project_types",
+        "image_reference",
+        "supported_commands",
+        "tool_versions",
+        "source_formats"
+      ],
+      "title": "ExecutionProfileSpec",
+      "type": "object"
+    },
+    "ExecutionProfileTemplatePage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ExecutionProfileSpec"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "ExecutionProfileTemplatePage",
+      "type": "object"
     },
     "FailureClass": {
       "enum": [
@@ -3607,6 +3919,55 @@
       "title": "ModelProfileSpec",
       "type": "object"
     },
+    "NetworkPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "deny_host": {
+          "const": true,
+          "default": true,
+          "title": "Deny Host",
+          "type": "boolean"
+        },
+        "deny_lan": {
+          "const": true,
+          "default": true,
+          "title": "Deny Lan",
+          "type": "boolean"
+        },
+        "deny_metadata": {
+          "const": true,
+          "default": true,
+          "title": "Deny Metadata",
+          "type": "boolean"
+        },
+        "deny_public_internet": {
+          "const": true,
+          "default": true,
+          "title": "Deny Public Internet",
+          "type": "boolean"
+        },
+        "preparation": {
+          "default": "none",
+          "enum": [
+            "none",
+            "registry_allowlist"
+          ],
+          "title": "Preparation",
+          "type": "string"
+        },
+        "verification": {
+          "default": "none",
+          "enum": [
+            "none",
+            "application_loopback"
+          ],
+          "title": "Verification",
+          "type": "string"
+        }
+      },
+      "title": "NetworkPolicy",
+      "type": "object"
+    },
     "NewEvent": {
       "additionalProperties": false,
       "description": "Validated event before database ordering fields are allocated.",
@@ -4203,6 +4564,11 @@
     "ParsedVerification": {
       "additionalProperties": false,
       "properties": {
+        "complete": {
+          "default": true,
+          "title": "Complete",
+          "type": "boolean"
+        },
         "confidence": {
           "enum": [
             "summary",
@@ -4242,6 +4608,7 @@
             "exit_code",
             "pytest",
             "vitest",
+            "playwright",
             "typescript",
             "next",
             "eslint",
@@ -4608,6 +4975,16 @@
     "ProjectCreate": {
       "additionalProperties": false,
       "properties": {
+        "execution_profile_revision_ids": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "maxItems": 3,
+          "title": "Execution Profile Revision Ids",
+          "type": "array"
+        },
         "idempotency_key": {
           "maxLength": 200,
           "minLength": 8,
@@ -4619,6 +4996,16 @@
           "maxLength": 160,
           "minLength": 1,
           "title": "Name",
+          "type": "string"
+        },
+        "project_type": {
+          "default": "python",
+          "enum": [
+            "python",
+            "node",
+            "full_stack"
+          ],
+          "title": "Project Type",
           "type": "string"
         },
         "slug": {
@@ -4668,6 +5055,15 @@
     "ProjectView": {
       "additionalProperties": false,
       "properties": {
+        "execution_profile_revision_ids": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Execution Profile Revision Ids",
+          "type": "array"
+        },
         "id": {
           "format": "uuid",
           "title": "Id",
@@ -4675,6 +5071,16 @@
         },
         "name": {
           "title": "Name",
+          "type": "string"
+        },
+        "project_type": {
+          "default": "python",
+          "enum": [
+            "python",
+            "node",
+            "full_stack"
+          ],
+          "title": "Project Type",
           "type": "string"
         },
         "slug": {
@@ -5394,6 +5800,7 @@
           "discriminator": {
             "mapping": {
               "agent_role": "#/$defs/AgentRoleSpec",
+              "execution_profile": "#/$defs/ExecutionProfileSpec",
               "model_profile": "#/$defs/ModelProfileSpec",
               "permission_policy": "#/$defs/PermissionPolicySpec",
               "provider_connection": "#/$defs/ProviderSpec",
@@ -5428,6 +5835,9 @@
             },
             {
               "$ref": "#/$defs/PermissionPolicySpec"
+            },
+            {
+              "$ref": "#/$defs/ExecutionProfileSpec"
             }
           ],
           "title": "Spec"
@@ -5552,6 +5962,7 @@
           "discriminator": {
             "mapping": {
               "agent_role": "#/$defs/AgentRoleSpec",
+              "execution_profile": "#/$defs/ExecutionProfileSpec",
               "model_profile": "#/$defs/ModelProfileSpec",
               "permission_policy": "#/$defs/PermissionPolicySpec",
               "provider_connection": "#/$defs/ProviderSpec",
@@ -5586,6 +5997,9 @@
             },
             {
               "$ref": "#/$defs/PermissionPolicySpec"
+            },
+            {
+              "$ref": "#/$defs/ExecutionProfileSpec"
             }
           ],
           "title": "Spec"
@@ -5598,6 +6012,186 @@
         "spec"
       ],
       "title": "RegistryWrite",
+      "type": "object"
+    },
+    "RepositoryContextEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "content_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "end_line": {
+          "minimum": 1,
+          "title": "End Line",
+          "type": "integer"
+        },
+        "path": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "provenance": {
+          "enum": [
+            "source",
+            "manifest",
+            "test",
+            "brief",
+            "directive",
+            "decision",
+            "outcome"
+          ],
+          "title": "Provenance",
+          "type": "string"
+        },
+        "start_line": {
+          "minimum": 1,
+          "title": "Start Line",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "start_line",
+        "end_line",
+        "content_digest",
+        "provenance"
+      ],
+      "title": "RepositoryContextEntry",
+      "type": "object"
+    },
+    "RepositoryContextSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "context_digest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Context Digest",
+          "type": "string"
+        },
+        "coverage": {
+          "enum": [
+            "complete",
+            "sufficient",
+            "insufficient"
+          ],
+          "title": "Coverage",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "entries": {
+          "items": {
+            "$ref": "#/$defs/RepositoryContextEntry"
+          },
+          "maxItems": 512,
+          "title": "Entries",
+          "type": "array"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "omitted_paths": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 512,
+          "title": "Omitted Paths",
+          "type": "array"
+        },
+        "repository_id": {
+          "format": "uuid",
+          "title": "Repository Id",
+          "type": "string"
+        },
+        "run_id": {
+          "format": "uuid",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "selection": {
+          "enum": [
+            "full",
+            "bounded"
+          ],
+          "title": "Selection",
+          "type": "string"
+        },
+        "selection_policy": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Selection Policy",
+          "type": "string"
+        },
+        "source_sha": {
+          "pattern": "^[a-f0-9]{40}$",
+          "title": "Source Sha",
+          "type": "string"
+        },
+        "tree_sha": {
+          "pattern": "^[a-f0-9]{40}$",
+          "title": "Tree Sha",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "repository_id",
+        "run_id",
+        "source_sha",
+        "tree_sha",
+        "selection",
+        "coverage",
+        "entries",
+        "omitted_paths",
+        "selection_policy",
+        "context_digest",
+        "created_at"
+      ],
+      "title": "RepositoryContextSnapshot",
+      "type": "object"
+    },
+    "RequiredAcceptanceCheck": {
+      "additionalProperties": false,
+      "properties": {
+        "check_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{0,79}$",
+          "title": "Check Id",
+          "type": "string"
+        },
+        "command": {
+          "$ref": "#/$defs/VerificationCommand"
+        },
+        "profile_revision_id": {
+          "format": "uuid",
+          "title": "Profile Revision Id",
+          "type": "string"
+        },
+        "purpose": {
+          "enum": [
+            "build",
+            "unit",
+            "browser",
+            "quality",
+            "integration"
+          ],
+          "title": "Purpose",
+          "type": "string"
+        }
+      },
+      "required": [
+        "check_id",
+        "purpose",
+        "profile_revision_id",
+        "command"
+      ],
+      "title": "RequiredAcceptanceCheck",
       "type": "object"
     },
     "ResolvedRevision": {
@@ -5628,6 +6222,55 @@
         "content_hash"
       ],
       "title": "ResolvedRevision",
+      "type": "object"
+    },
+    "ResourceBounds": {
+      "additionalProperties": false,
+      "properties": {
+        "cpu_count": {
+          "default": 1,
+          "maximum": 8,
+          "minimum": 1,
+          "title": "Cpu Count",
+          "type": "integer"
+        },
+        "memory_mb": {
+          "default": 512,
+          "maximum": 8192,
+          "minimum": 128,
+          "title": "Memory Mb",
+          "type": "integer"
+        },
+        "output_bytes": {
+          "default": 1048576,
+          "maximum": 1048576,
+          "minimum": 1024,
+          "title": "Output Bytes",
+          "type": "integer"
+        },
+        "pids": {
+          "default": 128,
+          "maximum": 1024,
+          "minimum": 16,
+          "title": "Pids",
+          "type": "integer"
+        },
+        "timeout_seconds": {
+          "default": 1200,
+          "maximum": 86400,
+          "minimum": 1,
+          "title": "Timeout Seconds",
+          "type": "integer"
+        },
+        "workspace_mb": {
+          "default": 256,
+          "maximum": 4096,
+          "minimum": 16,
+          "title": "Workspace Mb",
+          "type": "integer"
+        }
+      },
+      "title": "ResourceBounds",
       "type": "object"
     },
     "RetryPolicySpec": {
@@ -7978,6 +8621,7 @@
             "exit_code",
             "pytest",
             "vitest",
+            "playwright",
             "typescript",
             "next",
             "eslint",
@@ -7986,6 +8630,49 @@
           ],
           "title": "Parser",
           "type": "string"
+        },
+        "profile_revision_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Profile Revision Id"
+        },
+        "purpose": {
+          "default": "unit",
+          "enum": [
+            "build",
+            "unit",
+            "browser",
+            "quality",
+            "integration"
+          ],
+          "title": "Purpose",
+          "type": "string"
+        },
+        "require_nonempty_suite": {
+          "default": false,
+          "title": "Require Nonempty Suite",
+          "type": "boolean"
+        },
+        "required_check_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{0,79}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Required Check Id"
         },
         "timeout_seconds": {
           "default": 1200,
@@ -8013,10 +8700,36 @@
         "command": {
           "$ref": "#/$defs/VerificationCommand"
         },
+        "command_digest": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Command Digest"
+        },
         "cwd": {
           "maxLength": 2048,
           "title": "Cwd",
           "type": "string"
+        },
+        "dependency_digest": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dependency Digest"
         },
         "environment_keys": {
           "items": {
@@ -8069,6 +8782,19 @@
           "title": "Id",
           "type": "string"
         },
+        "image_id": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Image Id"
+        },
         "parsed": {
           "anyOf": [
             {
@@ -8088,6 +8814,45 @@
           ],
           "title": "Phase",
           "type": "string"
+        },
+        "profile_digest": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Profile Digest"
+        },
+        "profile_revision_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Profile Revision Id"
+        },
+        "required_checks_digest": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Required Checks Digest"
         },
         "run_id": {
           "format": "uuid",
@@ -8186,10 +8951,29 @@
     "VerificationPolicy": {
       "additionalProperties": false,
       "properties": {
+        "execution_profile_revision_ids": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "maxItems": 3,
+          "title": "Execution Profile Revision Ids",
+          "type": "array"
+        },
         "required": {
           "default": true,
           "title": "Required",
           "type": "boolean"
+        },
+        "required_acceptance_checks": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/RequiredAcceptanceCheck"
+          },
+          "maxItems": 32,
+          "title": "Required Acceptance Checks",
+          "type": "array"
         },
         "source": {
           "const": "task",
@@ -9372,6 +10156,7 @@
             "exit_code",
             "pytest",
             "vitest",
+            "playwright",
             "typescript",
             "next",
             "eslint",
@@ -9380,6 +10165,49 @@
           ],
           "title": "Parser",
           "type": "string"
+        },
+        "profile_revision_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Profile Revision Id"
+        },
+        "purpose": {
+          "default": "unit",
+          "enum": [
+            "build",
+            "unit",
+            "browser",
+            "quality",
+            "integration"
+          ],
+          "title": "Purpose",
+          "type": "string"
+        },
+        "require_nonempty_suite": {
+          "default": false,
+          "title": "Require Nonempty Suite",
+          "type": "boolean"
+        },
+        "required_check_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{0,79}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Required Check Id"
         },
         "timeout_seconds": {
           "default": 1200,
@@ -9918,6 +10746,7 @@
           "discriminator": {
             "mapping": {
               "agent_role": "#/$defs/AgentRoleSpec",
+              "execution_profile": "#/$defs/ExecutionProfileSpec",
               "model_profile": "#/$defs/ModelProfileSpec",
               "permission_policy": "#/$defs/PermissionPolicySpec",
               "provider_connection": "#/$defs/ProviderSpec",
@@ -9952,6 +10781,9 @@
             },
             {
               "$ref": "#/$defs/PermissionPolicySpec"
+            },
+            {
+              "$ref": "#/$defs/ExecutionProfileSpec"
             }
           ],
           "title": "Spec"
@@ -10546,6 +11378,17 @@
     "demo_decision_view": {
       "$ref": "#/$defs/DemoDecisionView"
     },
+    "dependency_preparation": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DependencyPreparationEvidence"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "directive_update": {
       "anyOf": [
         {
@@ -10583,6 +11426,17 @@
       "anyOf": [
         {
           "$ref": "#/$defs/EventStreamReset"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "execution_profile_templates": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ExecutionProfileTemplatePage"
         },
         {
           "type": "null"
@@ -10927,6 +11781,17 @@
       "anyOf": [
         {
           "$ref": "#/$defs/RegistryWrite"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "repository_context": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RepositoryContextSnapshot"
         },
         {
           "type": "null"

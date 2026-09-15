@@ -84,6 +84,8 @@ class ManifestBinding(BaseModel):
     worker_project: WorkerProject
     base_policy: Literal["current", "historical"] = "current"
     combined_commands: tuple[VerificationCommand, ...] = Field(min_length=1, max_length=32)
+    project_type: Literal["python", "node", "full_stack"] = "python"
+    execution_profile_revision_ids: tuple[UUID, ...] = Field(default=(), max_length=3)
 
 
 def load_infrastructure(path: Path) -> dict[str, Any]:
@@ -167,6 +169,8 @@ def assemble(infra: dict[str, Any], bindings: list[ManifestBinding]) -> RealRunt
             project=binding.worker_project,
             base_policy=binding.base_policy,
             combined_commands=binding.combined_commands,
+            project_type=binding.project_type,
+            execution_profile_revision_ids=binding.execution_profile_revision_ids,
         ).model_dump(mode="json")
 
     try:
@@ -395,6 +399,7 @@ def inspect_runtime(path: Path) -> dict[str, object]:
         + len(config.workflows),
         "provider_endpoint_count": len(config.providers.allowed_endpoints),
         "verification_image_id": config.verification_isolation.image_id,
+        "verification_profile_count": len(config.verification_isolation.profiles),
         "verification_broker": str(broker),
         "note": "No worker, provider, repository, or verifier network probe was performed.",
     }

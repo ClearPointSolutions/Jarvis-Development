@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import subprocess
+from typing import Literal
 from uuid import UUID
 
 from jarvis_api.events.redaction import RecursiveRedactor
@@ -18,8 +19,9 @@ from jarvis_orchestrator.verification.isolation_contract import (
     IsolationReceipt,
     IsolationRequest,
 )
-from jarvis_orchestrator.verification.parsers import parse_output
+from jarvis_orchestrator.verification.parsers import parse_output, verification_passed
 from jarvis_orchestrator.verification.process import ProcessResult
+from jarvis_orchestrator.verification.profiles import ExecutionProfileCatalog
 from jarvis_orchestrator.workers.workspace import WorktreeManager
 
 
@@ -27,10 +29,17 @@ class IsolatedVerificationExecutor(VerificationExecutor):
     recoverable = True
 
     def __init__(
-        self, manager: WorktreeManager, broker_argv: tuple[str, ...], image_id: str
+        self,
+        manager: WorktreeManager,
+        broker_argv: tuple[str, ...],
+        image_id: str,
+        *,
+        profiles: ExecutionProfileCatalog | None = None,
+        project_type: Literal["python", "node", "full_stack"] = "python",
     ) -> None:
         super().__init__(manager, {}, path="")
         self.broker_argv, self.image_id = broker_argv, image_id
+        self.profiles, self.project_type = profiles, project_type
 
     async def execute_bound(
         self,
@@ -71,6 +80,13 @@ class IsolatedVerificationExecutor(VerificationExecutor):
         )
         if truncated:
             raise ValueError("candidate tree identity unavailable")
+        preflight = None
+        if command.profile_revision_id is not None:
+            if self.profiles is None:
+                raise ValueError("selected execution profile is not configured")
+            preflight = self.profiles.resolve(
+                command, project_type=self.project_type, files=tuple(files)
+            )
         request = IsolationRequest(
             run_id=run_id,
             execution_id=execution_id,
@@ -78,6 +94,8 @@ class IsolatedVerificationExecutor(VerificationExecutor):
             tree_sha=tree.decode().strip(),
             files=tuple(files),
             command=command,
+            profile=preflight.profile if preflight else None,
+            dependency_digest=preflight.dependency_digest if preflight else None,
         )
         # The trusted broker has its own timeout and durable container identity;
         # loss of this transport never grants a second invocation identity.
@@ -92,7 +110,7 @@ class IsolatedVerificationExecutor(VerificationExecutor):
         if len(response.stdout) > 13 * 1024 * 1024:
             raise ValueError("oversized isolated verification receipt")
         receipt = IsolationReceipt.model_validate_json(response.stdout)
-        receipt.require(request, self.image_id)
+        receipt.require(request, preflight.profile.image_id if preflight else self.image_id)
         await self.confirm(repository)
         redactor = RecursiveRedactor()
         result = ProcessResult(
@@ -103,13 +121,25 @@ class IsolatedVerificationExecutor(VerificationExecutor):
             receipt.stdout_truncated,
             receipt.stderr_truncated,
         )
+        parsed = parse_output(
+            command.parser, (result.stdout + result.stderr).decode(), result.exit_code
+        )
         return VerificationResult(
-            not result.timed_out and result.exit_code in command.expected_exit_codes,
+            verification_passed(command, parsed, result),
             result,
-            parse_output(
-                command.parser, (result.stdout + result.stderr).decode(), result.exit_code
-            ),
+            parsed,
             "/work/project",
             command.argv,
             tuple(sorted({"PATH", "HOME", "TMPDIR", "CI", "NO_COLOR", "TZ", *command.environment})),
+            preflight.profile.revision_id if preflight else None,
+            preflight.profile.profile_digest if preflight else None,
+            receipt.image_id,
+            receipt.dependency_digest,
+            preflight.lockfile_path if preflight else None,
+            preflight.lockfile_digest if preflight else None,
+            receipt.dependency_prepared,
+            receipt.preparation_stdout,
+            receipt.preparation_stderr,
+            receipt.preparation_output_truncated,
+            preflight.profile.spec.dependencies.registry_allowlist if preflight else (),
         )

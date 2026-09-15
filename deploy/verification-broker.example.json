@@ -1,0 +1,8 @@
+{
+  "docker_executable": "/usr/bin/docker",
+  "image_id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "receipt_root": "/opt/jarvis-v1/verification-receipts",
+  "dependency_preparation_network": "jarvis-v1-registry-egress",
+  "dependency_registry_url": "https://registry.npmjs.org",
+  "profiles": {}
+}

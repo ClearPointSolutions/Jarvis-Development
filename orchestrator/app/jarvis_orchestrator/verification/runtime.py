@@ -25,6 +25,7 @@ from jarvis_contracts.workers import WorkerInvocationRequest, WorkerResult
 from jarvis_orchestrator.runtime.effects import EffectObservation
 from jarvis_orchestrator.verification.executor import ConfirmedRepository
 from jarvis_orchestrator.verification.integration import LocalIntegrator
+from jarvis_orchestrator.verification.profiles import bind_required_checks
 from jarvis_orchestrator.verification.reviews import ReviewerAdapter, ReviewService
 from jarvis_orchestrator.workflows.factories import NodeContext
 from jarvis_orchestrator.workflows.state import WorkflowStateV1
@@ -169,6 +170,14 @@ class VerificationEffectAdapter:
                     "task_commands": [
                         command.model_dump(mode="json") for command in request.task.verification
                     ],
+                    "required_acceptance_checks": [
+                        check.model_dump(mode="json")
+                        for check in (
+                            context.policy.verification.required_acceptance_checks
+                            if context.policy.verification
+                            else ()
+                        )
+                    ],
                 }
             )
             prior_digest = effect.request_json.get("verification_configuration_digest")
@@ -200,6 +209,12 @@ class VerificationEffectAdapter:
             branch=self.binding.initial_branch,
         )
         if kind == "verify":
+            commands = bind_required_checks(
+                request.task.verification,
+                context.policy.verification.required_acceptance_checks
+                if context.policy.verification
+                else (),
+            )
             if saved_snapshot is None:
                 snapshot, snapshot_id = await self.integrator.snapshots.seal(
                     repository,
@@ -225,9 +240,14 @@ class VerificationEffectAdapter:
             passed, reports = await self.integrator.verifier.run(
                 repository,
                 snapshot,
-                request.task.verification,
+                commands,
                 task_id=task_id,
                 operation_id=effect_id,
+                required_checks=(
+                    context.policy.verification.required_acceptance_checks
+                    if context.policy.verification
+                    else ()
+                ),
             )
             update: WorkflowStateV1 = {
                 "verification": {

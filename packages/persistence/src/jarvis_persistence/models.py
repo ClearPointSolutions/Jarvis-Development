@@ -187,6 +187,11 @@ class ProjectModel(MutableRow, Base):
     __tablename__ = "projects"
     __table_args__ = (
         CheckConstraint("status IN ('active', 'archived')", name="status"),
+        CheckConstraint("project_type IN ('python','node','full_stack')", name="project_type"),
+        CheckConstraint(
+            "jsonb_typeof(execution_profile_revision_ids_json) = 'array'",
+            name="execution_profiles_array",
+        ),
         Index("ix_projects_owner_user_id", "owner_user_id"),
         {"schema": CONTROL_SCHEMA},
     )
@@ -198,6 +203,12 @@ class ProjectModel(MutableRow, Base):
     slug: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+    project_type: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="python", server_default="python"
+    )
+    execution_profile_revision_ids_json: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default="[]"
+    )
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
 
 

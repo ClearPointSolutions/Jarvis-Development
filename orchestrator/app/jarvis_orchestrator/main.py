@@ -88,6 +88,7 @@ async def serve() -> None:
             + len(config.workflows),
             "provider_endpoint_count": len(config.providers.allowed_endpoints),
             "verification_image_id": config.verification_isolation.image_id,
+            "verification_profile_count": len(config.verification_isolation.profiles),
             "verification_broker_configured": bool(config.verification_isolation.broker_argv),
         }
     engine = create_async_database_engine(settings.database_url)

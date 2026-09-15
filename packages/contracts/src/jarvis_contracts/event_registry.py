@@ -75,6 +75,7 @@ approval.cancelled approval.decided approval.expired approval.requested approval
 approval.resumed artifact.created artifact.unavailable artifact.verified command.completed
 command.failed command.output_summary command.started command.timed_out config.created
 config.revised
+dependency.prepared
 effect.prepared effect.dispatched effect.succeeded effect.cancel_requested
 effect.cancelled effect.unknown effect.reconciliation_requested
 project.created
@@ -119,6 +120,7 @@ _PREFIX_CATEGORIES = {
     "artifact": EventCategory.ARTIFACT,
     "command": EventCategory.COMMAND,
     "config": EventCategory.CONFIG,
+    "dependency": EventCategory.TOOL,
     "effect": EventCategory.NODE,
     "project": EventCategory.CONFIG,
     "failure": EventCategory.FAILURE,

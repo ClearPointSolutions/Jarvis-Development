@@ -48,6 +48,7 @@ from jarvis_orchestrator.verification.integration import LocalIntegrator
 from jarvis_orchestrator.verification.isolated_executor import IsolatedVerificationExecutor
 from jarvis_orchestrator.verification.leases import IntegrationLeases
 from jarvis_orchestrator.verification.model_reviewer import ModelReviewer
+from jarvis_orchestrator.verification.profiles import ExecutionProfileCatalog, ProfileBinding
 from jarvis_orchestrator.verification.reviews import ReviewerAdapter, ReviewService
 from jarvis_orchestrator.verification.runtime import (
     LocalVerificationBinding,
@@ -67,6 +68,7 @@ from jarvis_orchestrator.workflows.validation import effective_policy
 from jarvis_persistence.models import (
     EffectModel,
     JobModel,
+    ProjectModel,
     RunConfigSnapshotModel,
     TaskAttemptModel,
     TaskModel,
@@ -188,10 +190,32 @@ class RealComposition:
             if job is None:
                 raise RuntimeDependencyError("run project is unavailable")
             project_id = job.project_id
+            project = await session.get(ProjectModel, project_id)
+            if project is None:
+                raise RuntimeDependencyError("run project is unavailable")
         try:
             binding = self.settings.repository_binding(project_id, workflow_id)
         except ValueError as exc:
             raise RuntimeDependencyError(str(exc)) from None
+        selected_profiles = set(binding.execution_profile_revision_ids)
+        stored_profiles = {UUID(value) for value in project.execution_profile_revision_ids_json}
+        if binding.project_type != project.project_type or selected_profiles != stored_profiles:
+            raise RuntimeDependencyError(
+                "private repository binding does not match approved project execution profiles"
+            )
+        command_profiles = {
+            command.profile_revision_id
+            for command in binding.combined_commands
+            if command.profile_revision_id is not None
+        }
+        if binding.project_type != "python" and not selected_profiles:
+            raise RuntimeDependencyError("web projects require explicit execution profiles")
+        if command_profiles - selected_profiles:
+            raise RuntimeDependencyError(
+                "verification command references an unselected execution profile"
+            )
+        if selected_profiles - set(self.settings.verification_isolation.profiles):
+            raise RuntimeDependencyError("selected execution profile is not installed")
         deployment = self.settings.workers.get(binding.worker_revision_id)
         revision = next(
             (row for row in snapshot.revisions if row.revision_id == binding.worker_revision_id),
@@ -272,10 +296,18 @@ class RealComposition:
         run_root = self.settings.source_root / UUID(str(lifecycle["source_store_id"])).hex
         run_root.mkdir(parents=True, exist_ok=True)
         manager = WorktreeManager(run_root, git_executable=str(self.settings.git_executable))
+        configured_profiles = tuple(
+            ProfileBinding(revision_id, runtime.spec, runtime.image_id, runtime.tool_versions)
+            for revision_id, runtime in self.settings.verification_isolation.profiles.items()
+            if not binding.execution_profile_revision_ids
+            or revision_id in binding.execution_profile_revision_ids
+        )
         executor = IsolatedVerificationExecutor(
             manager,
             self.settings.verification_isolation.broker_argv,
             self.settings.verification_isolation.image_id,
+            profiles=ExecutionProfileCatalog(configured_profiles) if configured_profiles else None,
+            project_type=binding.project_type,
         )
         if lifecycle["previous_run_id"] is not None:
             # Accepted Core merges and worker commits can have different SHAs,

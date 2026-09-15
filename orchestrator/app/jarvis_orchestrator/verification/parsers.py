@@ -1,8 +1,13 @@
 """Best-effort bounded summaries. Exit status remains the verdict authority."""
 
 import re
+from typing import TYPE_CHECKING
 
 from jarvis_contracts.verification import ParsedVerification, ParserKind
+
+if TYPE_CHECKING:
+    from jarvis_contracts.verification import VerificationCommand
+    from jarvis_orchestrator.verification.process import ProcessResult
 
 _ANSI = re.compile(r"\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07\x1b]*(?:\x07|\x1b\\))")
 
@@ -10,7 +15,7 @@ _ANSI = re.compile(r"\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07\x1b]*(?:\x07|\x1b\\))")
 def parse_output(kind: ParserKind, output: str, exit_code: int | None) -> ParsedVerification:
     text = _ANSI.sub("", output[-65536:])
     counts: dict[str, int] = {}
-    if kind in {"pytest", "vitest"}:
+    if kind in {"pytest", "vitest", "playwright"}:
         # Use the last tool summary, never aggregate repeated progress/failure lines.
         for line in reversed(text.splitlines()):
             if kind == "vitest" and "Tests " not in line:
@@ -47,4 +52,26 @@ def parse_output(kind: ParserKind, output: str, exit_code: int | None) -> Parsed
         errors=counts.get("errors"),
         summary=summary
         or f"{kind}: exit status {exit_code if exit_code is not None else 'unknown'}",
+        complete=exit_code is not None,
     )
+
+
+def verification_passed(
+    command: "VerificationCommand", parsed: ParsedVerification, result: "ProcessResult"
+) -> bool:
+    from jarvis_contracts.verification import VerificationCommand
+    from jarvis_orchestrator.verification.process import ProcessResult
+
+    assert isinstance(command, VerificationCommand) and isinstance(result, ProcessResult)
+    if (
+        result.timed_out
+        or result.exit_code not in command.expected_exit_codes
+        or result.stdout_truncated
+        or result.stderr_truncated
+        or not parsed.complete
+    ):
+        return False
+    if command.require_nonempty_suite:
+        total = sum(value or 0 for value in (parsed.passed, parsed.failed, parsed.errors))
+        return total > 0 and (parsed.failed or 0) == 0 and (parsed.errors or 0) == 0
+    return True

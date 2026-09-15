@@ -6,7 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from jarvis_contracts.verification import VerificationCommand
+from jarvis_contracts.verification import ExecutionProfileSpec, VerificationCommand
 from jarvis_contracts.workers import WorkerProject
 from jarvis_orchestrator.providers.configuration import ProviderRuntimeConfig
 from jarvis_orchestrator.providers.worker_configuration import OpenHandsDeployment
@@ -18,12 +18,19 @@ class RepositoryBinding(BaseModel):
     project: WorkerProject
     base_policy: Literal["current", "historical"] = "current"
     combined_commands: tuple[VerificationCommand, ...] = Field(min_length=1, max_length=32)
+    project_type: Literal["python", "node", "full_stack"] = "python"
+    execution_profile_revision_ids: tuple[UUID, ...] = Field(default=(), max_length=3)
 
 
 class VerificationIsolation(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
     broker_argv: tuple[str, ...] = Field(min_length=1, max_length=32)
     image_id: str = Field(pattern=r"^sha256:[a-f0-9]{64}$")
+    profiles: dict[UUID, "ExecutionProfileRuntime"] = Field(default_factory=dict)
+    dependency_preparation_network: str | None = Field(
+        default=None, pattern=r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,79}$"
+    )
+    dependency_registry_url: str | None = Field(default=None, max_length=300)
 
     @field_validator("broker_argv")
     @classmethod
@@ -31,6 +38,13 @@ class VerificationIsolation(BaseModel):
         if not Path(value[0]).is_absolute() or any("\x00" in item for item in value):
             raise ValueError("verification broker requires a server-configured absolute executable")
         return value
+
+
+class ExecutionProfileRuntime(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
+    spec: ExecutionProfileSpec
+    image_id: str = Field(pattern=r"^sha256:[a-f0-9]{64}$")
+    tool_versions: dict[str, str] = Field(min_length=1, max_length=32)
 
 
 class RealRuntimeConfiguration(BaseModel):

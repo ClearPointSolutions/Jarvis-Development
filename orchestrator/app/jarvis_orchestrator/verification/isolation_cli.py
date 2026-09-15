@@ -5,6 +5,7 @@ import json
 import sys
 from pathlib import Path
 
+from jarvis_contracts.verification import ResolvedExecutionProfile
 from jarvis_orchestrator.verification.isolation_broker import IsolationBroker
 from jarvis_orchestrator.verification.isolation_contract import IsolationRequest
 
@@ -16,7 +17,15 @@ def main() -> None:
     args = parser.parse_args()
     config = json.loads(args.config.read_text(encoding="utf-8"))
     broker = IsolationBroker(
-        Path(config["docker_executable"]), config["image_id"], Path(config["receipt_root"])
+        Path(config["docker_executable"]),
+        config["image_id"],
+        Path(config["receipt_root"]),
+        {
+            key: ResolvedExecutionProfile.model_validate(value)
+            for key, value in config.get("profiles", {}).items()
+        },
+        preparation_network=config.get("dependency_preparation_network"),
+        registry_url=config.get("dependency_registry_url"),
     )
     if args.reap:
         print(json.dumps({"terminated_expired_containers": broker.reap()}))

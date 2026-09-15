@@ -13,7 +13,7 @@ from pathlib import Path
 def main() -> None:
     request = json.loads(sys.stdin.buffer.read(26 * 1024 * 1024))
     root = Path("/work/project")
-    root.mkdir()
+    root.mkdir(exist_ok=True)
     for entry in request["files"]:
         destination = root / entry["path"]
         destination.parent.mkdir(parents=True, exist_ok=True)
