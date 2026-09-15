@@ -22,18 +22,23 @@ from jarvis_contracts.workers import (
     WorkerInvocationRequest,
     WorkerResult,
 )
-from jarvis_orchestrator.runtime.effects import EffectObservation
+from jarvis_orchestrator.mission_resources import MissionAdmissionDeniedError, require_admission
+from jarvis_orchestrator.runtime.effects import CooperativeCancelError, EffectObservation
 from jarvis_orchestrator.runtime.nodes import ClassifiedNodeError
 from jarvis_orchestrator.runtime.ownership import RunFence, RunOwnership, StaleExecutorError
 from jarvis_orchestrator.workers.base import WorkerAdapter, WorkerCallContext
-from jarvis_orchestrator.workers.leases import WorkerSlots
+from jarvis_orchestrator.workers.leases import WorkerCapacityUnavailableError, WorkerSlots
 from jarvis_orchestrator.workers.safety import WorkerBoundaryError, validation_failure
 from jarvis_orchestrator.workflows.factories import NodeContext
 from jarvis_orchestrator.workflows.state import WorkflowStateV1
 from jarvis_persistence.models import (
     EffectModel,
     EventModel,
+    JobModel,
+    MissionModel,
+    MissionWorkItemModel,
     TaskAttemptModel,
+    TaskModel,
     WorkerHealthModel,
     WorkerInvocationModel,
 )
@@ -139,9 +144,47 @@ class WorkerEffectAdapter:
                 public = request.model_dump(mode="json")
                 if RecursiveRedactor().redact(public).value != public:
                     raise WorkerBoundaryError("credential_in_worker_request")
-                lease = await self.slots.acquire(
-                    request.worker_revision_id, request.task_attempt_id, self.worker
-                )
+                waiting_emitted = False
+                while True:
+                    try:
+                        lease = await self.slots.acquire(
+                            request.worker_revision_id, request.task_attempt_id, self.worker
+                        )
+                        break
+                    except WorkerCapacityUnavailableError:
+                        async with self.ownership.fenced(self.fence) as (session, run):
+                            if run.desired_state == "cancelled":
+                                raise CooperativeCancelError() from None
+                            job = await session.get(JobModel, run.job_id)
+                            if job is not None:
+                                job.status = "waiting"
+                            mission = await session.scalar(
+                                select(MissionModel)
+                                .join(
+                                    MissionWorkItemModel,
+                                    MissionWorkItemModel.mission_id == MissionModel.id,
+                                )
+                                .where(MissionWorkItemModel.run_id == run.id)
+                            )
+                            if mission is not None:
+                                mission.lifecycle = "waiting_for_capacity"
+                                mission.waiting_reason = "worker_capacity_unavailable"
+                                mission.next_action = "Wait for the reserved worker slot"
+                                mission.next_action_basis = (
+                                    f"Logical task assignment {request.task_attempt_id} is queued"
+                                )
+                            if not waiting_emitted:
+                                await self.ownership.event(
+                                    session,
+                                    run,
+                                    "worker.capacity_waiting",
+                                    {
+                                        "worker_revision_id": str(request.worker_revision_id),
+                                        "task_attempt_id": str(request.task_attempt_id),
+                                    },
+                                )
+                                waiting_emitted = True
+                        await asyncio.sleep(min(5.0, self.worker.timeouts.heartbeat_seconds))
                 request = request.model_copy(
                     update={
                         "invocation_id": uuid5(NAMESPACE_URL, identity),
@@ -172,6 +215,38 @@ class WorkerEffectAdapter:
                             request_json=public,
                         )
                     )
+                    attempt = await session.get(TaskAttemptModel, request.task_attempt_id)
+                    if attempt is None or attempt.status != "queued":
+                        raise WorkerBoundaryError("worker_attempt_activation_invalid")
+                    attempt.status = "running"
+                    attempt.started_at = self.ownership.clock.now()
+                    task = await session.get(TaskModel, attempt.task_id)
+                    assert task is not None
+                    task.status = "running"
+                    job = await session.get(JobModel, run.job_id)
+                    if job is not None:
+                        job.status = "active"
+                    mission = await session.scalar(
+                        select(MissionModel)
+                        .join(
+                            MissionWorkItemModel,
+                            MissionWorkItemModel.mission_id == MissionModel.id,
+                        )
+                        .where(MissionWorkItemModel.run_id == run.id)
+                    )
+                    if mission is not None and mission.lifecycle == "waiting_for_capacity":
+                        mission.lifecycle = "active"
+                        mission.waiting_reason = None
+                    await self.ownership.event(
+                        session,
+                        run,
+                        "task.attempt_started",
+                        {
+                            "task_id": str(task.id),
+                            "task_attempt_id": str(attempt.id),
+                            "attempt": attempt.attempt_number,
+                        },
+                    )
             pending = asyncio.create_task(self._dispatch_prepared(prepared))
             try:
                 while not pending.done():
@@ -196,6 +271,7 @@ class WorkerEffectAdapter:
             raise ClassifiedNodeError(error.failure_class) from None
 
     async def _dispatch_prepared(self, prepared: PreparedInvocation) -> None:
+        await self._await_admission()
         report = await self.adapter.validate(self.worker, self.context())
         async with self.ownership.fenced(self.fence) as (session, run):
             health = await session.get(WorkerHealthModel, prepared.request.worker_revision_id)
@@ -222,6 +298,7 @@ class WorkerEffectAdapter:
         if not report.valid:
             raise validation_failure(report)
         await self.adapter.prepare(prepared.request, prepared.request.lease, self.context())
+        await self._await_admission()
         await self.adapter.start(prepared, self.context())
         async with self.ownership.fenced(self.fence) as (session, run):
             await self.slots.require(session, prepared.request.lease)
@@ -234,6 +311,30 @@ class WorkerEffectAdapter:
                     "generation": prepared.request.lease.generation,
                 },
             )
+
+    async def _await_admission(self) -> None:
+        """Pause new external dispatch independently from provider availability."""
+        while True:
+            async with self.ownership.fenced(self.fence) as (session, run):
+                if run.desired_state == "cancelled":
+                    raise CooperativeCancelError()
+                mission = await session.scalar(
+                    select(MissionModel)
+                    .join(
+                        MissionWorkItemModel,
+                        MissionWorkItemModel.mission_id == MissionModel.id,
+                    )
+                    .where(MissionWorkItemModel.run_id == run.id)
+                )
+                if mission is None:
+                    return
+                try:
+                    await require_admission(session, mission, operation="worker_dispatch")
+                except MissionAdmissionDeniedError as error:
+                    mission.waiting_reason = str(error)[:240]
+                else:
+                    return
+            await asyncio.sleep(min(5.0, self.worker.timeouts.heartbeat_seconds))
 
     async def inspect(self, identity: str) -> EffectObservation:
         prepared = await self.load(identity)
