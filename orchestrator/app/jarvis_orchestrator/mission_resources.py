@@ -38,6 +38,16 @@ LIMIT_FIELDS = {
     "new_work_items": "max_new_work_items",
 }
 
+SHARED_RESOURCE_LIMITS = MissionResourceLimits(
+    max_calls=1_000_000,
+    max_input_tokens=1_000_000_000,
+    max_output_tokens=1_000_000_000,
+    max_active_jobs=128,
+    max_wall_seconds=31_536_000,
+    max_iterations=100_000,
+    max_new_work_items=100_000,
+)
+
 
 class MissionAdmissionDeniedError(RuntimeError):
     pass
@@ -52,7 +62,7 @@ def scope_keys(mission: MissionModel) -> tuple[str, str, str]:
 
 
 async def ensure_controls(session: AsyncSession, mission: MissionModel) -> None:
-    limits = MissionResourceLimits.model_validate(mission.resource_limits_json)
+    mission_limits = MissionResourceLimits.model_validate(mission.resource_limits_json)
     for scope, key in zip(("global", "team", "mission"), scope_keys(mission), strict=True):
         row = await session.scalar(
             select(MissionAdmissionControlModel).where(
@@ -67,7 +77,9 @@ async def ensure_controls(session: AsyncSession, mission: MissionModel) -> None:
                     scope=scope,
                     scope_key=key,
                     state="open",
-                    resource_limits_json=limits.model_dump(mode="json"),
+                    resource_limits_json=(
+                        mission_limits if scope == "mission" else SHARED_RESOURCE_LIMITS
+                    ).model_dump(mode="json"),
                 )
                 .on_conflict_do_nothing(index_elements=["scope_key"])
             )

@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from jarvis_contracts.missions import ManagerDecision, MissionControlRequest, MissionResourceLimits
 from jarvis_contracts.registry import ProviderRequest
+from jarvis_orchestrator.mission_resources import SHARED_RESOURCE_LIMITS
 from jarvis_orchestrator.providers.budget import (
     PROVIDER_REQUEST_OVERHEAD_TOKENS,
     estimate_input_tokens,
@@ -27,6 +28,7 @@ def test_complete_wait_and_safe_point_are_unambiguous() -> None:
 def test_resource_limits_use_explicit_utc_windows_and_currency() -> None:
     limits = MissionResourceLimits()
     assert limits.timezone == "UTC" and limits.window_seconds == 86_400
+    assert SHARED_RESOURCE_LIMITS.max_active_jobs > limits.max_active_jobs
     with pytest.raises(ValidationError):
         MissionResourceLimits(currency="usd")
 
