@@ -5,9 +5,14 @@
 - Base SHA: `cb196b3bd5f55f557c4b8b2c85184be017487eee`
 - Branch: `phase/03-web-project-profiles`
 - Implementation commits: `1011e9f` and `bdff4e4`
-- Final branch SHA: the commit containing this handoff; confirm with
-  `git rev-parse HEAD` after publication
-- Draft PR: UNVERIFIED until authorized publication succeeds
+- Validated implementation/handoff SHA: `48369e9660e19449a39aaa652b2d93709f92a84b`
+- Final branch SHA: use `git rev-parse HEAD`; it is reported in the task handoff
+  because a commit cannot contain its own SHA
+- Published branch: `origin/phase/03-web-project-profiles` matched `48369e9`
+  before this publication-note commit
+- Draft PR: not created; GitHub CLI is unavailable and both authenticated browser
+  automation and safe API credential reuse were unavailable. Use the repository's
+  [pre-filled compare page](https://github.com/ClearPointSolutions/Jarvis-Development/compare/main...phase/03-web-project-profiles?expand=1).
 - CI identity: UNVERIFIED until the draft PR check runs against the exact branch tip
 
 ## IMPLEMENTED
@@ -120,8 +125,9 @@ legacy worker environment were not touched.
 
 ## CI VERIFIED
 
-UNVERIFIED. Publication and exact-tip CI had not occurred when this handoff was
-written. A successful draft-PR check must cover PostgreSQL 16 migration
+UNVERIFIED. The branch push produced no workflow run, and a draft PR could not be
+created through the available authenticated tooling. A successful draft-PR check
+must cover PostgreSQL 16 migration
 roundtrip/drift/roles, full Python coverage, generated contracts, frontend build
 and audit, the mandatory worker protocol fixture, real verifier-container denial
 canaries, the Phase 3 full-stack fixture, and database-backed browser paths. Only
@@ -135,8 +141,9 @@ provider call, public preview, or soak is claimed.
 
 ## Remaining gates and exact next action
 
-Push `phase/03-web-project-profiles`, open or update its draft PR, and require the
-repository verify workflow to pass against the exact branch tip. If it fails,
+Open a draft PR for the already-published `phase/03-web-project-profiles` branch
+from the pre-filled compare page above, and require the repository verify workflow
+to pass against the exact branch tip. If it fails,
 fix on this branch and repeat exact-tip CI. Once green, use an explicitly
 authorized V1 staging target under `/opt/jarvis-v1` to run a real-mode full-stack
 mission and the follow-on change through build, non-empty unit, independent
