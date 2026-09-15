@@ -12,6 +12,7 @@ from jarvis_contracts.base import ContractModel, sha256_digest
 from jarvis_contracts.enums import FailureClass
 from jarvis_contracts.ids import WorkflowTemplateId, WorkflowVersionId
 from jarvis_contracts.registry import Capability
+from jarvis_contracts.verification import RequiredAcceptanceCheck
 
 SPEC_VERSION = "1.1"
 COMPILER_VERSION: Literal["1.0.0"] = "1.0.0"
@@ -97,6 +98,27 @@ class ApprovalPolicy(ContractModel):
 class VerificationPolicy(ContractModel):
     source: Literal["task"] = "task"
     required: bool = True
+    execution_profile_revision_ids: tuple[UUID, ...] = Field(default=(), max_length=3)
+    required_acceptance_checks: tuple[RequiredAcceptanceCheck, ...] = Field(
+        default=(), max_length=32
+    )
+
+    @model_validator(mode="after")
+    def immutable_checks_use_selected_profiles(self) -> VerificationPolicy:
+        if len(set(self.execution_profile_revision_ids)) != len(
+            self.execution_profile_revision_ids
+        ):
+            raise ValueError("execution profile revisions must be unique")
+        selected = set(self.execution_profile_revision_ids)
+        if any(
+            check.profile_revision_id not in selected for check in self.required_acceptance_checks
+        ):
+            raise ValueError("required acceptance check uses an unselected execution profile")
+        if len({check.check_id for check in self.required_acceptance_checks}) != len(
+            self.required_acceptance_checks
+        ):
+            raise ValueError("required acceptance check IDs must be unique")
+        return self
 
 
 class WorkerSelector(ContractModel):

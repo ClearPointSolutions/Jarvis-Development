@@ -501,6 +501,9 @@ class WorkflowService:
             ):
                 if reference:
                     await visit(reference, node.id, kind)
+            if policy.verification:
+                for reference in policy.verification.execution_profile_revision_ids:
+                    await visit(reference, node.id, "execution_profile")
         return WorkflowResolvedSnapshot(
             workflow_content_hash=spec.content_hash, revisions=tuple(revisions.values())
         ), issues

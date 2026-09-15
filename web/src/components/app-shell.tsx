@@ -26,6 +26,7 @@ const navigation = [
   { href: "/models", label: "Models" },
   { href: "/routing", label: "Routing" },
   { href: "/policies", label: "Policies" },
+  { href: "/profiles", label: "Execution profiles" },
   { href: "/approvals", label: "Approvals" },
   { href: "/artifacts", label: "Artifacts" },
   { href: "/health", label: "Health" },

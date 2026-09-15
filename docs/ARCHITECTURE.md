@@ -303,3 +303,28 @@ CI MUST fail when:
 - adapter contract/idempotency/fencing tests fail;
 - migrations cannot upgrade from a fresh database and the supported prior release;
 - demo mode emits unmarked real-looking events or reaches real network adapters.
+
+## 13. Phase 3 web execution profiles and repository context
+
+Web execution remains an extension of the existing run/effect/evidence path. A
+project stores its type and approved execution-profile revision IDs; a published
+workflow stores the same revisions and immutable required checks. Real Node and
+full-stack admission requires an exact match and build, unit, and browser checks.
+The orchestrator resolves those public revisions through a private runtime map to
+immutable image IDs and observed tool versions before it sends a candidate to the
+credential-free broker.
+
+Dependency preparation and verification are separate effects inside one broker
+identity. Preparation accepts only a pinned npm lockfile whose integrity metadata
+and resolved HTTPS hosts match the profile allowlist, denies lifecycle scripts,
+and writes a bounded broker-owned volume. Verification mounts that volume read
+only, runs with Docker networking disabled, and owns any application/browser
+processes inside the same resource-bounded container. Receipts bind source,
+profile, image, dependency, command, required-check, parser, and truncation facts.
+
+Repository context uses a deterministic single-commit selection. Manifests,
+explicitly relevant paths, and tests are prioritized; every excerpt records path,
+line range, digest, provenance, selection policy, and omissions. Small projects
+retain the existing complete-source reviewer path. A request for complete review
+fails when the source exceeds the configured evidence bound; bounded planning
+context reports `sufficient` or `insufficient` and never impersonates full review.

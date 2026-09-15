@@ -16,12 +16,26 @@ class ProjectCreate(ContractModel):
     idempotency_key: IdempotencyKey
     slug: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{0,79}$")
     name: str = Field(min_length=1, max_length=160)
+    project_type: Literal["python", "node", "full_stack"] = "python"
+    execution_profile_revision_ids: tuple[UUID, ...] = Field(default=(), max_length=3)
+
+    @model_validator(mode="after")
+    def explicit_web_profiles(self) -> "ProjectCreate":
+        if len(set(self.execution_profile_revision_ids)) != len(
+            self.execution_profile_revision_ids
+        ):
+            raise ValueError("execution profile revisions must be unique")
+        if self.project_type != "python" and not self.execution_profile_revision_ids:
+            raise ValueError("web projects require at least one execution profile")
+        return self
 
 
 class ProjectView(ContractModel):
     id: UUID
     slug: str
     name: str
+    project_type: Literal["python", "node", "full_stack"] = "python"
+    execution_profile_revision_ids: tuple[UUID, ...] = ()
 
 
 class ProjectPage(ContractModel):

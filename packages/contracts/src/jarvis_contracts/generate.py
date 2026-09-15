@@ -79,7 +79,10 @@ from jarvis_contracts.runtime_api import (
     RunReconciliationRequest,
 )
 from jarvis_contracts.verification import (
+    DependencyPreparationEvidence,
+    ExecutionProfileTemplatePage,
     IntegrationHeadPage,
+    RepositoryContextSnapshot,
     ReviewDecision,
     ReviewEvidence,
     VerificationExecution,
@@ -146,6 +149,9 @@ class JarvisContractBundle(ContractModel):
     approvals: ApprovalPage
     approval_decision: ApprovalDecisionRequest
     integration_heads: IntegrationHeadPage
+    execution_profile_templates: ExecutionProfileTemplatePage | None = None
+    dependency_preparation: DependencyPreparationEvidence | None = None
+    repository_context: RepositoryContextSnapshot | None = None
     verification_execution: VerificationExecution
     review_evidence: ReviewEvidence
     review_decision: ReviewDecision

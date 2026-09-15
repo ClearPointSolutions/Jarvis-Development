@@ -11,7 +11,7 @@ from uuid import UUID
 
 from jarvis_api.events.redaction import RecursiveRedactor
 from jarvis_contracts.verification import ParsedVerification, VerificationCommand
-from jarvis_orchestrator.verification.parsers import parse_output
+from jarvis_orchestrator.verification.parsers import parse_output, verification_passed
 from jarvis_orchestrator.verification.process import ProcessResult, run_process
 from jarvis_orchestrator.workers.workspace import WorktreeManager
 
@@ -31,6 +31,17 @@ class VerificationResult:
     cwd: str
     argv: tuple[str, ...]
     environment_keys: tuple[str, ...]
+    profile_revision_id: UUID | None = None
+    profile_digest: str | None = None
+    image_id: str | None = None
+    dependency_digest: str | None = None
+    lockfile_path: str | None = None
+    lockfile_digest: str | None = None
+    dependency_prepared: bool = False
+    preparation_stdout: str = ""
+    preparation_stderr: str = ""
+    preparation_output_truncated: bool = False
+    registry_hosts: tuple[str, ...] = ()
 
 
 class VerificationExecutor:
@@ -115,7 +126,7 @@ class VerificationExecutor:
             result.exit_code,
         )
         return VerificationResult(
-            not result.timed_out and result.exit_code in command.expected_exit_codes,
+            verification_passed(command, parsed, result),
             result,
             parsed,
             str(repository.root),

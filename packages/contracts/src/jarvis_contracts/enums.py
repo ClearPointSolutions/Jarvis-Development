@@ -169,6 +169,7 @@ class ConfigurationKind(StrEnum):
     PERMISSION_POLICY = "permission_policy"
     BRANCH_POLICY = "branch_policy"
     PROJECT_SETTINGS = "project_settings"
+    EXECUTION_PROFILE = "execution_profile"
 
 
 TERMINAL_RUN_STATUSES = frozenset(

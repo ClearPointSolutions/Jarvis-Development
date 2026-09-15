@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/session";
 import { createRuntimeClient } from "@/lib/api/runtime";
 import { createWorkflowClient } from "@/lib/api/workflows";
+import { createRegistryClient } from "@/lib/api/registry";
+import type { ProjectCreate } from "@jarvis/contracts";
 
 export function RuntimeRuns() {
   const session = useSession();
@@ -23,6 +25,17 @@ export function RuntimeRuns() {
   const workflows = useQuery({
     queryKey: ["runtime-workflows"],
     queryFn: () => createWorkflowClient().list(),
+    enabled: Boolean(session.data),
+  });
+  const profiles = useQuery({
+    queryKey: ["registry", "execution_profile", "project-create"],
+    queryFn: () =>
+      createRegistryClient(session.data?.csrf_token).list("execution_profile"),
+    enabled: Boolean(session.data),
+  });
+  const profileTemplates = useQuery({
+    queryKey: ["execution-profile-templates"],
+    queryFn: client.profileTemplates,
     enabled: Boolean(session.data),
   });
   const runs = useQuery({
@@ -43,6 +56,14 @@ export function RuntimeRuns() {
         slug: String(data.get("slug")),
         name: String(data.get("name")),
         idempotency_key: crypto.randomUUID(),
+        project_type: String(data.get("project_type")) as
+          "python" | "node" | "full_stack",
+        execution_profile_revision_ids: data
+          .getAll("execution_profiles")
+          .map(String)
+          .slice(0, 3) as NonNullable<
+          ProjectCreate["execution_profile_revision_ids"]
+        >,
       });
       await projects.refetch();
       setMessage("Project created.");
@@ -93,6 +114,19 @@ export function RuntimeRuns() {
       </header>
       <form className="content-card login-form" onSubmit={createProject}>
         <h2>Create project</h2>
+        <div aria-label="Supported project profiles">
+          <strong>Supported execution profiles</strong>
+          <ul>
+            {profileTemplates.data?.items.map((profile) => (
+              <li key={profile.profile_key}>
+                {profile.profile_key}: {profile.project_types.join(", ")} ·{" "}
+                {profile.network?.verification === "application_loopback"
+                  ? "application loopback only"
+                  : "verification egress denied"}
+              </li>
+            ))}
+          </ul>
+        </div>
         <label htmlFor="project-name">Project name</label>
         <input id="project-name" name="name" required maxLength={160} />
         <label htmlFor="project-slug">Project slug</label>
@@ -102,6 +136,34 @@ export function RuntimeRuns() {
           required
           pattern="[a-z0-9](?:[a-z0-9]|-){0,79}"
         />
+        <label htmlFor="project-type">Project type</label>
+        <select id="project-type" name="project_type" defaultValue="python">
+          <option value="python">Python / pytest</option>
+          <option value="node">Node web application</option>
+          <option value="full_stack">Web frontend + Python API</option>
+        </select>
+        <label htmlFor="project-execution-profiles">
+          Approved execution profiles (select all required)
+        </label>
+        <select
+          id="project-execution-profiles"
+          name="execution_profiles"
+          multiple
+          size={Math.min(5, Math.max(2, profiles.data?.items.length ?? 2))}
+        >
+          {profiles.data?.items.map((profile) => (
+            <option key={profile.revision_id} value={profile.revision_id}>
+              {profile.display_name} —{" "}
+              {profile.spec.kind === "execution_profile"
+                ? profile.spec.profile_key
+                : ""}
+            </option>
+          ))}
+        </select>
+        <p>
+          Node and full-stack projects require explicit immutable build and
+          browser profiles. Python projects keep the compatible pytest path.
+        </p>
         <button className="button" disabled={busy}>
           Create project
         </button>
@@ -120,7 +182,8 @@ export function RuntimeRuns() {
           </option>
           {projects.data?.items.map((project) => (
             <option key={project.id} value={project.id}>
-              {project.name}
+              {project.name} —{" "}
+              {(project.project_type ?? "python").replaceAll("_", " ")}
             </option>
           ))}
         </select>

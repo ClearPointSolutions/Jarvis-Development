@@ -5,7 +5,10 @@ from uuid import UUID, uuid5
 
 from sqlalchemy import select
 
+from jarvis_contracts.base import sha256_digest
 from jarvis_contracts.verification import (
+    DependencyPreparationEvidence,
+    RequiredAcceptanceCheck,
     SealedRepositorySnapshot,
     VerificationCommand,
     VerificationExecution,
@@ -56,10 +59,16 @@ class VerificationService:
         task_id: UUID,
         operation_id: UUID,
         phase: Literal["task", "integration"] = "task",
+        required_checks: tuple[RequiredAcceptanceCheck, ...] = (),
     ) -> tuple[bool, tuple[UUID, ...]]:
         if not 1 <= len(commands) <= 32 or repository.head_sha != snapshot.head_sha:
             raise ValueError("verification requires configured commands and matching snapshot")
         owner, fence = self.artifacts.ownership, self.artifacts.fence
+        required_checks_digest = (
+            sha256_digest({"checks": [check.model_dump(mode="json") for check in required_checks]})
+            if required_checks
+            else None
+        )
         reports = []
         for index, command in enumerate(commands):
             execution_id = uuid5(operation_id, f"verification:{index}")
@@ -91,6 +100,7 @@ class VerificationService:
                     or recorded.task_id != task_id
                     or recorded.task_attempt_id != snapshot.task_attempt_id
                     or recorded.phase != phase
+                    or recorded.required_checks_digest != required_checks_digest
                 ):
                     raise ValueError("verification receipt binding changed")
                 await self.executor.confirm(repository)
@@ -106,6 +116,7 @@ class VerificationService:
                 task_attempt_id=snapshot.task_attempt_id,
                 snapshot_id=snapshot.id,
                 source_sha=snapshot.head_sha,
+                required_checks_digest=required_checks_digest,
                 command=command,
                 cwd=str(repository.root),
                 environment_keys=tuple(sorted(command.environment)),
@@ -139,6 +150,70 @@ class VerificationService:
                 repository, command, run_id=fence.run_id, execution_id=execution_id
             )
             async with owner.fenced(fence) as (session, run):
+                if result.dependency_prepared:
+                    if not all(
+                        (
+                            result.profile_revision_id,
+                            result.profile_digest,
+                            result.image_id,
+                            result.dependency_digest,
+                            result.lockfile_path,
+                            result.lockfile_digest,
+                        )
+                    ):
+                        raise ValueError("dependency preparation returned incomplete identity")
+                    preparation_output = await self.artifacts.put(
+                        session,
+                        run,
+                        snapshot.task_attempt_id,
+                        "dependency-preparation-output",
+                        {
+                            "stdout": result.preparation_stdout,
+                            "stderr": result.preparation_stderr,
+                        },
+                    )
+                    preparation = DependencyPreparationEvidence(
+                        id=uuid5(execution_id, "dependency-preparation"),
+                        snapshot_id=snapshot.id,
+                        source_sha=snapshot.head_sha,
+                        profile_revision_id=result.profile_revision_id,
+                        profile_digest=result.profile_digest,
+                        image_id=result.image_id,
+                        lockfile_path=result.lockfile_path,
+                        lockfile_digest=result.lockfile_digest,
+                        dependency_digest=result.dependency_digest,
+                        registry_hosts=result.registry_hosts,
+                        status="prepared",
+                        output_artifact_id=preparation_output,
+                        output_truncated=result.preparation_output_truncated,
+                        started_at=started.started_at,
+                        finished_at=owner.clock.now(),
+                    )
+                    preparation_artifact = await self.artifacts.put(
+                        session,
+                        run,
+                        snapshot.task_attempt_id,
+                        "dependency-preparation",
+                        preparation.model_dump(mode="json"),
+                    )
+                    await owner.event(
+                        session,
+                        run,
+                        "dependency.prepared",
+                        {
+                            "task_id": str(task_id),
+                            "task_attempt_id": str(snapshot.task_attempt_id),
+                            "profile_revision_id": str(result.profile_revision_id),
+                            "profile_digest": result.profile_digest,
+                            "image_id": result.image_id,
+                            "lockfile_path": result.lockfile_path,
+                            "lockfile_digest": result.lockfile_digest,
+                            "dependency_digest": result.dependency_digest,
+                            "preparation_artifact_id": str(preparation_artifact),
+                            "lifecycle_scripts": "denied",
+                            "network": "registry_allowlist",
+                        },
+                    )
                 stdout = await self.artifacts.put(
                     session,
                     run,
@@ -168,6 +243,12 @@ class VerificationService:
                         "stdout_truncated": result.process.stdout_truncated,
                         "stderr_truncated": result.process.stderr_truncated,
                         "parsed": result.parsed,
+                        "profile_revision_id": result.profile_revision_id,
+                        "profile_digest": result.profile_digest,
+                        "image_id": result.image_id,
+                        "dependency_digest": result.dependency_digest,
+                        "command_digest": sha256_digest(command),
+                        "required_checks_digest": required_checks_digest,
                         "failure_class": None if result.passed else "code.test_failure",
                     }
                 )
@@ -211,6 +292,16 @@ class VerificationService:
                         "passed": result.passed,
                         "phase": phase,
                         "summary": result.parsed.summary,
+                        "profile_revision_id": str(result.profile_revision_id)
+                        if result.profile_revision_id
+                        else None,
+                        "profile_digest": result.profile_digest,
+                        "image_id": result.image_id,
+                        "dependency_digest": result.dependency_digest,
+                        "command_digest": sha256_digest(command),
+                        "required_checks_digest": required_checks_digest,
+                        "output_truncated": result.process.stdout_truncated
+                        or result.process.stderr_truncated,
                         "failure_class": None if result.passed else "code.test_failure",
                     },
                 )

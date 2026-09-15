@@ -372,3 +372,20 @@ Projection updates carry `last_event_position`. A repair job can compare it with
 Checkpoint tables are created/migrated only through the selected compatible `langgraph-checkpoint-postgres` version. Application migrations do not reinterpret or duplicate checkpoint payloads. `runs.langgraph_thread_id` links domain execution to the checkpoint namespace; `last_checkpoint_id` is a convenience pointer, not an independent workflow state.
 
 Database restore must restore control, event, and checkpoint schemas to one consistent point. Artifact manifests are included in backup verification.
+
+## 14. Phase 3 profile and context records
+
+Migration `0014` adds `projects.project_type` (`python`, `node`, or
+`full_stack`) and `projects.execution_profile_revision_ids_json`. The latter is a
+bounded JSON array of immutable `configuration_revisions` whose configuration
+kind is `execution_profile`; the API validates the active registry identity before
+project creation. Existing rows default to Python with no selected profile,
+preserving the original pytest path.
+
+Execution-profile specs remain ordinary versioned registry configuration.
+Resolved image/toolchain data stays private runtime configuration and is copied
+only into evidence artifacts. Dependency preparation, verification results, and
+repository-context snapshots are immutable artifact contracts rather than mutable
+parallel workflow state. Their digests include the candidate commit and every
+security-relevant input, so a new source, image, manifest/lockfile, command, or
+required-check set cannot reuse old passing evidence.

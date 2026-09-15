@@ -9,7 +9,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from jarvis_contracts.base import sha256_digest
-from jarvis_contracts.verification import VerificationCommand
+from jarvis_contracts.verification import ResolvedExecutionProfile, VerificationCommand
 
 
 class CandidateFile(BaseModel):
@@ -42,6 +42,8 @@ class IsolationRequest(BaseModel):
     tree_sha: str = Field(pattern=r"^[a-f0-9]{40}$")
     files: tuple[CandidateFile, ...] = Field(max_length=1000)
     command: VerificationCommand
+    profile: ResolvedExecutionProfile | None = None
+    dependency_digest: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
 
     @model_validator(mode="after")
     def bounded_source(self) -> IsolationRequest:
@@ -53,6 +55,17 @@ class IsolationRequest(BaseModel):
 
     @property
     def digest(self) -> str:
+        # Preserve the v1 identity for Python-only requests that predate execution
+        # profiles. This lets an in-flight receipt survive a Phase 3 deployment.
+        if self.profile is None and self.dependency_digest is None:
+            return sha256_digest(
+                self.model_dump(
+                    mode="json",
+                    by_alias=True,
+                    exclude_none=False,
+                    exclude={"profile", "dependency_digest"},
+                )
+            )
         return sha256_digest(self)
 
 
@@ -64,6 +77,12 @@ class IsolationReceipt(BaseModel):
     execution_id: UUID
     candidate_sha: str = Field(pattern=r"^[a-f0-9]{40}$")
     image_id: str = Field(pattern=r"^sha256:[a-f0-9]{64}$")
+    profile_digest: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    dependency_digest: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    dependency_prepared: bool = False
+    preparation_stdout: str = Field(default="", max_length=1048576)
+    preparation_stderr: str = Field(default="", max_length=1048576)
+    preparation_output_truncated: bool = False
     exit_code: Annotated[int, Field(ge=0, le=255)] | None
     timed_out: bool
     stdout: str = Field(max_length=1048576)
@@ -78,5 +97,8 @@ class IsolationReceipt(BaseModel):
             or self.execution_id != request.execution_id
             or self.candidate_sha != request.candidate_sha
             or self.image_id != image_id
+            or self.profile_digest
+            != (request.profile.profile_digest if request.profile is not None else None)
+            or self.dependency_digest != request.dependency_digest
         ):
             raise ValueError("verification receipt identity mismatch")

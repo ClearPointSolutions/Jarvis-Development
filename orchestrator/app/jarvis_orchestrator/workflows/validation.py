@@ -24,6 +24,7 @@ from jarvis_contracts.registry import (
     RoutePolicySpec,
     WorkerSpec,
 )
+from jarvis_contracts.verification import ExecutionProfileSpec
 from jarvis_contracts.workflow import (
     COMPILER_VERSION,
     MAX_GRAPH_DEPTH,
@@ -849,6 +850,11 @@ def _policy_issues(
             (policy.retry_policy_ref, "retry_policy", "retry_policy_ref"),
             (policy.permission_policy_ref, "permission_policy", "permission_policy_ref"),
         ]
+        if policy.verification:
+            refs.extend(
+                (revision_id, "execution_profile", "verification.execution_profile_revision_ids")
+                for revision_id in policy.verification.execution_profile_revision_ids
+            )
         if snapshot:
             for revision_id, kind, field in refs:
                 if revision_id is None:
@@ -935,7 +941,6 @@ def _policy_issues(
                             node=node.id,
                         )
                     )
-                route = revisions.get(policy.model_route_ref) if policy.model_route_ref else None
                 allowed = worker.spec.model_binding.allowed_profile_revision_ids
                 if (
                     node.type is WorkflowNodeType.WORKER
@@ -954,6 +959,22 @@ def _policy_issues(
                             node=node.id,
                         )
                     )
+            if policy.verification:
+                for check in policy.verification.required_acceptance_checks:
+                    profile = revisions.get(check.profile_revision_id)
+                    if (
+                        profile
+                        and isinstance(profile.spec, ExecutionProfileSpec)
+                        and check.command.argv[0] not in profile.spec.supported_commands
+                    ):
+                        issues.append(
+                            _issue(
+                                "profile.command_unsupported",
+                                "Required acceptance command is unsupported by its profile",
+                                node=node.id,
+                                path="policy.verification.required_acceptance_checks",
+                            )
+                        )
     for edge in spec.edges:
         if edge.kind is not WorkflowEdgeKind.RETRY:
             continue

@@ -39,11 +39,19 @@ from jarvis_contracts.runtime_api import (
     RunReconciliationRequest,
     RunView,
 )
-from jarvis_contracts.verification import IntegrationHeadPage, IntegrationHeadView
+from jarvis_contracts.verification import (
+    ExecutionProfileTemplatePage,
+    IntegrationHeadPage,
+    IntegrationHeadView,
+)
 from jarvis_contracts.workflow import WorkflowSpec
 from jarvis_orchestrator.demo.safety import validate_demo_snapshot
 from jarvis_orchestrator.runtime.ownership import RunOwnership, lock_events, runtime_writer
+from jarvis_orchestrator.verification.profiles import profile_templates
+from jarvis_orchestrator.workflows.validation import effective_policy
 from jarvis_persistence.models import (
+    ConfigurationModel,
+    ConfigurationRevisionModel,
     EffectModel,
     IntegrationHeadModel,
     JobModel,
@@ -67,6 +75,14 @@ from jarvis_persistence.repositories import (
 
 router = APIRouter(prefix="/api/v1", tags=["runs"])
 Limit = Annotated[int, Query(ge=1, le=100)]
+
+
+@router.get("/execution-profiles/templates", response_model=ExecutionProfileTemplatePage)
+async def execution_profile_templates(
+    principal: CurrentPrincipal,
+) -> ExecutionProfileTemplatePage:
+    del principal
+    return ExecutionProfileTemplatePage(items=profile_templates())
 
 
 @router.get("/runs/{run_id}/workflow", response_model=WorkflowSpec)
@@ -314,7 +330,16 @@ async def projects(
         rows = list((await session.scalars(query.order_by(ProjectModel.id).limit(limit + 1))).all())
         return ProjectPage(
             items=tuple(
-                ProjectView(id=row.id, slug=row.slug, name=row.name) for row in rows[:limit]
+                ProjectView(
+                    id=row.id,
+                    slug=row.slug,
+                    name=row.name,
+                    project_type=row.project_type,
+                    execution_profile_revision_ids=tuple(
+                        UUID(value) for value in row.execution_profile_revision_ids_json
+                    ),
+                )
+                for row in rows[:limit]
             ),
             next_after=rows[limit - 1].id if len(rows) > limit else None,
         )
@@ -342,16 +367,48 @@ async def create_project(
             return ProjectView.model_validate(record.response_json)
         if await session.scalar(select(ProjectModel.id).where(ProjectModel.slug == body.slug)):
             raise ApiProblemError(409, "run.slug_conflict", "Project slug is unavailable")
+        if body.execution_profile_revision_ids:
+            configured = set(
+                await session.scalars(
+                    select(ConfigurationRevisionModel.id)
+                    .join(
+                        ConfigurationModel,
+                        ConfigurationModel.id == ConfigurationRevisionModel.configuration_id,
+                    )
+                    .where(
+                        ConfigurationRevisionModel.id.in_(body.execution_profile_revision_ids),
+                        ConfigurationModel.kind == "execution_profile",
+                        ConfigurationModel.enabled.is_(True),
+                        ConfigurationModel.archived_at.is_(None),
+                    )
+                )
+            )
+            if configured != set(body.execution_profile_revision_ids):
+                raise ApiProblemError(
+                    422,
+                    "project.execution_profile_invalid",
+                    "Project references a missing or inactive execution profile revision",
+                )
         row = ProjectModel(
             id=uuid7(),
             owner_user_id=principal.user_id,
             slug=body.slug,
             name=body.name,
+            project_type=body.project_type,
+            execution_profile_revision_ids_json=[
+                str(value) for value in body.execution_profile_revision_ids
+            ],
             status="active",
         )
         session.add(row)
         await session.flush()
-        view = ProjectView(id=row.id, slug=row.slug, name=row.name)
+        view = ProjectView(
+            id=row.id,
+            slug=row.slug,
+            name=row.name,
+            project_type=row.project_type,
+            execution_profile_revision_ids=body.execution_profile_revision_ids,
+        )
         await runtime_writer().append(
             session,
             EventIntent(
@@ -429,6 +486,41 @@ async def create_job(
             raise ApiProblemError(
                 422, "run.configuration_invalid", "Published workflow configuration is unavailable"
             )
+        if body.mode == "real" and project.project_type != "python":
+            policies = [
+                effective_policy(spec, node).verification
+                for node in spec.nodes
+                if node.type.value == "verify"
+            ]
+            workflow_profiles = {
+                revision_id
+                for policy in policies
+                if policy
+                for revision_id in policy.execution_profile_revision_ids
+            }
+            project_profiles = {
+                UUID(value) for value in project.execution_profile_revision_ids_json
+            }
+            if workflow_profiles != project_profiles:
+                raise ApiProblemError(
+                    422,
+                    "run.execution_profile_mismatch",
+                    "Workflow profiles must exactly match the project's approved revisions",
+                )
+            purposes = {
+                check.purpose
+                for policy in policies
+                if policy
+                for check in policy.required_acceptance_checks
+            }
+            missing_purposes = {"build", "unit", "browser"} - purposes
+            if missing_purposes:
+                raise ApiProblemError(
+                    422,
+                    "run.acceptance_checks_missing",
+                    "Web project is missing approved required checks: "
+                    + ", ".join(sorted(missing_purposes)),
+                )
         payload = {"snapshot": snapshot.model_dump(mode="json")}
         if body.mode == "demo":
             try:

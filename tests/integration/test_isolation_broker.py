@@ -51,16 +51,17 @@ def test_isolation():
         pass
     else:
         raise AssertionError("root filesystem is writable")
-    connection = socket.socket()
-    connection.settimeout(0.5)
-    try:
-        connection.connect(("192.0.2.1", 80))
-    except OSError:
-        pass
-    else:
-        raise AssertionError("network is available")
-    finally:
-        connection.close()
+    for address in ("172.17.0.1", "192.168.40.1", "169.254.169.254", "192.0.2.1"):
+        connection = socket.socket()
+        connection.settimeout(0.5)
+        try:
+            connection.connect((address, 80))
+        except OSError:
+            pass
+        else:
+            raise AssertionError("network is available: " + address)
+        finally:
+            connection.close()
 def test_project():
     from project import add
     assert add(2, 3) == 5

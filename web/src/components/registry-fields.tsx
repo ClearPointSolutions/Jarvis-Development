@@ -49,6 +49,7 @@ export const registryTitles: Record<RegistryKind, string> = {
   route_policy: "Routing",
   retry_policy: "Retry policies",
   permission_policy: "Permission policies",
+  execution_profile: "Execution profiles",
 };
 const timeout = {
   connect_seconds: 10,
@@ -159,6 +160,62 @@ export function defaultSpec(kind: RegistryKind): Spec {
         sensitive_action: "require_approval",
         destructive_action: "deny",
         unknown_action: "deny",
+      };
+    case "execution_profile":
+      return {
+        kind,
+        profile_key: "node-build-v1",
+        profile_version: "1.0",
+        project_types: ["node", "full_stack"],
+        image_reference: "jarvis-v1-node-verification:configured",
+        supported_commands: [
+          "npm",
+          "node",
+          "npx",
+          "vitest",
+          "tsc",
+          "next",
+          "eslint",
+        ],
+        tool_versions: { node: "configured", npm: "configured" },
+        resources: {
+          cpu_count: 1,
+          memory_mb: 1024,
+          pids: 128,
+          workspace_mb: 512,
+          timeout_seconds: 1200,
+          output_bytes: 1048576,
+        },
+        dependencies: {
+          manager: "npm",
+          lockfiles: ["package-lock.json"],
+          require_lockfile: true,
+          require_integrity: true,
+          lifecycle_scripts: "deny",
+          registry_allowlist: ["registry.npmjs.org"],
+          cache_max_mb: 512,
+        },
+        network: {
+          preparation: "registry_allowlist",
+          verification: "none",
+          deny_host: true,
+          deny_lan: true,
+          deny_metadata: true,
+          deny_public_internet: true,
+        },
+        max_files: 2000,
+        max_source_bytes: 16777216,
+        source_formats: [
+          "",
+          ".js",
+          ".jsx",
+          ".ts",
+          ".tsx",
+          ".json",
+          ".css",
+          ".html",
+          ".md",
+        ],
       };
   }
 }
@@ -507,6 +564,39 @@ const fields: Record<RegistryKind, Field[]> = {
           : ["allow"]),
       ],
     })),
+  ],
+  execution_profile: [
+    {
+      path: "profile_key",
+      label: "Profile type",
+      options: ["python-pytest-v1", "node-build-v1", "browser-acceptance-v1"],
+    },
+    { path: "project_types", label: "Supported project types", type: "list" },
+    {
+      path: "image_reference",
+      label: "Configured image reference",
+      required: true,
+    },
+    { path: "supported_commands", label: "Supported commands", type: "list" },
+    { path: "tool_versions", label: "Tool versions", type: "json" },
+    { path: "resources", label: "Resource bounds", type: "json" },
+    { path: "dependencies", label: "Dependency policy", type: "json" },
+    { path: "network", label: "Network policy", type: "json" },
+    {
+      path: "max_files",
+      label: "Maximum files",
+      type: "number",
+      min: 1,
+      max: 10000,
+    },
+    {
+      path: "max_source_bytes",
+      label: "Maximum source bytes",
+      type: "number",
+      min: 1024,
+      max: 67108864,
+    },
+    { path: "source_formats", label: "Allowed source suffixes", type: "list" },
   ],
 };
 function getValue(object: unknown, path: string): unknown {

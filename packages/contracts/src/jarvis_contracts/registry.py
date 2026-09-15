@@ -13,6 +13,7 @@ from pydantic import Field, JsonValue, TypeAdapter, field_validator, model_valid
 from jarvis_contracts.base import ContractModel
 from jarvis_contracts.enums import FailureClass
 from jarvis_contracts.failures import RetryPolicySpec
+from jarvis_contracts.verification import ExecutionProfileSpec
 
 RegistryKind = Literal[
     "agent_role",
@@ -23,6 +24,7 @@ RegistryKind = Literal[
     "route_policy",
     "retry_policy",
     "permission_policy",
+    "execution_profile",
 ]
 ProviderKind = Literal["openai", "ollama", "demo"]
 Locality = Literal["local", "local_lan", "remote"]
@@ -298,7 +300,8 @@ RegistrySpec = Annotated[
     | ModelProfileSpec
     | RoutePolicySpec
     | RetryRegistrySpec
-    | PermissionPolicySpec,
+    | PermissionPolicySpec
+    | ExecutionProfileSpec,
     Field(discriminator="kind"),
 ]
 REGISTRY_SPEC_ADAPTER: TypeAdapter[RegistrySpec] = TypeAdapter(RegistrySpec)

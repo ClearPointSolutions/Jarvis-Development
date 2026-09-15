@@ -5,6 +5,7 @@ from uuid import uuid4
 import pytest
 from pydantic import ValidationError
 
+from jarvis_contracts.base import sha256_digest
 from jarvis_contracts.verification import VerificationCommand
 from jarvis_orchestrator.verification.isolation_contract import (
     CandidateFile,
@@ -64,3 +65,21 @@ def test_receipt_rejects_candidate_and_invocation_substitution() -> None:
     ):
         with pytest.raises(ValueError, match="identity mismatch"):
             receipt.require(changed, image)
+
+
+def test_python_only_request_preserves_pre_profile_protocol_digest() -> None:
+    request = IsolationRequest(
+        run_id=uuid4(),
+        execution_id=uuid4(),
+        candidate_sha="a" * 40,
+        tree_sha="b" * 40,
+        files=(),
+        command=VerificationCommand(argv=("pytest",)),
+    )
+    legacy_payload = request.model_dump(
+        mode="json",
+        by_alias=True,
+        exclude_none=False,
+        exclude={"profile", "dependency_digest"},
+    )
+    assert request.digest == sha256_digest(legacy_payload)

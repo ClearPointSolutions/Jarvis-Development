@@ -1,5 +1,55 @@
 # Jarvis V1 Status
 
+## Phase 3 web-project execution profiles (2026-09-15, code/local complete; CI/live open)
+
+Branch `phase/03-web-project-profiles`; fetched clean base
+`cb196b3bd5f55f557c4b8b2c85184be017487eee` (current `origin/main`, including
+merged Phase 2). Milestone criteria:
+
+- [x] Add immutable, versioned Python, Node build/unit, and browser-acceptance
+  execution profiles with explicit command/tool/resource/output/dependency and
+  network policies, preflight validation, and capability-specific failures.
+- [x] Separate restricted dependency preparation from egress-denied verification;
+  bind resolved image, source, lockfile, dependency, command, report, and
+  truncation identities while proving secret/Docker/host/LAN/metadata/public
+  network denial and lifecycle cleanup.
+- [x] Pin required acceptance checks in approved project/workflow configuration,
+  reject incomplete/empty/truncated evidence, preserve review/integration gates,
+  and invalidate evidence whenever a bound input changes.
+- [x] Build immutable single-revision repository context with bounded maps,
+  excerpts, manifests, tests, brief, directives, decisions, outcomes, provenance,
+  omissions, and explicit sufficiency/coverage behavior for larger projects.
+- [x] Expose supported project types, selected profiles, preflight/preparation and
+  build/unit/browser evidence plus actionable failures in authenticated APIs and
+  mission/run UI; include deterministic full-stack and follow-on-change fixtures.
+- [ ] Run focused and whole-repository gates (including PostgreSQL, protocol,
+  generated contracts, frontend, production build, Playwright, console and
+  security checks), review the diff, document the handoff, and publish a draft PR
+  with exact-commit CI only when authorized access permits.
+
+No homelab target is assumed available. Live staging remains **UNVERIFIED** until
+actual real-mode evidence is collected from an explicitly authorized V1 target;
+protocol and deterministic fixtures are reported separately.
+
+Implemented in `1011e9f` and `bdff4e4`: migration `0014`; immutable profile
+templates/revisions and project/workflow selection; restricted npm preparation;
+egress-denied Python, Node, and browser verification; required-check and complete
+report enforcement; profile/source/image/dependency/command/check-set evidence
+binding; deterministic single-revision repository context; API/UI profile and
+run visibility; deployment examples; and a runnable full-stack/follow-on fixture.
+
+Local static checks, focused Python tests (`86 passed, 6 skipped`), complete
+non-database Python execution (`689 passed, 24 skipped, 200 deselected`), generated
+contracts, frontend checks (`54` Vitest tests), production build, npm audit,
+mocked Chromium (`7 passed, 6 database-backed skipped`), and the Phase 3 fixture
+(Python/Node unit plus one real browser journey) pass. The normal
+`scripts/verify.sh` reached `703 passed, 10 skipped, 201 deselected`, then correctly
+stopped at the unchanged 80% coverage gate with 52.86% because PostgreSQL is not
+available locally. Five PostgreSQL profile/API tests and one real-container test
+remain locally skipped; Docker is unavailable on this workstation. Exact-tip CI
+and live V1 staging are therefore **UNVERIFIED** pending publication and an
+authorized target. See `docs/development/phase-03-handoff.md`.
+
 ## Phase 2 bounded autonomy (2026-09-14, code + CI complete; live gate open)
 
 Branch `phase/02-bounded-autonomy`; fetched clean base

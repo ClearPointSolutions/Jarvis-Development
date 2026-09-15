@@ -72,6 +72,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/execution-profiles/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Execution Profile Templates */
+        get: operations["execution_profile_templates_api_v1_execution_profiles_templates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs": {
         parameters: {
             query?: never;
@@ -1227,6 +1244,46 @@ export interface components {
              */
             seed: number;
         };
+        /** DependencyPolicy */
+        DependencyPolicy: {
+            /**
+             * Cache Max Mb
+             * @default 512
+             */
+            cache_max_mb: number;
+            /**
+             * Lifecycle Scripts
+             * @default deny
+             * @constant
+             */
+            lifecycle_scripts: "deny";
+            /**
+             * Lockfiles
+             * @default []
+             */
+            lockfiles: ("requirements.lock" | "package-lock.json")[];
+            /**
+             * Manager
+             * @default none
+             * @enum {string}
+             */
+            manager: "none" | "pip" | "npm";
+            /**
+             * Registry Allowlist
+             * @default []
+             */
+            registry_allowlist: string[];
+            /**
+             * Require Integrity
+             * @default true
+             */
+            require_integrity: boolean;
+            /**
+             * Require Lockfile
+             * @default true
+             */
+            require_lockfile: boolean;
+        };
         /** DirectiveUpdate */
         DirectiveUpdate: {
             /**
@@ -1331,6 +1388,58 @@ export interface components {
          * @enum {string}
          */
         EventVisibility: "owner" | "operator" | "internal";
+        /**
+         * ExecutionProfileSpec
+         * @description Versioned public profile policy. Runtime evidence binds its resolved image ID.
+         */
+        ExecutionProfileSpec: {
+            dependencies?: components["schemas"]["DependencyPolicy"];
+            /** Image Reference */
+            image_reference: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "execution_profile";
+            /**
+             * Max Files
+             * @default 1000
+             */
+            max_files: number;
+            /**
+             * Max Source Bytes
+             * @default 4194304
+             */
+            max_source_bytes: number;
+            network?: components["schemas"]["NetworkPolicy"];
+            /**
+             * Profile Key
+             * @enum {string}
+             */
+            profile_key: "python-pytest-v1" | "node-build-v1" | "browser-acceptance-v1";
+            /**
+             * Profile Version
+             * @default 1.0
+             * @constant
+             */
+            profile_version: "1.0";
+            /** Project Types */
+            project_types: ("python" | "node" | "full_stack")[];
+            resources?: components["schemas"]["ResourceBounds"];
+            /** Source Formats */
+            source_formats: string[];
+            /** Supported Commands */
+            supported_commands: string[];
+            /** Tool Versions */
+            tool_versions: {
+                [key: string]: string;
+            };
+        };
+        /** ExecutionProfileTemplatePage */
+        ExecutionProfileTemplatePage: {
+            /** Items */
+            items: components["schemas"]["ExecutionProfileSpec"][];
+        };
         /**
          * FailureClass
          * @enum {string}
@@ -2045,6 +2154,45 @@ export interface components {
              */
             usage_reporting: "exact" | "partial" | "none";
         };
+        /** NetworkPolicy */
+        NetworkPolicy: {
+            /**
+             * Deny Host
+             * @default true
+             * @constant
+             */
+            deny_host: true;
+            /**
+             * Deny Lan
+             * @default true
+             * @constant
+             */
+            deny_lan: true;
+            /**
+             * Deny Metadata
+             * @default true
+             * @constant
+             */
+            deny_metadata: true;
+            /**
+             * Deny Public Internet
+             * @default true
+             * @constant
+             */
+            deny_public_internet: true;
+            /**
+             * Preparation
+             * @default none
+             * @enum {string}
+             */
+            preparation: "none" | "registry_allowlist";
+            /**
+             * Verification
+             * @default none
+             * @enum {string}
+             */
+            verification: "none" | "application_loopback";
+        };
         /** NodePage */
         NodePage: {
             /** Items */
@@ -2345,10 +2493,21 @@ export interface components {
         };
         /** ProjectCreate */
         ProjectCreate: {
+            /**
+             * Execution Profile Revision Ids
+             * @default []
+             */
+            execution_profile_revision_ids: string[];
             /** Idempotency Key */
             idempotency_key: string;
             /** Name */
             name: string;
+            /**
+             * Project Type
+             * @default python
+             * @enum {string}
+             */
+            project_type: "python" | "node" | "full_stack";
             /** Slug */
             slug: string;
         };
@@ -2362,12 +2521,23 @@ export interface components {
         /** ProjectView */
         ProjectView: {
             /**
+             * Execution Profile Revision Ids
+             * @default []
+             */
+            execution_profile_revision_ids: string[];
+            /**
              * Id
              * Format: uuid
              */
             id: string;
             /** Name */
             name: string;
+            /**
+             * Project Type
+             * @default python
+             * @enum {string}
+             */
+            project_type: "python" | "node" | "full_stack";
             /** Slug */
             slug: string;
         };
@@ -2495,7 +2665,7 @@ export interface components {
              */
             secret_status: "configured" | "missing" | "not_required";
             /** Spec */
-            spec: components["schemas"]["AgentRoleSpec"] | components["schemas"]["TeamTemplateSpec"] | components["schemas"]["WorkerSpec"] | components["schemas"]["ProviderSpec"] | components["schemas"]["ModelProfileSpec-Output"] | components["schemas"]["RoutePolicySpec-Output"] | components["schemas"]["RetryRegistrySpec"] | components["schemas"]["PermissionPolicySpec"];
+            spec: components["schemas"]["AgentRoleSpec"] | components["schemas"]["TeamTemplateSpec"] | components["schemas"]["WorkerSpec"] | components["schemas"]["ProviderSpec"] | components["schemas"]["ModelProfileSpec-Output"] | components["schemas"]["RoutePolicySpec-Output"] | components["schemas"]["RetryRegistrySpec"] | components["schemas"]["PermissionPolicySpec"] | components["schemas"]["ExecutionProfileSpec"];
             /**
              * Updated At
              * Format: date-time
@@ -2548,7 +2718,56 @@ export interface components {
             /** Secret Ref */
             secret_ref?: string | null;
             /** Spec */
-            spec: components["schemas"]["AgentRoleSpec"] | components["schemas"]["TeamTemplateSpec"] | components["schemas"]["WorkerSpec"] | components["schemas"]["ProviderSpec"] | components["schemas"]["ModelProfileSpec-Input"] | components["schemas"]["RoutePolicySpec-Input"] | components["schemas"]["RetryRegistrySpec"] | components["schemas"]["PermissionPolicySpec"];
+            spec: components["schemas"]["AgentRoleSpec"] | components["schemas"]["TeamTemplateSpec"] | components["schemas"]["WorkerSpec"] | components["schemas"]["ProviderSpec"] | components["schemas"]["ModelProfileSpec-Input"] | components["schemas"]["RoutePolicySpec-Input"] | components["schemas"]["RetryRegistrySpec"] | components["schemas"]["PermissionPolicySpec"] | components["schemas"]["ExecutionProfileSpec"];
+        };
+        /** RequiredAcceptanceCheck */
+        RequiredAcceptanceCheck: {
+            /** Check Id */
+            check_id: string;
+            command: components["schemas"]["VerificationCommand"];
+            /**
+             * Profile Revision Id
+             * Format: uuid
+             */
+            profile_revision_id: string;
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "build" | "unit" | "browser" | "quality" | "integration";
+        };
+        /** ResourceBounds */
+        ResourceBounds: {
+            /**
+             * Cpu Count
+             * @default 1
+             */
+            cpu_count: number;
+            /**
+             * Memory Mb
+             * @default 512
+             */
+            memory_mb: number;
+            /**
+             * Output Bytes
+             * @default 1048576
+             */
+            output_bytes: number;
+            /**
+             * Pids
+             * @default 128
+             */
+            pids: number;
+            /**
+             * Timeout Seconds
+             * @default 1200
+             */
+            timeout_seconds: number;
+            /**
+             * Workspace Mb
+             * @default 256
+             */
+            workspace_mb: number;
         };
         /** RetryRegistrySpec */
         RetryRegistrySpec: {
@@ -3268,13 +3487,82 @@ export interface components {
             /** Valid */
             valid: boolean;
         };
+        /** VerificationCommand */
+        VerificationCommand: {
+            /** Argv */
+            argv: string[];
+            /** Environment */
+            environment?: {
+                [key: string]: string;
+            };
+            /**
+             * Expected Exit Codes
+             * @default [
+             *       0
+             *     ]
+             */
+            expected_exit_codes: number[];
+            /**
+             * Kind
+             * @default argv
+             * @constant
+             */
+            kind: "argv";
+            /**
+             * Max Output Bytes
+             * @default 1048576
+             */
+            max_output_bytes: number;
+            /**
+             * Parser
+             * @default exit_code
+             * @enum {string}
+             */
+            parser: "exit_code" | "pytest" | "vitest" | "playwright" | "typescript" | "next" | "eslint" | "ruff" | "mypy";
+            /** Profile Revision Id */
+            profile_revision_id?: string | null;
+            /**
+             * Purpose
+             * @default unit
+             * @enum {string}
+             */
+            purpose: "build" | "unit" | "browser" | "quality" | "integration";
+            /**
+             * Require Nonempty Suite
+             * @default false
+             */
+            require_nonempty_suite: boolean;
+            /** Required Check Id */
+            required_check_id?: string | null;
+            /**
+             * Timeout Seconds
+             * @default 1200
+             */
+            timeout_seconds: number;
+            /**
+             * Working Root Policy
+             * @default adapter_confirmed_root
+             * @constant
+             */
+            working_root_policy: "adapter_confirmed_root";
+        };
         /** VerificationPolicy */
         VerificationPolicy: {
+            /**
+             * Execution Profile Revision Ids
+             * @default []
+             */
+            execution_profile_revision_ids: string[];
             /**
              * Required
              * @default true
              */
             required: boolean;
+            /**
+             * Required Acceptance Checks
+             * @default []
+             */
+            required_acceptance_checks: components["schemas"]["RequiredAcceptanceCheck"][];
             /**
              * Source
              * @default task
@@ -4188,6 +4476,125 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LogoutResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_profile_templates_api_v1_execution_profiles_templates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionProfileTemplatePage"];
                 };
             };
             /** @description Bad Request */
@@ -6400,7 +6807,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy";
+                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy" | "execution_profile";
             };
             cookie?: never;
         };
@@ -6521,7 +6928,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy";
+                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy" | "execution_profile";
             };
             cookie?: never;
         };
@@ -6646,7 +7053,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy";
+                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy" | "execution_profile";
                 id: string;
             };
             cookie?: never;
@@ -6768,7 +7175,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy";
+                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy" | "execution_profile";
                 id: string;
             };
             cookie?: never;
@@ -6897,7 +7304,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy";
+                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy" | "execution_profile";
                 id: string;
             };
             cookie?: never;
@@ -7019,7 +7426,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy";
+                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy" | "execution_profile";
                 id: string;
             };
             cookie?: never;
