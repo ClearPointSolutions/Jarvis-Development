@@ -10,15 +10,18 @@ from uuid import UUID, uuid5
 
 from langchain_core.runnables import RunnableConfig
 from pydantic import JsonValue
-from sqlalchemy import select
+from sqlalchemy import func, select
 from uuid6 import uuid7
 
 from jarvis_contracts.base import sha256_digest
 from jarvis_contracts.enums import FailureClass
+from jarvis_contracts.missions import FixedTeamSelection
 from jarvis_contracts.registry import (
     ModelProfileSpec,
+    PermissionPolicySpec,
     ProviderSpec,
     RetryRegistrySpec,
+    WorkerPoolSpec,
     WorkerSpec,
 )
 from jarvis_contracts.workers import (
@@ -60,19 +63,28 @@ from jarvis_orchestrator.workers.artifacts import WorkerContextReader, WorkerLog
 from jarvis_orchestrator.workers.candidate_store import import_candidate, recover_candidate
 from jarvis_orchestrator.workers.openhands import OpenHandsSSHAdapter
 from jarvis_orchestrator.workers.runtime import WorkerEffectAdapter
+from jarvis_orchestrator.workers.scheduler import AssignmentRequest, EligibleWorker, select_worker
 from jarvis_orchestrator.workers.transport import OpenSSHTransport, SSHCredentials
 from jarvis_orchestrator.workers.workspace import WorktreeManager
 from jarvis_orchestrator.workflows.factories import NodeContext, NodeHandler
 from jarvis_orchestrator.workflows.state import WorkflowStateV1
 from jarvis_orchestrator.workflows.validation import effective_policy
 from jarvis_persistence.models import (
+    ConfigurationModel,
+    ConfigurationRevisionModel,
     EffectModel,
     JobModel,
+    MissionTeamVersionModel,
+    MissionWorkItemModel,
     ProjectModel,
     RunConfigSnapshotModel,
     TaskAttemptModel,
     TaskModel,
+    WorkerAssignmentModel,
+    WorkerHealthModel,
     WorkerInvocationModel,
+    WorkerLeaseModel,
+    WorkerSlotModel,
 )
 
 # A real provider intermittently returns a malformed structured response, times
@@ -138,7 +150,15 @@ class RealComposition:
         return approval_handler(owner, fence, spec, await self.approval_parameters(owner, fence))
 
     def model(
-        self, owner: RunOwnership, fence: RunFence, context: NodeContext, config: RunnableConfig
+        self,
+        owner: RunOwnership,
+        fence: RunFence,
+        context: NodeContext,
+        config: RunnableConfig,
+        *,
+        max_inference_calls: int | None = None,
+        mission_id: UUID | None = None,
+        team_version_id: UUID | None = None,
     ) -> RuntimeModel:
         selected = config.get("configurable", {})
         profile = next(
@@ -163,7 +183,12 @@ class RealComposition:
             profile.spec,
             provider.revision_id,
             profile.revision_id,
-            bound_budget(context),
+            bound_budget(
+                context,
+                max_inference_calls=max_inference_calls,
+                mission_id=mission_id,
+                team_version_id=team_version_id,
+            ),
         )
 
     async def build(
@@ -193,10 +218,126 @@ class RealComposition:
             project = await session.get(ProjectModel, project_id)
             if project is None:
                 raise RuntimeDependencyError("run project is unavailable")
+            frozen_config = await session.get(RunConfigSnapshotModel, run.config_snapshot_id)
+            team_selection = (
+                FixedTeamSelection.model_validate(frozen_config.effective_spec_json["mission_team"])
+                if frozen_config is not None and "mission_team" in frozen_config.effective_spec_json
+                else None
+            )
+            mission_id = (
+                UUID(str(run.runtime_json["mission_id"]))
+                if "mission_id" in run.runtime_json
+                else None
+            )
+            team_version_id = (
+                UUID(str(run.runtime_json["team_version_id"]))
+                if "team_version_id" in run.runtime_json
+                else None
+            )
+            max_inference_calls = (
+                team_selection.budgets.max_inference_calls if team_selection else None
+            )
         try:
             binding = self.settings.repository_binding(project_id, workflow_id)
         except ValueError as exc:
             raise RuntimeDependencyError(str(exc)) from None
+        if team_selection and team_selection.eligible_worker_revision_ids:
+            candidates: list[EligibleWorker] = []
+            health_freshness_seconds = 60
+            async with owner.fenced(fence) as (session, _run):
+                pool_ids = {
+                    pool_id
+                    for member in team_selection.members
+                    if member.may_execute
+                    for pool_id in member.worker_pool_revision_ids
+                }
+                for pool_id in pool_ids:
+                    pool_row = await session.get(ConfigurationRevisionModel, pool_id)
+                    if pool_row is not None:
+                        pool = WorkerPoolSpec.model_validate(pool_row.spec_json["spec"])
+                        health_freshness_seconds = min(
+                            health_freshness_seconds, pool.health_freshness_seconds
+                        )
+                for revision_id in team_selection.eligible_worker_revision_ids:
+                    revision_row = await session.get(ConfigurationRevisionModel, revision_id)
+                    identity = (
+                        await session.get(ConfigurationModel, revision_row.configuration_id)
+                        if revision_row
+                        else None
+                    )
+                    if revision_row is None or identity is None:
+                        continue
+                    worker_spec = WorkerSpec.model_validate(revision_row.spec_json["spec"])
+                    resource_id = worker_spec.physical_resource_id or str(identity.id)
+                    slots_in_use = int(
+                        await session.scalar(
+                            select(func.count(WorkerLeaseModel.id))
+                            .join(WorkerSlotModel, WorkerSlotModel.id == WorkerLeaseModel.slot_id)
+                            .where(
+                                WorkerSlotModel.physical_resource_id == resource_id,
+                                WorkerLeaseModel.released_at.is_(None),
+                            )
+                        )
+                        or 0
+                    )
+                    health = await session.get(WorkerHealthModel, revision_id)
+                    health_report = health.report_json if health else {}
+                    candidates.append(
+                        EligibleWorker(
+                            revision_id=revision_id,
+                            physical_resource_id=resource_id,
+                            capabilities=frozenset(worker_spec.capabilities),
+                            permitted_project_ids=frozenset(worker_spec.permitted_project_ids),
+                            execution_profile_ids=frozenset(
+                                worker_spec.execution_profile_revision_ids
+                            ),
+                            capacity=worker_spec.max_concurrency,
+                            slots_in_use=slots_in_use,
+                            health=str(
+                                health_report.get("health", {}).get(
+                                    "status", "healthy" if run.mode == "demo" else "unknown"
+                                )
+                            ),
+                            observed_at=health.observed_at
+                            if health
+                            else owner.clock.now()
+                            if run.mode == "demo"
+                            else None,
+                            enabled=identity.enabled and identity.archived_at is None,
+                        )
+                    )
+            selected, _reason = select_worker(
+                AssignmentRequest(
+                    id=run.id,
+                    mission_id=UUID(str(run.runtime_json["mission_id"])),
+                    priority=run.priority,
+                    fairness_sequence=(run.id.int % (2**63 - 1)) or 1,
+                    project_id=project_id,
+                    required_capabilities=frozenset({"code", "git"}),
+                    execution_profile_ids=frozenset(
+                        UUID(value) for value in project.execution_profile_revision_ids_json
+                    ),
+                    health_freshness_seconds=health_freshness_seconds,
+                ),
+                tuple(candidates),
+                now=owner.clock.now(),
+                allow_saturated=True,
+            )
+            if selected is None:
+                raise RuntimeDependencyError("worker pool is waiting for eligible capacity")
+            deployment = self.settings.workers.get(selected.revision_id)
+            if deployment is None:
+                raise RuntimeDependencyError("selected worker deployment is not configured")
+            binding = binding.model_copy(
+                update={
+                    "worker_revision_id": selected.revision_id,
+                    "project": binding.project.model_copy(
+                        update={
+                            "workspace_root": deployment.workspace_root + "/" + binding.project.slug
+                        }
+                    ),
+                }
+            )
         selected_profiles = set(binding.execution_profile_revision_ids)
         stored_profiles = {UUID(value) for value in project.execution_profile_revision_ids_json}
         if binding.project_type != project.project_type or selected_profiles != stored_profiles:
@@ -221,9 +362,13 @@ class RealComposition:
             (row for row in snapshot.revisions if row.revision_id == binding.worker_revision_id),
             None,
         )
-        if deployment is None or revision is None or not isinstance(revision.spec, WorkerSpec):
+        worker = revision.spec if revision is not None else None
+        if worker is None and team_selection is not None:
+            async with owner.fenced(fence) as (session, _run):
+                row = await session.get(ConfigurationRevisionModel, binding.worker_revision_id)
+                worker = WorkerSpec.model_validate(row.spec_json["spec"]) if row else None
+        if deployment is None or not isinstance(worker, WorkerSpec):
             raise RuntimeDependencyError("immutable worker deployment binding is unavailable")
-        worker = revision.spec
         if worker.adapter_kind != "openhands_ssh_v1" or worker.max_concurrency != 1:
             raise RuntimeDependencyError(
                 "first-test composition requires the exclusive legacy worker"
@@ -235,7 +380,12 @@ class RealComposition:
         for node in spec.nodes:
             if node.type.value == "worker":
                 selector = effective_policy(spec, node).worker_selector
-                if selector is None or selector.revision_id != binding.worker_revision_id:
+                permitted = (
+                    set(team_selection.eligible_worker_revision_ids)
+                    if team_selection
+                    else {binding.worker_revision_id}
+                )
+                if selector is None or binding.worker_revision_id not in permitted:
                     raise RuntimeDependencyError("workflow worker differs from repository binding")
         lifecycle = await accepted_source(owner, fence, binding)
         await freeze_binding(
@@ -370,9 +520,14 @@ class RealComposition:
             context = NodeContext(node, effective_policy(spec, node), snapshot, "preflight")
             if node.type.value == "worker":
                 selector = context.policy.worker_selector
-                if selector is None or selector.revision_id != binding.worker_revision_id:
+                permitted_workers = (
+                    set(team_selection.eligible_worker_revision_ids)
+                    if team_selection is not None
+                    else {binding.worker_revision_id}
+                )
+                if selector is None or binding.worker_revision_id not in permitted_workers:
                     raise RuntimeDependencyError(
-                        "workflow worker differs from private deployment binding"
+                        "selected worker is outside the workflow's frozen team pool"
                     )
                 continue
             if node.type.value not in {"organizer", "architect", "reviewer"}:
@@ -391,7 +546,15 @@ class RealComposition:
                     "runtime_provider_revision_id": str(resolution.selected_provider_revision_id),
                 }
             }
-            model = self.model(owner, fence, context, config)
+            model = self.model(
+                owner,
+                fence,
+                context,
+                config,
+                max_inference_calls=max_inference_calls,
+                mission_id=mission_id,
+                team_version_id=team_version_id,
+            )
             if not model.profile.structured_json:
                 raise RuntimeDependencyError("planning/review requires a structured JSON profile")
             if dependency_preflight and model.adapter.profile_revision_id not in checked:
@@ -419,7 +582,17 @@ class RealComposition:
             raise RuntimeDependencyError("real repository workflows require independent review")
 
         def reviewer_factory(context: NodeContext, config: RunnableConfig) -> ReviewerAdapter:
-            return ModelReviewer(self.model(owner, fence, context, config))
+            return ModelReviewer(
+                self.model(
+                    owner,
+                    fence,
+                    context,
+                    config,
+                    max_inference_calls=max_inference_calls,
+                    mission_id=mission_id,
+                    team_version_id=team_version_id,
+                )
+            )
 
         async def transfer(request: WorkerInvocationRequest, result: WorkerResult) -> Path:
             cached = await recover_candidate(manager, result)
@@ -470,7 +643,14 @@ class RealComposition:
             ),
             reviewer_factory=reviewer_factory,
         )
-        planner = PlanningEffect(self.settings.providers, owner, fence)
+        planner = PlanningEffect(
+            self.settings.providers,
+            owner,
+            fence,
+            max_inference_calls=max_inference_calls,
+            mission_id=mission_id,
+            team_version_id=team_version_id,
+        )
         handlers: dict[str, EffectAdapter] = {}
         for node in spec.nodes:
             if node.type.value in {"organizer", "architect"}:
@@ -503,6 +683,8 @@ class LegacyRequestSource:
     async def request(
         self, state: WorkflowStateV1, context: NodeContext, config: RunnableConfig
     ) -> WorkerInvocationRequest:
+        allowed_tools: tuple[str, ...] = ()
+        permission_policy_revision_id: UUID | None = None
         if self.prepare_workspace is not None:
             await self.prepare_workspace()
         key = str(state.get("tasks", {}).get("current_task", ""))
@@ -543,6 +725,9 @@ class LegacyRequestSource:
                 base = latest_result.end_head
             attempt_id = uuid5(run.id, "worker-attempt:" + context.execution_id)
             attempt = await session.get(TaskAttemptModel, attempt_id)
+            mission_item = await session.scalar(
+                select(MissionWorkItemModel).where(MissionWorkItemModel.run_id == run.id)
+            )
             if attempt is None:
                 if previous is not None and previous.status not in {"failed", "cancelled"}:
                     raise RuntimeDependencyError("task already has an active or completed attempt")
@@ -559,6 +744,87 @@ class LegacyRequestSource:
                 )
                 session.add(attempt)
                 await session.flush()
+                if mission_item is not None:
+                    team = await session.get(MissionTeamVersionModel, mission_item.team_version_id)
+                    if team is None:
+                        raise RuntimeDependencyError("assignment team snapshot is unavailable")
+                    selection = FixedTeamSelection.model_validate(team.selection_json)
+                    eligible = selection.eligible_worker_revision_ids or (
+                        self.binding.worker_revision_id,
+                    )
+                    if self.binding.worker_revision_id not in eligible:
+                        raise RuntimeDependencyError(
+                            "configured worker is outside the immutable eligible pool"
+                        )
+                    session.add(
+                        WorkerAssignmentModel(
+                            id=uuid7(),
+                            mission_id=mission_item.mission_id,
+                            team_version_id=team.id,
+                            run_id=run.id,
+                            task_attempt_id=attempt.id,
+                            role_key="developer",
+                            priority=run.priority,
+                            fairness_sequence=(attempt.id.int % (2**63 - 1)) or 1,
+                            required_capabilities_json=["code", "git"],
+                            eligible_pool_snapshot_json={
+                                "worker_revision_ids": [str(item) for item in eligible],
+                                "team_version_id": str(team.id),
+                            },
+                            snapshot_hash=selection.worker_pool_snapshot_hash
+                            or sha256_digest(
+                                {"worker_revision_ids": [str(item) for item in eligible]}
+                            ),
+                            status="queued",
+                            queued_reason="awaiting_worker_capacity",
+                        )
+                    )
+            if mission_item is not None:
+                team = await session.get(MissionTeamVersionModel, mission_item.team_version_id)
+                if team is None:
+                    raise RuntimeDependencyError("assignment team snapshot is unavailable")
+                selection = FixedTeamSelection.model_validate(team.selection_json)
+                if selection.members:
+                    member = next(
+                        (item for item in selection.members if item.key == "developer"), None
+                    ) or next(item for item in selection.members if item.may_execute)
+                    worker_row = await session.get(
+                        ConfigurationRevisionModel, self.binding.worker_revision_id
+                    )
+                    if worker_row is None:
+                        raise RuntimeDependencyError("selected worker revision is unavailable")
+                    worker_spec = WorkerSpec.model_validate(worker_row.spec_json["spec"])
+                    permission_row = await session.get(
+                        ConfigurationRevisionModel, member.permission_policy_revision_id
+                    )
+                    permission_identity = (
+                        await session.get(ConfigurationModel, permission_row.configuration_id)
+                        if permission_row
+                        else None
+                    )
+                    if (
+                        permission_row is None
+                        or permission_identity is None
+                        or not permission_identity.enabled
+                        or permission_identity.archived_at is not None
+                    ):
+                        raise RuntimeDependencyError("current security policy disables assignment")
+                    permission = PermissionPolicySpec.model_validate(
+                        permission_row.spec_json["spec"]
+                    )
+                    allowed_tools = tuple(
+                        sorted(
+                            set(member.allowed_tools)
+                            & set(worker_spec.capabilities)
+                            & set(permission.allowed_capabilities)
+                            - set(permission.denied_capabilities)
+                        )
+                    )
+                    if not {"code", "git"} <= set(allowed_tools):
+                        raise RuntimeDependencyError(
+                            "role, worker and security tool intersection denies development"
+                        )
+                    permission_policy_revision_id = member.permission_policy_revision_id
             project = self.binding.project.model_copy(update={"base_sha": attempt.base_sha})
             architecture: JsonValue = task.verification_json["architecture"]
             if settings.get("runtime_instructions"):
@@ -597,5 +863,7 @@ class LegacyRequestSource:
                     }
                 ),
                 model_profile_revision_id=UUID(str(settings["runtime_model_profile_revision_id"])),
+                allowed_tools=allowed_tools,
+                permission_policy_revision_id=permission_policy_revision_id,
                 limits=WorkerLimits(),
             )

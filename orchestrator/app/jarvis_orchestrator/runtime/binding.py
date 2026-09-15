@@ -18,6 +18,8 @@ def configuration_digest(version_id: UUID, payload: dict[str, JsonValue]) -> str
     identity = {"version_id": str(version_id), "snapshot": payload["snapshot"]}
     if "repository_binding" in payload:
         identity["repository_binding"] = payload["repository_binding"]
+    if "mission_team" in payload:
+        identity["mission_team"] = payload["mission_team"]
     return sha256_digest(identity)
 
 

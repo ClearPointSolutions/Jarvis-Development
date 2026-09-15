@@ -70,6 +70,7 @@ class VerificationEffectAdapter:
         if not 1 <= len(binding.combined_commands) <= 32:
             raise ValueError("combined verification configuration is required")
         self.integrator, self.reviewer, self.binding = integrator, reviewer, binding
+        self.integrator.reviewer = reviewer
         self.reviewer_factory = reviewer_factory
         self.artifacts = integrator.verifier.artifacts
         self.owner, self.fence = self.artifacts.ownership, self.artifacts.fence

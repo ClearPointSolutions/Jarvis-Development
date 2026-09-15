@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from uuid import UUID
 
+from jarvis_contracts.base import sha256_digest
 from jarvis_contracts.verification import (
     ReviewDecision,
     SealedRepositorySnapshot,
@@ -18,6 +19,7 @@ from jarvis_orchestrator.runtime.ownership import StaleExecutorError
 from jarvis_orchestrator.verification.executor import ConfirmedRepository
 from jarvis_orchestrator.verification.leases import IntegrationFence, IntegrationLeases
 from jarvis_orchestrator.verification.process import run_process
+from jarvis_orchestrator.verification.reviews import ReviewService
 from jarvis_orchestrator.verification.service import VerificationService
 from jarvis_orchestrator.verification.snapshots import SnapshotBuilder
 from jarvis_orchestrator.workers.safety import WorkerBoundaryError
@@ -39,6 +41,7 @@ class LocalIntegrator:
         snapshots: SnapshotBuilder,
         leases: IntegrationLeases,
         *,
+        reviewer: ReviewService | None = None,
         author_name: str,
         author_email: str,
     ) -> None:
@@ -49,6 +52,7 @@ class LocalIntegrator:
         ):
             raise ValueError("integration requires a configured Git identity")
         self.verifier, self.snapshots, self.leases = verifier, snapshots, leases
+        self.reviewer = reviewer
         self.author_name, self.author_email = author_name, author_email
 
     async def _heartbeat(self, fence: IntegrationFence) -> None:
@@ -133,6 +137,27 @@ class LocalIntegrator:
             return await self.invalidate(review)
         if captured.digest != snapshot.content_digest:
             return await self.invalidate(review)
+        profile_revision_id = next(
+            (
+                command.profile_revision_id
+                for command in combined_commands
+                if command.profile_revision_id is not None
+            ),
+            UUID(int=0),
+        )
+        await self.leases.queue(
+            snapshot.repository_id,
+            effect_id,
+            task_attempt_id=snapshot.task_attempt_id,
+            base_sha=snapshot.base_sha,
+            candidate_sha=candidate.head_sha,
+            profile_revision_id=profile_revision_id,
+            verification_identity=sha256_digest(
+                {"commands": [command.model_dump(mode="json") for command in combined_commands]}
+            ),
+            review_identity=sha256_digest(review.model_dump(mode="json")),
+            directive_identity=snapshot.content_digest,
+        )
         lease = await self.leases.acquire(snapshot.repository_id, effect_id)
         if lease is None:
             return IntegrationResult("queued")
@@ -238,6 +263,14 @@ class LocalIntegrator:
                     )
                 await manager.git(root, "merge", "--abort")
                 await manager.inspect(root, branch=branch, expected_head=lease.base_sha)
+                await self.leases.reject(
+                    lease,
+                    conflict={
+                        "base_sha": lease.base_sha,
+                        "candidate_sha": candidate.head_sha,
+                        "conflicting_paths": conflict_files,
+                    },
+                )
                 return IntegrationResult("code.git_conflict", report_artifact_ids=(artifact,))
             merged = ConfirmedRepository(
                 root, branch, await manager.scalar(root, "rev-parse", "HEAD")
@@ -259,6 +292,31 @@ class LocalIntegrator:
                 operation_id=UUID(int=(effect_id.int ^ lease.generation)),
                 phase="integration",
             )
+            owner.fault("m8_after_combined_gates")
+            if not passed:
+                return IntegrationResult("code.test_failure", merged, snapshot_artifact, reports)
+            if lease.base_sha != snapshot.latest_base_sha:
+                if self.reviewer is None:
+                    raise ValueError("target-head change requires renewed independent review")
+                try:
+                    review = await self.reviewer.renew_for_integration(
+                        merged,
+                        review,
+                        merged_snapshot,
+                        reports,
+                        operation_id=UUID(int=(effect_id.int ^ lease.generation ^ 1)),
+                    )
+                except ValueError:
+                    await self.leases.reject(lease)
+                    return IntegrationResult(
+                        "code.review_failure",
+                        merged,
+                        snapshot_artifact,
+                        reports,
+                    )
+                await self.leases.bind_review(
+                    lease, review_identity=sha256_digest(review.model_dump(mode="json"))
+                )
             async with owner.fenced(fence) as (session, run):
                 gate_report = await self.verifier.artifacts.put(
                     session,
@@ -266,7 +324,7 @@ class LocalIntegrator:
                     snapshot.task_attempt_id,
                     "combined-integration-gates",
                     {
-                        "passed": passed,
+                        "passed": True,
                         "candidate_sha": candidate.head_sha,
                         "integration_sha": merged.head_sha,
                         "snapshot_id": str(merged_snapshot.id),
@@ -274,9 +332,6 @@ class LocalIntegrator:
                         "execution_artifact_ids": [str(item) for item in reports],
                     },
                 )
-            owner.fault("m8_after_combined_gates")
-            if not passed:
-                return IntegrationResult("code.test_failure", merged, snapshot_artifact, reports)
             try:
                 await self.verifier.executor.confirm(candidate)
             except (ValueError, WorkerBoundaryError):

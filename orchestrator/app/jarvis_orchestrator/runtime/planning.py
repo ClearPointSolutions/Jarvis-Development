@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from typing import cast
-from uuid import uuid5
+from uuid import UUID, uuid5
 
 from langchain_core.runnables import RunnableConfig
 from pydantic import Field, JsonValue, model_validator
@@ -71,9 +71,18 @@ class PlanningEffect:
     idempotent = True
 
     def __init__(
-        self, configuration: ProviderRuntimeConfig, owner: RunOwnership, fence: RunFence
+        self,
+        configuration: ProviderRuntimeConfig,
+        owner: RunOwnership,
+        fence: RunFence,
+        *,
+        max_inference_calls: int | None = None,
+        mission_id: UUID | None = None,
+        team_version_id: UUID | None = None,
     ) -> None:
         self.configuration, self.owner, self.fence = configuration, owner, fence
+        self.max_inference_calls = max_inference_calls
+        self.mission_id, self.team_version_id = mission_id, team_version_id
 
     async def inspect(self, identity: str) -> EffectObservation:
         async with self.owner.fenced(self.fence) as (session, run):
@@ -128,7 +137,12 @@ class PlanningEffect:
             profile_row.spec,
             provider_row.revision_id,
             profile_row.revision_id,
-            bound_budget(context),
+            bound_budget(
+                context,
+                max_inference_calls=self.max_inference_calls,
+                mission_id=self.mission_id,
+                team_version_id=self.team_version_id,
+            ),
         )
         prompt = (
             "Return only schema-valid JSON with final observable content, no hidden reasoning. "

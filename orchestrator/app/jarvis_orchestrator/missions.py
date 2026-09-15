@@ -9,7 +9,7 @@ from typing import cast
 from uuid import UUID, uuid5
 
 from pydantic import JsonValue
-from sqlalchemy import delete, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import aliased
 from uuid6 import uuid7
@@ -41,6 +41,7 @@ from jarvis_orchestrator.providers.budget import estimate_input_tokens
 from jarvis_orchestrator.providers.configuration import ProviderRuntimeConfig
 from jarvis_orchestrator.runtime.binding import configuration_digest
 from jarvis_orchestrator.runtime.ownership import RunOwnership, lock_events, runtime_writer
+from jarvis_orchestrator.team_resources import reserve_inference_call
 from jarvis_persistence.models import (
     ConfigurationRevisionModel,
     JobModel,
@@ -278,9 +279,17 @@ class MissionManagerService:
             team = await session.get(MissionTeamVersionModel, turn.team_version_id)
             if team is None:
                 raise ValueError("mission_team_missing")
-            profile_revision_id = FixedTeamSelection.model_validate(
-                team.selection_json
-            ).manager_profile_revision_id
+            team_selection = FixedTeamSelection.model_validate(team.selection_json)
+            try:
+                await reserve_inference_call(
+                    session,
+                    stored_mission.id,
+                    team.id,
+                    team_selection.budgets.max_inference_calls,
+                )
+            except ValueError as error:
+                raise MissionBudgetDeniedError(str(error)) from None
+            profile_revision_id = team_selection.manager_profile_revision_id
             session.add(
                 ModelCallModel(
                     id=uuid5(turn.model_call_id, "started"),
@@ -899,7 +908,7 @@ class MissionManagerService:
         }
 
     async def dispatch_ready(self) -> None:
-        """Atomically authorize and enqueue at most one active job per mission."""
+        """Fairly enqueue one isolated job, respecting the frozen team admission cap."""
         now = datetime.now(UTC)
         async with self.sessions.begin() as session:
             mission = await session.scalar(
@@ -915,7 +924,10 @@ class MissionManagerService:
                     MissionWorkItemModel.lifecycle == "ready",
                     MissionWorkItemModel.directive_version == MissionModel.directive_version,
                 )
-                .order_by(MissionModel.id)
+                # Updating a mission after admission moves it behind peers. This
+                # durable least-recently-served order prevents a busy mission
+                # from monopolizing repeated manager ticks.
+                .order_by(MissionModel.updated_at, MissionModel.id)
                 .with_for_update(skip_locked=True)
                 .limit(1)
             )
@@ -925,17 +937,6 @@ class MissionManagerService:
                 await require_admission(session, mission, operation="dispatch")
             except MissionAdmissionDeniedError as error:
                 mission.waiting_reason = str(error)[:240]
-                return
-            active = await session.scalar(
-                select(MissionWorkItemModel.id)
-                .join(RunModel, RunModel.id == MissionWorkItemModel.run_id)
-                .where(
-                    MissionWorkItemModel.mission_id == mission.id,
-                    MissionWorkItemModel.lifecycle == "started",
-                    RunModel.status.not_in(("completed", "failed", "blocked", "cancelled")),
-                )
-            )
-            if active is not None:
                 return
             item = await session.scalar(
                 select(MissionWorkItemModel)
@@ -954,6 +955,32 @@ class MissionManagerService:
                     mission.waiting_reason = "no_ready_work"
                 return
             limits = MissionResourceLimits.model_validate(mission.resource_limits_json)
+            team = await session.get(MissionTeamVersionModel, item.team_version_id)
+            if team is None:
+                mission.lifecycle = "blocked"
+                mission.waiting_reason = "dispatch_team_snapshot_missing"
+                return
+            selection = FixedTeamSelection.model_validate(team.selection_json)
+            active = int(
+                await session.scalar(
+                    select(func.count(MissionWorkItemModel.id))
+                    .join(RunModel, RunModel.id == MissionWorkItemModel.run_id)
+                    .where(
+                        MissionWorkItemModel.mission_id == mission.id,
+                        MissionWorkItemModel.lifecycle == "started",
+                        RunModel.status.not_in(("completed", "failed", "blocked", "cancelled")),
+                    )
+                )
+                or 0
+            )
+            active_limit = min(
+                limits.max_active_jobs,
+                selection.budgets.max_active_assignments,
+            )
+            if active >= active_limit:
+                mission.lifecycle = "waiting_for_capacity"
+                mission.waiting_reason = "team_active_assignment_capacity"
+                return
             try:
                 await reserve(
                     session,
@@ -962,7 +989,11 @@ class MissionManagerService:
                     kind="job_execution",
                     liability={
                         "active_jobs": 1,
-                        "wall_seconds": min(7_200, limits.max_wall_seconds),
+                        "wall_seconds": min(
+                            7_200,
+                            limits.max_wall_seconds,
+                            selection.budgets.max_execution_seconds,
+                        ),
                     },
                     currency=limits.currency,
                     now=now,
@@ -974,12 +1005,6 @@ class MissionManagerService:
                     "Increase the applicable resource limit or resume manually."
                 )
                 return
-            team = await session.get(MissionTeamVersionModel, item.team_version_id)
-            if team is None or team.id != mission.selected_team_version_id:
-                mission.lifecycle = "blocked"
-                mission.waiting_reason = "dispatch_team_snapshot_missing"
-                return
-            selection = FixedTeamSelection.model_validate(team.selection_json)
             version = await session.get(WorkflowVersionModel, selection.workflow_version_id)
             if (
                 version is None
@@ -990,7 +1015,10 @@ class MissionManagerService:
                 mission.waiting_reason = "dispatch_workflow_snapshot_missing"
                 return
             snapshot = WorkflowResolvedSnapshot.model_validate(version.resolved_snapshot_json)
-            payload: dict[str, JsonValue] = {"snapshot": snapshot.model_dump(mode="json")}
+            payload: dict[str, JsonValue] = {
+                "snapshot": snapshot.model_dump(mode="json"),
+                "mission_team": selection.model_dump(mode="json"),
+            }
             digest = configuration_digest(version.id, payload)
             frozen = await session.scalar(
                 select(RunConfigSnapshotModel).where(RunConfigSnapshotModel.snapshot_hash == digest)
@@ -1043,6 +1071,7 @@ class MissionManagerService:
                     runtime_json={
                         "mission_id": str(mission.id),
                         "work_item_id": str(item.id),
+                        "team_version_id": str(team.id),
                         "governing_directive_version": item.directive_version,
                     },
                 )
