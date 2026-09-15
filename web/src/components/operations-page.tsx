@@ -13,6 +13,18 @@ export function OperationsPage() {
     enabled: Boolean(session.data),
     refetchInterval: 5000,
   });
+  const diagnostics = useQuery({
+    queryKey: ["operational-diagnostics"],
+    queryFn: () => createRuntimeClient().diagnostics(),
+    enabled: Boolean(session.data),
+    refetchInterval: 15000,
+  });
+  const alerts = useQuery({
+    queryKey: ["operational-alerts"],
+    queryFn: () => createRuntimeClient().alerts(),
+    enabled: Boolean(session.data),
+    refetchInterval: 15000,
+  });
   return (
     <div className="page-stack">
       <header className="page-header">
@@ -76,6 +88,76 @@ export function OperationsPage() {
           </p>
           <p>Observed {health.data.observed_at}</p>
           <Link href="/runs">Inspect run history and controls</Link>
+        </section>
+      )}
+      {diagnostics.data && (
+        <section className="content-card">
+          <h2>Unattended operations</h2>
+          <p>
+            Mode: <strong>{diagnostics.data.runtime_mode}</strong> ·
+            Correlation:{" "}
+            <strong>{diagnostics.data.correlation_coverage}</strong>
+          </p>
+          <p>{diagnostics.data.correlation_reason}</p>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Signal</th>
+                  <th>Status</th>
+                  <th>Age</th>
+                  <th>Evidence and next action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {diagnostics.data.signals.map((signal) => (
+                  <tr key={signal.key}>
+                    <td>{signal.key.replaceAll("_", " ")}</td>
+                    <td>{signal.status}</td>
+                    <td>
+                      {signal.age_seconds === undefined ||
+                      signal.age_seconds === null
+                        ? "Unknown"
+                        : `${signal.age_seconds}s`}
+                    </td>
+                    <td>
+                      {signal.reason}
+                      {signal.uncertainty ? ` ${signal.uncertainty}` : ""}
+                      {signal.action ? ` Next: ${signal.action}` : ""}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p>
+            A fresh heartbeat reports liveness only. It does not prove useful
+            progress, a known remote outcome, or zero cost.
+          </p>
+        </section>
+      )}
+      {alerts.data && (
+        <section className="content-card">
+          <h2>Durable alerts</h2>
+          {alerts.data.items.length === 0 ? (
+            <p>No alert evaluation has recorded an incident.</p>
+          ) : (
+            <ul>
+              {alerts.data.items.map((alert) => (
+                <li key={alert.id}>
+                  <strong>
+                    {alert.status}: {alert.kind}
+                  </strong>{" "}
+                  ({alert.severity}, {alert.occurrences} observations) —{" "}
+                  {alert.reason}
+                </li>
+              ))}
+            </ul>
+          )}
+          <p>
+            In-app delivery is the default. Outbound delivery is disabled until
+            an operator configures an authorized destination.
+          </p>
         </section>
       )}
       <section className="content-card">

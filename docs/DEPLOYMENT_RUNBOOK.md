@@ -20,7 +20,8 @@ legacy.
 | Promote a new immutable release | `scripts/deploy-core.sh deploy` | SSH release swap on an already-provisioned target. |
 | Roll back a release | `scripts/deploy-core.sh rollback` | Switches to `previous`; refuses a schema downgrade. |
 | Backup | `scripts/backup-v1.sh` | Quiesced DB + checkpoints + artifacts + source. |
-| Restore | Manual, see [Restore](#restore) | Not scripted in M12A. |
+| Restore validation | `scripts/restore-v1.sh --backup PATH --namespace jarvis-v1-restore-NAME` | Checks every checksum and manifest invariant; writes nothing. |
+| Isolated restore | Add `--execute` to the validation command | Creates new namespaced volumes, fences dispatch, and never starts API/orchestrator. |
 
 ## Secret model
 
@@ -205,19 +206,36 @@ volumes, writes `SHA256SUMS`, then restarts the services.
 
 ## Restore
 
-Not scripted in M12A. Manual outline, into an **isolated** data directory, never
-over a live volume:
+Backups now contain a checksummed JSON manifest binding the database/checkpoint
+dump, artifacts, source, application commit, image identities, schema revision,
+runtime-manifest digest, recovery generation, and every external effect that may
+have survived Core shutdown. Secrets remain a separate operator responsibility.
 
-1. `scripts/backup-v1.sh` first if the current data is still wanted.
-2. Create a fresh data directory / a throwaway Compose project name.
-3. `pg_restore --no-owner` the dump into a fresh `jarvis_v1` owned by
-   `jarvis_v1_migrator_login`; untar `artifacts` and `source`.
-4. Verify against `SHA256SUMS`; check the schema revision matches a release's
-   pin; confirm event integrity and that a login works via
-   `scripts/owner-bootstrap.sh --reset-password`.
-5. Only then repoint the real project at the restored data.
+Validate without mutation:
 
-Row P of `docs/V1_HARDENING_MATRIX.md` tracks turning this into a tested script.
+```sh
+scripts/restore-v1.sh \
+  --backup /opt/jarvis-v1/shared/backups/<timestamp> \
+  --namespace jarvis-v1-restore-drill
+```
+
+Then create a new isolated Compose namespace:
+
+```sh
+scripts/restore-v1.sh \
+  --backup /opt/jarvis-v1/shared/backups/<timestamp> \
+  --namespace jarvis-v1-restore-drill \
+  --execute
+```
+
+The command refuses an existing restore volume. It restores the database and
+blobs, verifies the schema, increments the recovery generation, disables
+automatic dispatch, writes a restored-effects inventory, and starts neither API
+nor orchestrator. Reconcile every inventory identity and validate Git heads,
+artifact references, configuration/image compatibility, event integrity, and
+cost liability before calling the authenticated recovery endpoint to resume.
+An unknown outcome stays unknown; never create a replacement effect simply
+because the original worker is unreachable.
 
 ## What is out of scope here
 

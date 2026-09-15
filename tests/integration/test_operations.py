@@ -3,10 +3,10 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy import update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from jarvis_persistence.models import OrchestratorInstanceModel, ProjectModel
+from jarvis_persistence.models import OperationalAlertModel, OrchestratorInstanceModel, ProjectModel
 from tests.integration.support import seed_run
 from tests.integration.test_m2_integrated_api import IntegratedApi, login
 from tests.integration.test_m2_integrated_api import integrated_api as integrated_api
@@ -67,3 +67,55 @@ async def test_health_requires_owner_and_scopes_runs(
     assert stale["orchestrator"] == "stale" and stale["accepting_instances"] == 0
     assert stale["execution"] == "not_ready"
     assert stale["runtime_manifest"] == "stale"
+
+
+async def test_diagnostics_alerts_deduplicate_and_record_recovery(
+    integrated_api: IntegratedApi,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    api = integrated_api
+    auth = await login(api)
+    headers = {"X-CSRF-Token": auth.json()["csrf_token"]}
+    async with session_factory.begin() as session:
+        await session.execute(
+            update(OrchestratorInstanceModel).values(
+                heartbeat_at=datetime.now(UTC) - timedelta(hours=2)
+            )
+        )
+    diagnostics = await api.client.get("/api/v1/operations/diagnostics")
+    assert diagnostics.status_code == 200
+    manager = next(
+        item for item in diagnostics.json()["signals"] if item["key"] == "manager_freshness"
+    )
+    assert manager["status"] == "critical"
+    first = await api.client.post(
+        "/api/v1/operations/alerts/evaluate",
+        json={"idempotency_key": "phase5-first", "stale_after_seconds": 60},
+        headers=headers,
+    )
+    second = await api.client.post(
+        "/api/v1/operations/alerts/evaluate",
+        json={"idempotency_key": "phase5-second", "stale_after_seconds": 60},
+        headers=headers,
+    )
+    assert first.status_code == 200 and first.json()["opened"] >= 1
+    assert second.status_code == 200 and second.json()["opened"] == 0
+    async with session_factory.begin() as session:
+        rows = (
+            await session.scalars(
+                select(OperationalAlertModel).where(
+                    OperationalAlertModel.owner_user_id == api.owner_id,
+                    OperationalAlertModel.kind == "manager_freshness",
+                )
+            )
+        ).all()
+        assert len(rows) == 1 and rows[0].occurrences == 2
+        await session.execute(
+            update(OrchestratorInstanceModel).values(heartbeat_at=datetime.now(UTC))
+        )
+    recovered = await api.client.post(
+        "/api/v1/operations/alerts/evaluate",
+        json={"idempotency_key": "phase5-recovered", "stale_after_seconds": 60},
+        headers=headers,
+    )
+    assert recovered.status_code == 200 and recovered.json()["recovered"] >= 1

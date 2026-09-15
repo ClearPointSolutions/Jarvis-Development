@@ -22,6 +22,8 @@ import type {
   EventPage,
   IntegrationHeadPage,
   ExecutionProfileTemplatePage,
+  OperationalDiagnostics,
+  AlertPage,
 } from "@jarvis/contracts";
 import { ApiRequestError } from "./client";
 import { collectPages } from "./pagination";
@@ -72,6 +74,9 @@ export function createRuntimeClient(csrfToken?: string) {
   }
   return {
     health: () => request<SystemHealth>("/system/health"),
+    diagnostics: () =>
+      request<OperationalDiagnostics>("/operations/diagnostics"),
+    alerts: () => request<AlertPage>("/operations/alerts"),
     profileTemplates: () =>
       request<ExecutionProfileTemplatePage>("/execution-profiles/templates"),
     usage: (id: string) =>

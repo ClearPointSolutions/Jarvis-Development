@@ -1,5 +1,32 @@
 # Jarvis V1 Status
 
+## Phase 5 unattended operations (2026-09-15, implementation in progress)
+
+Branch `phase/05-unattended-operations`; clean fetched base
+`dca6a9c1fbb5dfbe5f997c7f2f1ef7ae862a45c1` (merged Phase 4). Milestone criteria:
+
+- [x] Add truthful real/demo diagnostics that separate heartbeat freshness from
+  accepted progress and expose queue, assignment, lease/effect, provider,
+  liability, approval, integration and storage uncertainty.
+- [x] Add durable deduplicated alert/recovery records, an optional bounded
+  outbound outbox data model, and an explicit emergency stop that fences all new
+  dispatch without claiming remote cancellation.
+- [ ] Complete executable retention cleanup. The current owner-scoped dry-run
+  conservatively protects active/ambiguous execution and provenance; arbitrary
+  deletion remains intentionally unavailable until tombstone/blob commit is
+  atomic.
+- [x] Add checksummed quiesced backup manifests, external-effect inventory,
+  isolated restore, schema/blob checks, recovery-generation fencing, and
+  dispatch-disabled reconciliation before resume.
+- [x] Add persistent 24h/72h/7d qualification records that reject early
+  completion and retain environment/release/fault/effect/cost/storage outcomes.
+- [ ] Run the complete PostgreSQL/protocol/browser gate, exact-tip CI, authorized
+  restore drill and real elapsed-time qualification profiles.
+
+Short deterministic tests and local smoke checks are not wall-clock soak
+evidence. CI and live qualification remain **UNVERIFIED** until recorded against
+the exact final commit and explicitly named staging environment.
+
 ## Phase 4 customizable teams and worker pools (2026-09-15, local code complete; CI/live open)
 
 Branch `phase/04-teams-and-worker-pools`; fetched clean base
