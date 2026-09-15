@@ -54,10 +54,16 @@ echo "== frontend format, lint, types, unit tests, and build =="
 (cd web && npm run build)
 (cd web && npm audit --audit-level=high)
 
+echo "== Phase 3 full-stack profile fixture =="
+(cd tests/fixtures/phase-03-full-stack && npm ci --ignore-scripts --no-audit --no-fund)
+(cd tests/fixtures/phase-03-full-stack && npm run build)
+(cd tests/fixtures/phase-03-full-stack && npm test)
+
 if [ "${JARVIS_SKIP_E2E:-0}" = "1" ]; then
   echo "== Playwright skipped by explicit JARVIS_SKIP_E2E=1 =="
 else
   echo "== Playwright =="
+  (cd tests/fixtures/phase-03-full-stack && npm run test:browser)
   if [ -n "${TEST_DATABASE_URL:-}" ]; then
     "$PYTHON_BIN" -m scripts.verify_m2_browser
     "$PYTHON_BIN" -m scripts.demo --e2e

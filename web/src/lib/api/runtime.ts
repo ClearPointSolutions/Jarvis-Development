@@ -18,8 +18,10 @@ import type {
   WorkflowSpec,
   DemoDecision,
   DemoDecisionView,
+  ApiErrorResponse,
   EventPage,
   IntegrationHeadPage,
+  ExecutionProfileTemplatePage,
 } from "@jarvis/contracts";
 import { ApiRequestError } from "./client";
 import { collectPages } from "./pagination";
@@ -40,14 +42,23 @@ export function createRuntimeClient(csrfToken?: string) {
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
-    if (!response.ok)
+    if (!response.ok) {
+      let problem: ApiErrorResponse | undefined;
+      try {
+        problem = (await response.json()) as ApiErrorResponse;
+      } catch {
+        problem = undefined;
+      }
       throw new ApiRequestError(
-        response.status === 409
-          ? "The run changed. Refresh and try the command again."
-          : "The runtime request failed. Check your session and published configuration.",
+        problem?.error?.message ??
+          (response.status === 409
+            ? "The run changed. Refresh and try the command again."
+            : "The runtime request failed. Check your session and published configuration."),
         response.status,
-        "runtime.request_failed",
+        problem?.error?.code ?? "runtime.request_failed",
+        problem?.error?.request_id,
       );
+    }
     return response.json() as Promise<T>;
   }
   function pages<
@@ -61,6 +72,8 @@ export function createRuntimeClient(csrfToken?: string) {
   }
   return {
     health: () => request<SystemHealth>("/system/health"),
+    profileTemplates: () =>
+      request<ExecutionProfileTemplatePage>("/execution-profiles/templates"),
     usage: (id: string) =>
       request<RunUsage>(`/runs/${encodeURIComponent(id)}/usage`),
     approvals: (id: string) =>

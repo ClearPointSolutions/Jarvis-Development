@@ -35,6 +35,11 @@ export default function Page() {
           ["models", "Models", "Capabilities, limits, and versioned pricing"],
           ["routing", "Routing", "Ordered candidates and resolution preview"],
           ["policies", "Policies", "Independent retry budgets and permissions"],
+          [
+            "profiles",
+            "Execution profiles",
+            "Pinned Python, Node build, and browser verification environments",
+          ],
         ].map(([path, title, copy]) => (
           <Link
             className="content-card registry-link"

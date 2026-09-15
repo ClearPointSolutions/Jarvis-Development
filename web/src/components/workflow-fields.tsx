@@ -291,7 +291,15 @@ export function PolicyFields({
               verification:
                 e.target.value === "inherit"
                   ? null
-                  : { source: "task", required: e.target.value === "required" },
+                  : {
+                      source: "task",
+                      required: e.target.value === "required",
+                      execution_profile_revision_ids:
+                        policy.verification?.execution_profile_revision_ids ??
+                        [],
+                      required_acceptance_checks:
+                        policy.verification?.required_acceptance_checks ?? [],
+                    },
             })
           }
         >
@@ -300,6 +308,26 @@ export function PolicyFields({
           <option value="optional">Task verification optional</option>
         </select>
       </label>
+      {policy.verification ? (
+        <ListField
+          label="Execution profile revision IDs (comma separated)"
+          value={policy.verification.execution_profile_revision_ids ?? []}
+          onChange={(execution_profile_revision_ids) =>
+            onChange({
+              ...policy,
+              verification: {
+                ...policy.verification!,
+                execution_profile_revision_ids:
+                  execution_profile_revision_ids.slice(0, 3) as NonNullable<
+                    NonNullable<
+                      NodePolicy["verification"]
+                    >["execution_profile_revision_ids"]
+                  >,
+              },
+            })
+          }
+        />
+      ) : null}
       <label className="field-group">
         Approval action
         <select

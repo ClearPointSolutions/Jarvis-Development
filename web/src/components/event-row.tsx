@@ -77,6 +77,7 @@ const eventLabels: Record<string, string> = {
   "git.pr_created": "Publication recorded",
   "git.ci_updated": "CI status updated",
   "test.completed": "Verification completed",
+  "dependency.prepared": "Dependencies prepared in restricted profile",
 };
 
 const severityTone = {

@@ -21,6 +21,18 @@ async function installDemoSession(page: Page) {
       }),
     );
   }
+  await page.route("**/api/v1/execution-profiles/templates", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ items: [] }),
+    }),
+  );
+  await page.route("**/api/v1/registry/execution_profile*", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ items: [], next_after: null }),
+    }),
+  );
   await page.route("**/api/v1/session", (route) =>
     route.fulfill({
       contentType: "application/json",
