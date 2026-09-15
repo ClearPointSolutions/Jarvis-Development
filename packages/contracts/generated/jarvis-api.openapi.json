@@ -197,7 +197,8 @@
             "enum": [
               "manager",
               "developer",
-              "reviewer"
+              "reviewer",
+              "specialist"
             ],
             "title": "Responsibility",
             "type": "string"
@@ -1425,6 +1426,107 @@
         "title": "FailureClass",
         "type": "string"
       },
+      "FixedTeamSelection": {
+        "additionalProperties": false,
+        "properties": {
+          "budgets": {
+            "$ref": "#/components/schemas/TeamBudgetPolicy"
+          },
+          "developer_role_revision_id": {
+            "format": "uuid",
+            "title": "Developer Role Revision Id",
+            "type": "string"
+          },
+          "developer_worker_revision_id": {
+            "format": "uuid",
+            "title": "Developer Worker Revision Id",
+            "type": "string"
+          },
+          "eligible_worker_revision_ids": {
+            "default": [],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Eligible Worker Revision Ids",
+            "type": "array"
+          },
+          "escalation_policy_revision_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalation Policy Revision Id"
+          },
+          "manager_profile_revision_id": {
+            "format": "uuid",
+            "title": "Manager Profile Revision Id",
+            "type": "string"
+          },
+          "manager_role_revision_id": {
+            "format": "uuid",
+            "title": "Manager Role Revision Id",
+            "type": "string"
+          },
+          "members": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TeamMemberSpec"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "reviewer_profile_revision_id": {
+            "format": "uuid",
+            "title": "Reviewer Profile Revision Id",
+            "type": "string"
+          },
+          "reviewer_role_revision_id": {
+            "format": "uuid",
+            "title": "Reviewer Role Revision Id",
+            "type": "string"
+          },
+          "team_template_revision_id": {
+            "format": "uuid",
+            "title": "Team Template Revision Id",
+            "type": "string"
+          },
+          "worker_pool_snapshot_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worker Pool Snapshot Hash"
+          },
+          "workflow_version_id": {
+            "format": "uuid",
+            "title": "Workflow Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "team_template_revision_id",
+          "manager_role_revision_id",
+          "manager_profile_revision_id",
+          "developer_role_revision_id",
+          "developer_worker_revision_id",
+          "reviewer_role_revision_id",
+          "reviewer_profile_revision_id",
+          "workflow_version_id"
+        ],
+        "title": "FixedTeamSelection",
+        "type": "object"
+      },
       "IntegrationHeadPage": {
         "additionalProperties": false,
         "properties": {
@@ -2452,6 +2554,103 @@
           }
         },
         "title": "MissionResourceLimits",
+        "type": "object"
+      },
+      "MissionTeamUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "idempotency_key": {
+            "maxLength": 120,
+            "minLength": 8,
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "team_template_revision_id": {
+            "format": "uuid",
+            "title": "Team Template Revision Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "team_template_revision_id",
+          "expected_version",
+          "idempotency_key"
+        ],
+        "title": "MissionTeamUpdate",
+        "type": "object"
+      },
+      "MissionTeamVersionPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MissionTeamVersionView"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_after": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next After"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "MissionTeamVersionPage",
+        "type": "object"
+      },
+      "MissionTeamVersionView": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "content_hash": {
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/FixedTeamSelection"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "selection",
+          "content_hash",
+          "active",
+          "created_at"
+        ],
+        "title": "MissionTeamVersionView",
         "type": "object"
       },
       "MissionUsageView": {
@@ -4348,7 +4547,8 @@
                 "retry_policy": "#/components/schemas/RetryRegistrySpec",
                 "route_policy": "#/components/schemas/RoutePolicySpec-Output",
                 "team_template": "#/components/schemas/TeamTemplateSpec",
-                "worker": "#/components/schemas/WorkerSpec"
+                "worker": "#/components/schemas/WorkerSpec",
+                "worker_pool": "#/components/schemas/WorkerPoolSpec"
               },
               "propertyName": "kind"
             },
@@ -4379,6 +4579,9 @@
               },
               {
                 "$ref": "#/components/schemas/ExecutionProfileSpec"
+              },
+              {
+                "$ref": "#/components/schemas/WorkerPoolSpec"
               }
             ],
             "title": "Spec"
@@ -4523,7 +4726,8 @@
                 "retry_policy": "#/components/schemas/RetryRegistrySpec",
                 "route_policy": "#/components/schemas/RoutePolicySpec-Input",
                 "team_template": "#/components/schemas/TeamTemplateSpec",
-                "worker": "#/components/schemas/WorkerSpec"
+                "worker": "#/components/schemas/WorkerSpec",
+                "worker_pool": "#/components/schemas/WorkerPoolSpec"
               },
               "propertyName": "kind"
             },
@@ -4554,6 +4758,9 @@
               },
               {
                 "$ref": "#/components/schemas/ExecutionProfileSpec"
+              },
+              {
+                "$ref": "#/components/schemas/WorkerPoolSpec"
               }
             ],
             "title": "Spec"
@@ -6022,10 +6229,131 @@
         "title": "TaskView",
         "type": "object"
       },
+      "TeamBudgetPolicy": {
+        "additionalProperties": false,
+        "properties": {
+          "max_active_assignments": {
+            "default": 2,
+            "maximum": 128.0,
+            "minimum": 1.0,
+            "title": "Max Active Assignments",
+            "type": "integer"
+          },
+          "max_execution_seconds": {
+            "default": 14400,
+            "maximum": 31536000.0,
+            "minimum": 1.0,
+            "title": "Max Execution Seconds",
+            "type": "integer"
+          },
+          "max_inference_calls": {
+            "default": 100,
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Max Inference Calls",
+            "type": "integer"
+          },
+          "reserve_management_slots": {
+            "default": 1,
+            "maximum": 32.0,
+            "minimum": 0.0,
+            "title": "Reserve Management Slots",
+            "type": "integer"
+          },
+          "reserve_review_slots": {
+            "default": 1,
+            "maximum": 32.0,
+            "minimum": 0.0,
+            "title": "Reserve Review Slots",
+            "type": "integer"
+          }
+        },
+        "title": "TeamBudgetPolicy",
+        "type": "object"
+      },
+      "TeamMemberSpec": {
+        "additionalProperties": false,
+        "description": "A capability request. Scheduling chooses a concrete permitted worker.",
+        "properties": {
+          "allowed_tools": {
+            "items": {
+              "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+              "type": "string"
+            },
+            "maxItems": 64,
+            "minItems": 1,
+            "title": "Allowed Tools",
+            "type": "array"
+          },
+          "key": {
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+            "title": "Key",
+            "type": "string"
+          },
+          "may_execute": {
+            "default": true,
+            "title": "May Execute",
+            "type": "boolean"
+          },
+          "may_review": {
+            "default": false,
+            "title": "May Review",
+            "type": "boolean"
+          },
+          "model_route_revision_id": {
+            "format": "uuid",
+            "title": "Model Route Revision Id",
+            "type": "string"
+          },
+          "permission_policy_revision_id": {
+            "format": "uuid",
+            "title": "Permission Policy Revision Id",
+            "type": "string"
+          },
+          "required_capabilities": {
+            "default": [],
+            "items": {
+              "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+              "type": "string"
+            },
+            "maxItems": 32,
+            "title": "Required Capabilities",
+            "type": "array"
+          },
+          "role_revision_id": {
+            "format": "uuid",
+            "title": "Role Revision Id",
+            "type": "string"
+          },
+          "worker_pool_revision_ids": {
+            "default": [],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Worker Pool Revision Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "role_revision_id",
+          "model_route_revision_id",
+          "allowed_tools",
+          "permission_policy_revision_id"
+        ],
+        "title": "TeamMemberSpec",
+        "type": "object"
+      },
       "TeamTemplateSpec": {
         "additionalProperties": false,
         "description": "Fixed mission team whose referenced revisions are resolved at assignment.",
         "properties": {
+          "budgets": {
+            "$ref": "#/components/schemas/TeamBudgetPolicy"
+          },
           "developer_role_revision_id": {
             "format": "uuid",
             "title": "Developer Role Revision Id",
@@ -6035,6 +6363,18 @@
             "format": "uuid",
             "title": "Developer Worker Revision Id",
             "type": "string"
+          },
+          "escalation_policy_revision_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalation Policy Revision Id"
           },
           "kind": {
             "const": "team_template",
@@ -6051,6 +6391,15 @@
             "format": "uuid",
             "title": "Manager Role Revision Id",
             "type": "string"
+          },
+          "members": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TeamMemberSpec"
+            },
+            "maxItems": 32,
+            "title": "Members",
+            "type": "array"
           },
           "mode": {
             "enum": [
@@ -6516,6 +6865,17 @@
             "title": "Acceptance Criteria",
             "type": "array"
           },
+          "assignment_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignment Status"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -6566,6 +6926,17 @@
             "title": "Lifecycle",
             "type": "string"
           },
+          "merge_queue_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merge Queue Status"
+          },
           "objective": {
             "title": "Objective",
             "type": "string"
@@ -6573,6 +6944,17 @@
           "priority": {
             "title": "Priority",
             "type": "integer"
+          },
+          "queued_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queued Reason"
           },
           "run_id": {
             "anyOf": [
@@ -6586,9 +6968,38 @@
             ],
             "title": "Run Id"
           },
+          "selected_model_profile_revision_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Model Profile Revision Id"
+          },
+          "selected_worker_revision_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Worker Revision Id"
+          },
           "team_version": {
             "title": "Team Version",
             "type": "integer"
+          },
+          "team_version_id": {
+            "format": "uuid",
+            "title": "Team Version Id",
+            "type": "string"
           },
           "title": {
             "title": "Title",
@@ -6606,9 +7017,64 @@
           "lifecycle",
           "directive_version",
           "team_version",
+          "team_version_id",
           "created_at"
         ],
         "title": "WorkItemView",
+        "type": "object"
+      },
+      "WorkerPoolSpec": {
+        "additionalProperties": false,
+        "description": "Versioned allowlist of explicitly registered worker revisions.",
+        "properties": {
+          "health_freshness_seconds": {
+            "default": 60,
+            "maximum": 3600.0,
+            "minimum": 5.0,
+            "title": "Health Freshness Seconds",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "worker_pool",
+            "default": "worker_pool",
+            "title": "Kind",
+            "type": "string"
+          },
+          "permitted_project_ids": {
+            "default": [],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "title": "Permitted Project Ids",
+            "type": "array"
+          },
+          "required_capabilities": {
+            "default": [],
+            "items": {
+              "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+              "type": "string"
+            },
+            "maxItems": 32,
+            "title": "Required Capabilities",
+            "type": "array"
+          },
+          "worker_revision_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 128,
+            "minItems": 1,
+            "title": "Worker Revision Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "worker_revision_ids"
+        ],
+        "title": "WorkerPoolSpec",
         "type": "object"
       },
       "WorkerRuntimeFacts": {
@@ -6726,6 +7192,16 @@
             "title": "Execution Host Label",
             "type": "string"
           },
+          "execution_profile_revision_ids": {
+            "default": [],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 32,
+            "title": "Execution Profile Revision Ids",
+            "type": "array"
+          },
           "kind": {
             "const": "worker",
             "default": "worker",
@@ -6751,6 +7227,52 @@
           },
           "model_binding": {
             "$ref": "#/components/schemas/ModelBinding"
+          },
+          "observed_build_digest": {
+            "anyOf": [
+              {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Build Digest"
+          },
+          "observed_wrapper_version": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Wrapper Version"
+          },
+          "permitted_project_ids": {
+            "default": [],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "title": "Permitted Project Ids",
+            "type": "array"
+          },
+          "physical_resource_id": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Physical Resource Id"
           },
           "timeouts": {
             "$ref": "#/components/schemas/TimeoutPolicy"
@@ -10058,6 +10580,332 @@
         ]
       }
     },
+    "/api/v1/missions/{mission_id}/team": {
+      "put": {
+        "description": "Select a new immutable team version for future assignments only.",
+        "operationId": "update_team_api_v1_missions__mission_id__team_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Mission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MissionTeamUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Update Team",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/api/v1/missions/{mission_id}/team-versions": {
+      "get": {
+        "operationId": "list_team_versions_api_v1_missions__mission_id__team_versions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Mission Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "After"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionTeamVersionPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "List Team Versions",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
     "/api/v1/missions/{mission_id}/turns": {
       "get": {
         "operationId": "list_turns_api_v1_missions__mission_id__turns_get",
@@ -11209,7 +12057,8 @@
                 "route_policy",
                 "retry_policy",
                 "permission_policy",
-                "execution_profile"
+                "execution_profile",
+                "worker_pool"
               ],
               "title": "Kind",
               "type": "string"
@@ -11389,7 +12238,8 @@
                 "route_policy",
                 "retry_policy",
                 "permission_policy",
-                "execution_profile"
+                "execution_profile",
+                "worker_pool"
               ],
               "title": "Kind",
               "type": "string"
@@ -11552,7 +12402,8 @@
                 "route_policy",
                 "retry_policy",
                 "permission_policy",
-                "execution_profile"
+                "execution_profile",
+                "worker_pool"
               ],
               "title": "Kind",
               "type": "string"
@@ -11713,7 +12564,8 @@
                 "route_policy",
                 "retry_policy",
                 "permission_policy",
-                "execution_profile"
+                "execution_profile",
+                "worker_pool"
               ],
               "title": "Kind",
               "type": "string"
@@ -11886,7 +12738,8 @@
                 "route_policy",
                 "retry_policy",
                 "permission_policy",
-                "execution_profile"
+                "execution_profile",
+                "worker_pool"
               ],
               "title": "Kind",
               "type": "string"
@@ -12078,7 +12931,8 @@
                 "route_policy",
                 "retry_policy",
                 "permission_policy",
-                "execution_profile"
+                "execution_profile",
+                "worker_pool"
               ],
               "title": "Kind",
               "type": "string"

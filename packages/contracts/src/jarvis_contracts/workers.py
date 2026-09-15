@@ -51,6 +51,7 @@ class WorkerSlotFence(ContractModel):
     generation: int = Field(gt=0)
     run_generation: int = Field(gt=0)
     expires_at: AwareDatetime
+    physical_resource_id: SafeKey | None = None
 
 
 class WorkerVerification(VerificationCommand):
@@ -101,12 +102,16 @@ class WorkerInvocationRequest(ContractModel):
     feedback_artifact_ids: tuple[UUID, ...] = Field(default=(), max_length=32)
     model_profile_revision_id: UUID
     required_capabilities: tuple[Capability, ...] = Field(default=("code", "git"), max_length=64)
+    allowed_tools: tuple[Capability, ...] = Field(default=(), max_length=64)
+    permission_policy_revision_id: UUID | None = None
     limits: WorkerLimits = Field(default_factory=WorkerLimits)
 
     @model_validator(mode="after")
     def identity(self) -> WorkerInvocationRequest:
         if self.worker_revision_id != self.lease.worker_revision_id:
             raise ValueError("worker fence identity mismatch")
+        if self.allowed_tools and not set(self.required_capabilities) <= set(self.allowed_tools):
+            raise ValueError("required capabilities exceed the effective tool boundary")
         return self
 
 

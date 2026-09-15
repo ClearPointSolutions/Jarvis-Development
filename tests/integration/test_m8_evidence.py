@@ -194,9 +194,21 @@ async def test_rep004_real_git_serialized_integration(
             operation_id=effect_id,
         )
         assert valid
-        candidates.append((candidate, snapshot, decision, task_id, effect_id))
+        candidates.append(
+            (
+                candidate,
+                snapshot,
+                decision,
+                task_id,
+                effect_id,
+                ReviewService(executor, artifacts, BranchReviewer(name)),
+            )
+        )
     accepted = None
-    for index, (candidate, snapshot, decision, task_id, effect_id) in enumerate(candidates):
+    for index, (candidate, snapshot, decision, task_id, effect_id, reviewer) in enumerate(
+        candidates
+    ):
+        integrator.reviewer = reviewer
         code = (
             "raise SystemExit(1)"
             if scenario == "combined_failure" and index == 1

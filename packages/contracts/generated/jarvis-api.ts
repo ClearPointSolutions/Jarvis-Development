@@ -227,6 +227,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/missions/{mission_id}/team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Team
+         * @description Select a new immutable team version for future assignments only.
+         */
+        put: operations["update_team_api_v1_missions__mission_id__team_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/missions/{mission_id}/team-versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Team Versions */
+        get: operations["list_team_versions_api_v1_missions__mission_id__team_versions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/missions/{mission_id}/turns": {
         parameters: {
             query?: never;
@@ -982,7 +1019,7 @@ export interface components {
              * Responsibility
              * @enum {string}
              */
-            responsibility: "manager" | "developer" | "reviewer";
+            responsibility: "manager" | "developer" | "reviewer" | "specialist";
         };
         /** ApiErrorDetail */
         ApiErrorDetail: {
@@ -1445,6 +1482,64 @@ export interface components {
          * @enum {string}
          */
         FailureClass: "code.build_failure" | "infrastructure.timeout" | "unknown" | "code.implementation_failure" | "code.test_failure" | "code.review_failure" | "code.git_conflict" | "infrastructure.worker_unavailable" | "infrastructure.worker_transport" | "infrastructure.service_unavailable" | "provider.rate_limited" | "provider.transient" | "provider.contract_failure" | "configuration.invalid" | "security.policy_denied" | "approval.rejected" | "orchestration.runtime_error" | "user.cancelled";
+        /** FixedTeamSelection */
+        FixedTeamSelection: {
+            budgets?: components["schemas"]["TeamBudgetPolicy"];
+            /**
+             * Developer Role Revision Id
+             * Format: uuid
+             */
+            developer_role_revision_id: string;
+            /**
+             * Developer Worker Revision Id
+             * Format: uuid
+             */
+            developer_worker_revision_id: string;
+            /**
+             * Eligible Worker Revision Ids
+             * @default []
+             */
+            eligible_worker_revision_ids: string[];
+            /** Escalation Policy Revision Id */
+            escalation_policy_revision_id?: string | null;
+            /**
+             * Manager Profile Revision Id
+             * Format: uuid
+             */
+            manager_profile_revision_id: string;
+            /**
+             * Manager Role Revision Id
+             * Format: uuid
+             */
+            manager_role_revision_id: string;
+            /**
+             * Members
+             * @default []
+             */
+            members: components["schemas"]["TeamMemberSpec"][];
+            /**
+             * Reviewer Profile Revision Id
+             * Format: uuid
+             */
+            reviewer_profile_revision_id: string;
+            /**
+             * Reviewer Role Revision Id
+             * Format: uuid
+             */
+            reviewer_role_revision_id: string;
+            /**
+             * Team Template Revision Id
+             * Format: uuid
+             */
+            team_template_revision_id: string;
+            /** Worker Pool Snapshot Hash */
+            worker_pool_snapshot_hash?: string | null;
+            /**
+             * Workflow Version Id
+             * Format: uuid
+             */
+            workflow_version_id: string;
+        };
         /** IntegrationHeadPage */
         IntegrationHeadPage: {
             /** Items */
@@ -1878,6 +1973,45 @@ export interface components {
              * @default 86400
              */
             window_seconds: number;
+        };
+        /** MissionTeamUpdate */
+        MissionTeamUpdate: {
+            /** Expected Version */
+            expected_version: number;
+            /** Idempotency Key */
+            idempotency_key: string;
+            /**
+             * Team Template Revision Id
+             * Format: uuid
+             */
+            team_template_revision_id: string;
+        };
+        /** MissionTeamVersionPage */
+        MissionTeamVersionPage: {
+            /** Items */
+            items: components["schemas"]["MissionTeamVersionView"][];
+            /** Next After */
+            next_after?: string | null;
+        };
+        /** MissionTeamVersionView */
+        MissionTeamVersionView: {
+            /** Active */
+            active: boolean;
+            /** Content Hash */
+            content_hash: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            selection: components["schemas"]["FixedTeamSelection"];
+            /** Version */
+            version: number;
         };
         /** MissionUsageView */
         MissionUsageView: {
@@ -2665,7 +2799,7 @@ export interface components {
              */
             secret_status: "configured" | "missing" | "not_required";
             /** Spec */
-            spec: components["schemas"]["AgentRoleSpec"] | components["schemas"]["TeamTemplateSpec"] | components["schemas"]["WorkerSpec"] | components["schemas"]["ProviderSpec"] | components["schemas"]["ModelProfileSpec-Output"] | components["schemas"]["RoutePolicySpec-Output"] | components["schemas"]["RetryRegistrySpec"] | components["schemas"]["PermissionPolicySpec"] | components["schemas"]["ExecutionProfileSpec"];
+            spec: components["schemas"]["AgentRoleSpec"] | components["schemas"]["TeamTemplateSpec"] | components["schemas"]["WorkerSpec"] | components["schemas"]["ProviderSpec"] | components["schemas"]["ModelProfileSpec-Output"] | components["schemas"]["RoutePolicySpec-Output"] | components["schemas"]["RetryRegistrySpec"] | components["schemas"]["PermissionPolicySpec"] | components["schemas"]["ExecutionProfileSpec"] | components["schemas"]["WorkerPoolSpec"];
             /**
              * Updated At
              * Format: date-time
@@ -2718,7 +2852,7 @@ export interface components {
             /** Secret Ref */
             secret_ref?: string | null;
             /** Spec */
-            spec: components["schemas"]["AgentRoleSpec"] | components["schemas"]["TeamTemplateSpec"] | components["schemas"]["WorkerSpec"] | components["schemas"]["ProviderSpec"] | components["schemas"]["ModelProfileSpec-Input"] | components["schemas"]["RoutePolicySpec-Input"] | components["schemas"]["RetryRegistrySpec"] | components["schemas"]["PermissionPolicySpec"] | components["schemas"]["ExecutionProfileSpec"];
+            spec: components["schemas"]["AgentRoleSpec"] | components["schemas"]["TeamTemplateSpec"] | components["schemas"]["WorkerSpec"] | components["schemas"]["ProviderSpec"] | components["schemas"]["ModelProfileSpec-Input"] | components["schemas"]["RoutePolicySpec-Input"] | components["schemas"]["RetryRegistrySpec"] | components["schemas"]["PermissionPolicySpec"] | components["schemas"]["ExecutionProfileSpec"] | components["schemas"]["WorkerPoolSpec"];
         };
         /** RequiredAcceptanceCheck */
         RequiredAcceptanceCheck: {
@@ -3375,11 +3509,85 @@ export interface components {
             /** Weight */
             weight: number;
         };
+        /** TeamBudgetPolicy */
+        TeamBudgetPolicy: {
+            /**
+             * Max Active Assignments
+             * @default 2
+             */
+            max_active_assignments: number;
+            /**
+             * Max Execution Seconds
+             * @default 14400
+             */
+            max_execution_seconds: number;
+            /**
+             * Max Inference Calls
+             * @default 100
+             */
+            max_inference_calls: number;
+            /**
+             * Reserve Management Slots
+             * @default 1
+             */
+            reserve_management_slots: number;
+            /**
+             * Reserve Review Slots
+             * @default 1
+             */
+            reserve_review_slots: number;
+        };
+        /**
+         * TeamMemberSpec
+         * @description A capability request. Scheduling chooses a concrete permitted worker.
+         */
+        TeamMemberSpec: {
+            /** Allowed Tools */
+            allowed_tools: string[];
+            /** Key */
+            key: string;
+            /**
+             * May Execute
+             * @default true
+             */
+            may_execute: boolean;
+            /**
+             * May Review
+             * @default false
+             */
+            may_review: boolean;
+            /**
+             * Model Route Revision Id
+             * Format: uuid
+             */
+            model_route_revision_id: string;
+            /**
+             * Permission Policy Revision Id
+             * Format: uuid
+             */
+            permission_policy_revision_id: string;
+            /**
+             * Required Capabilities
+             * @default []
+             */
+            required_capabilities: string[];
+            /**
+             * Role Revision Id
+             * Format: uuid
+             */
+            role_revision_id: string;
+            /**
+             * Worker Pool Revision Ids
+             * @default []
+             */
+            worker_pool_revision_ids: string[];
+        };
         /**
          * TeamTemplateSpec
          * @description Fixed mission team whose referenced revisions are resolved at assignment.
          */
         TeamTemplateSpec: {
+            budgets?: components["schemas"]["TeamBudgetPolicy"];
             /**
              * Developer Role Revision Id
              * Format: uuid
@@ -3390,6 +3598,8 @@ export interface components {
              * Format: uuid
              */
             developer_worker_revision_id: string;
+            /** Escalation Policy Revision Id */
+            escalation_policy_revision_id?: string | null;
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -3405,6 +3615,11 @@ export interface components {
              * Format: uuid
              */
             manager_role_revision_id: string;
+            /**
+             * Members
+             * @default []
+             */
+            members: components["schemas"]["TeamMemberSpec"][];
             /**
              * Mode
              * @enum {string}
@@ -3609,6 +3824,8 @@ export interface components {
         WorkItemView: {
             /** Acceptance Criteria */
             acceptance_criteria: string[];
+            /** Assignment Status */
+            assignment_status?: string | null;
             /**
              * Created At
              * Format: date-time
@@ -3632,16 +3849,57 @@ export interface components {
              * @enum {string}
              */
             lifecycle: "pending" | "ready" | "started" | "accepted" | "blocked" | "cancelled";
+            /** Merge Queue Status */
+            merge_queue_status?: string | null;
             /** Objective */
             objective: string;
             /** Priority */
             priority: number;
+            /** Queued Reason */
+            queued_reason?: string | null;
             /** Run Id */
             run_id?: string | null;
+            /** Selected Model Profile Revision Id */
+            selected_model_profile_revision_id?: string | null;
+            /** Selected Worker Revision Id */
+            selected_worker_revision_id?: string | null;
             /** Team Version */
             team_version: number;
+            /**
+             * Team Version Id
+             * Format: uuid
+             */
+            team_version_id: string;
             /** Title */
             title: string;
+        };
+        /**
+         * WorkerPoolSpec
+         * @description Versioned allowlist of explicitly registered worker revisions.
+         */
+        WorkerPoolSpec: {
+            /**
+             * Health Freshness Seconds
+             * @default 60
+             */
+            health_freshness_seconds: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "worker_pool";
+            /**
+             * Permitted Project Ids
+             * @default []
+             */
+            permitted_project_ids: string[];
+            /**
+             * Required Capabilities
+             * @default []
+             */
+            required_capabilities: string[];
+            /** Worker Revision Ids */
+            worker_revision_ids: string[];
         };
         /** WorkerRuntimeFacts */
         WorkerRuntimeFacts: {
@@ -3707,6 +3965,11 @@ export interface components {
              */
             execution_host_label: string;
             /**
+             * Execution Profile Revision Ids
+             * @default []
+             */
+            execution_profile_revision_ids: string[];
+            /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
@@ -3721,6 +3984,17 @@ export interface components {
              */
             max_concurrency: number;
             model_binding?: components["schemas"]["ModelBinding"];
+            /** Observed Build Digest */
+            observed_build_digest?: string | null;
+            /** Observed Wrapper Version */
+            observed_wrapper_version?: string | null;
+            /**
+             * Permitted Project Ids
+             * @default []
+             */
+            permitted_project_ids: string[];
+            /** Physical Resource Id */
+            physical_resource_id?: string | null;
             timeouts?: components["schemas"]["TimeoutPolicy"];
         };
         /** WorkflowArchiveRequest */
@@ -5931,6 +6205,255 @@ export interface operations {
             };
         };
     };
+    update_team_api_v1_missions__mission_id__team_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mission_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MissionTeamUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissionView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    list_team_versions_api_v1_missions__mission_id__team_versions_get: {
+        parameters: {
+            query?: {
+                after?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                mission_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissionTeamVersionPage"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
     list_turns_api_v1_missions__mission_id__turns_get: {
         parameters: {
             query?: {
@@ -6807,7 +7330,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy" | "execution_profile";
+                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy" | "execution_profile" | "worker_pool";
             };
             cookie?: never;
         };
@@ -6928,7 +7451,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy" | "execution_profile";
+                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy" | "execution_profile" | "worker_pool";
             };
             cookie?: never;
         };
@@ -7053,7 +7576,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy" | "execution_profile";
+                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy" | "execution_profile" | "worker_pool";
                 id: string;
             };
             cookie?: never;
@@ -7175,7 +7698,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy" | "execution_profile";
+                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy" | "execution_profile" | "worker_pool";
                 id: string;
             };
             cookie?: never;
@@ -7304,7 +7827,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy" | "execution_profile";
+                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy" | "execution_profile" | "worker_pool";
                 id: string;
             };
             cookie?: never;
@@ -7426,7 +7949,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy" | "execution_profile";
+                kind: "agent_role" | "team_template" | "worker" | "provider_connection" | "model_profile" | "route_policy" | "retry_policy" | "permission_policy" | "execution_profile" | "worker_pool";
                 id: string;
             };
             cookie?: never;

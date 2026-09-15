@@ -8,7 +8,12 @@ from uuid import UUID, uuid5
 
 from sqlalchemy import select
 
-from jarvis_contracts.verification import ReviewDecision, ReviewEvidence, VerificationExecution
+from jarvis_contracts.verification import (
+    ReviewDecision,
+    ReviewEvidence,
+    SealedRepositorySnapshot,
+    VerificationExecution,
+)
 from jarvis_orchestrator.runtime.effects import AmbiguousEffectError
 from jarvis_orchestrator.verification.artifacts import EvidenceArtifacts
 from jarvis_orchestrator.verification.executor import ConfirmedRepository, VerificationExecutor
@@ -35,6 +40,59 @@ class ReviewService:
             raise ValueError("Reviewer deadline must be between 1 and 3600 seconds")
         self.executor, self.artifacts, self.adapter = executor, artifacts, adapter
         self.timeout_seconds = timeout_seconds
+
+    async def renew_for_integration(
+        self,
+        repository: ConfirmedRepository,
+        original: ReviewDecision,
+        snapshot: SealedRepositorySnapshot,
+        verification_artifact_ids: tuple[UUID, ...],
+        *,
+        operation_id: UUID,
+    ) -> ReviewDecision:
+        """Review a rebased/merged tree using the original task's sealed brief.
+
+        The earlier decision only identifies the old snapshot.  Its corresponding
+        review-evidence artifact is the durable source for task scope and
+        acceptance criteria; the new integration snapshot and reports replace
+        only the evidence that the target-head change invalidated.
+        """
+        owner, fence = self.artifacts.ownership, self.artifacts.fence
+        async with owner.fenced(fence) as (session, run):
+            started = await session.scalar(
+                select(EventModel)
+                .where(
+                    EventModel.run_id == run.id,
+                    EventModel.type == "review.started",
+                    EventModel.data_json["review_id"].astext == str(original.id),
+                )
+                .order_by(EventModel.global_position.desc())
+                .limit(1)
+            )
+        if started is None:
+            raise ValueError("original review evidence is unavailable")
+        evidence = ReviewEvidence.model_validate(
+            await self.artifacts.read(UUID(started.data_json["evidence_artifact_id"]))
+        )
+        if (
+            evidence.task_id != original.task_id
+            or evidence.task_attempt_id != original.task_attempt_id
+            or evidence.snapshot.id != original.reviewed_snapshot_id
+            or evidence.snapshot.head_sha != original.reviewed_head_sha
+        ):
+            raise ValueError("original review evidence does not match its decision")
+        renewed = evidence.model_copy(
+            update={
+                "snapshot": snapshot,
+                "verification_artifact_ids": verification_artifact_ids,
+            }
+        )
+        decision, _artifact_id, valid = await self.run(
+            repository, renewed, operation_id=operation_id
+        )
+        if not valid or decision.verdict != "PASS":
+            raise ValueError("renewed integration review did not pass")
+        return decision
 
     async def current(self, repository: ConfirmedRepository, evidence: ReviewEvidence) -> bool:
         from jarvis_orchestrator.verification.snapshots import SnapshotBuilder

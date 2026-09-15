@@ -1063,6 +1063,9 @@ class WorkerSlotModel(Base):
     __tablename__ = "worker_slots"
     __table_args__ = (
         UniqueConstraint("worker_id", "slot_number", name="uq_worker_slot_number"),
+        UniqueConstraint(
+            "physical_resource_id", "slot_number", name="uq_worker_physical_slot_number"
+        ),
         CheckConstraint("slot_number >= 0 AND slot_number < 128", name="slot_number"),
         CheckConstraint("generation >= 0", name="generation"),
         {"schema": CONTROL_SCHEMA},
@@ -1071,6 +1074,7 @@ class WorkerSlotModel(Base):
     worker_id: Mapped[UUID] = mapped_column(
         ForeignKey(f"{CONTROL_SCHEMA}.configurations.id", ondelete="RESTRICT"), nullable=False
     )
+    physical_resource_id: Mapped[str] = mapped_column(String(80), nullable=False)
     slot_number: Mapped[int] = mapped_column(Integer, nullable=False)
     generation: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
 
@@ -1139,6 +1143,60 @@ class WorkerInvocationModel(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+class WorkerAssignmentModel(Base):
+    """Durable fair-scheduling intent with an immutable eligible-pool snapshot."""
+
+    __tablename__ = "worker_assignments"
+    __table_args__ = (
+        UniqueConstraint("task_attempt_id", name="uq_worker_assignment_attempt"),
+        CheckConstraint(
+            "status IN ('queued','reserved','running','completed','failed','cancelled','unknown')",
+            name="status",
+        ),
+        CheckConstraint("fairness_sequence > 0", name="fairness_sequence_positive"),
+        Index(
+            "ix_worker_assignments_fair_claim",
+            "status",
+            "priority",
+            "mission_id",
+            "fairness_sequence",
+        ),
+        {"schema": CONTROL_SCHEMA},
+    )
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid7)
+    mission_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.missions.id", ondelete="RESTRICT"), nullable=False
+    )
+    team_version_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.mission_team_versions.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    run_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.runs.id", ondelete="RESTRICT"), nullable=False
+    )
+    task_attempt_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.task_attempts.id", ondelete="RESTRICT"), nullable=False
+    )
+    role_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    fairness_sequence: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    required_capabilities_json: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    eligible_pool_snapshot_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    snapshot_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="queued")
+    selected_worker_revision_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
+    worker_lease_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.worker_leases.id", ondelete="RESTRICT")
+    )
+    queued_reason: Mapped[str | None] = mapped_column(String(240))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class EffectModel(MutableRow, Base):
@@ -1240,6 +1298,7 @@ class IntegrationHeadModel(Base):
     base_sha: Mapped[str] = mapped_column(String(40), nullable=False)
     head_sha: Mapped[str] = mapped_column(String(40), nullable=False)
     branch: Mapped[str] = mapped_column(String(200), nullable=False)
+    target_branch: Mapped[str] = mapped_column(String(200), nullable=False, default="main")
     snapshot_artifact_id: Mapped[UUID | None] = mapped_column(
         ForeignKey(f"{CONTROL_SCHEMA}.artifacts.id", ondelete="RESTRICT")
     )
@@ -1251,6 +1310,77 @@ class IntegrationHeadModel(Base):
     renewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AcceptedTargetHeadModel(Base):
+    """Repository/target-branch authority shared by every run and team."""
+
+    __tablename__ = "accepted_target_heads"
+    __table_args__ = (
+        UniqueConstraint("repository_id", "target_branch", name="uq_accepted_target_branch"),
+        CheckConstraint("generation >= 0", name="generation"),
+        CheckConstraint("char_length(head_sha) = 40", name="head_sha"),
+        {"schema": CONTROL_SCHEMA},
+    )
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid7)
+    repository_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    target_branch: Mapped[str] = mapped_column(String(200), nullable=False)
+    head_sha: Mapped[str] = mapped_column(String(40), nullable=False)
+    generation: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    lease_owner: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
+    lease_generation: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class MergeCandidateModel(Base):
+    """Immutable candidate identity queued for serialized target advancement."""
+
+    __tablename__ = "merge_candidates"
+    __table_args__ = (
+        UniqueConstraint("task_attempt_id", "candidate_sha", name="uq_merge_candidate_attempt_sha"),
+        UniqueConstraint("effect_id", name="uq_merge_candidate_effect"),
+        CheckConstraint(
+            "status IN ('queued','integrating','accepted','conflicted','rejected','blocked')",
+            name="status",
+        ),
+        CheckConstraint(
+            "char_length(base_sha) = 40 AND char_length(candidate_sha) = 40",
+            name="sha",
+        ),
+        Index(
+            "ix_merge_candidates_queue", "repository_id", "target_branch", "status", "created_at"
+        ),
+        {"schema": CONTROL_SCHEMA},
+    )
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid7)
+    repository_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    target_branch: Mapped[str] = mapped_column(String(200), nullable=False)
+    run_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.runs.id", ondelete="RESTRICT"), nullable=False
+    )
+    effect_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.effects.id", ondelete="RESTRICT"), nullable=False
+    )
+    task_attempt_id: Mapped[UUID] = mapped_column(
+        ForeignKey(f"{CONTROL_SCHEMA}.task_attempts.id", ondelete="RESTRICT"), nullable=False
+    )
+    profile_revision_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    base_sha: Mapped[str] = mapped_column(String(40), nullable=False)
+    candidate_sha: Mapped[str] = mapped_column(String(40), nullable=False)
+    verification_identity: Mapped[str] = mapped_column(String(64), nullable=False)
+    review_identity: Mapped[str] = mapped_column(String(64), nullable=False)
+    directive_identity: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="queued")
+    expected_head_sha: Mapped[str | None] = mapped_column(String(40))
+    accepted_generation: Mapped[int | None] = mapped_column(BigInteger)
+    conflict_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class ArtifactModel(Base):

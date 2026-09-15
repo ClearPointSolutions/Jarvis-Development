@@ -1,5 +1,42 @@
 # Jarvis V1 Status
 
+## Phase 4 customizable teams and worker pools (2026-09-15, local code complete; CI/live open)
+
+Branch `phase/04-teams-and-worker-pools`; fetched clean base
+`3d3c7c564f05ccf255e1879a9749a513c9dee14c` (current `origin/main`, including
+merged Phase 3). Milestone criteria:
+
+- [x] Add versioned customizable team members, tool/permission/model routes,
+  worker pools, budgets, independent-review guards, clone/archive flows, and
+  future-assignment-only mission team revisions.
+- [x] Freeze eligible worker revisions per assignment and enforce current
+  disable/security vetoes plus role/mission/worker/policy tool intersection at
+  the dispatch boundary.
+- [x] Schedule across explicitly registered workers using health, project,
+  profile, capability, load and stable physical-resource identity; retain the
+  existing one-slot legacy OpenHands invariant while allowing multiple physical
+  workers to operate concurrently in separate jobs/workspaces.
+- [x] Add durable assignment state, deterministic mission fairness/starvation
+  ordering, atomic physical-resource reservations, and unknown-invocation lease
+  retention through the existing reconciliation path.
+- [x] Replace per-run integration authority with a repository/target-branch
+  accepted head and durable cross-run merge queue while retaining per-run
+  evidence projections; require fenced CAS and new combined gates before advance.
+- [x] Expose worker pools, immutable team versions, selected workers/models,
+  queued reasons, assignment and merge-queue state, and complete cursor-following
+  mission/run/event/node history in the UI.
+- [ ] PostgreSQL migration/concurrency tests, full `scripts/verify.sh`, production
+  browser journey, exact-commit CI, and authorized multi-worker staging evidence.
+
+Local evidence currently includes Ruff, strict mypy across 152 source files,
+focused Phase 4/contract tests, 695 non-database Python tests, 54 frontend tests,
+TypeScript and ESLint. The Next.js production build compiled and passed its type
+phase but exhausted this Windows host's memory while spawning page workers, so it
+is not claimed as passed. PostgreSQL and Docker are unavailable on this
+workstation; database, full verify, production build, CI, and real staging remain
+**UNVERIFIED**. See
+`docs/development/phase-04-handoff.md`.
+
 ## Phase 3 web-project execution profiles (2026-09-15, code/local complete; CI/live open)
 
 Branch `phase/03-web-project-profiles`; fetched clean base

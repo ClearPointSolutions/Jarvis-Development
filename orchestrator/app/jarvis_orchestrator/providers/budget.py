@@ -65,16 +65,27 @@ def estimate_input_tokens(request: ProviderRequest) -> int:
 class BudgetGateway:
     """Evaluate the run's bound spend policy before any billed inference."""
 
-    def __init__(self, route: RoutePolicySpec | None, route_revision_id: UUID | None) -> None:
+    def __init__(
+        self,
+        route: RoutePolicySpec | None,
+        route_revision_id: UUID | None,
+        *,
+        max_inference_calls: int | None = None,
+        mission_id: UUID | None = None,
+        team_version_id: UUID | None = None,
+    ) -> None:
         self.route, self.route_revision_id = route, route_revision_id
+        self.max_inference_calls = max_inference_calls
+        self.mission_id, self.team_version_id = mission_id, team_version_id
 
     def policy_digest(self) -> str:
         if self.route is None or self.route_revision_id is None:
-            return sha256_digest({"spend": None})
+            return sha256_digest({"spend": None, "max_inference_calls": self.max_inference_calls})
         return sha256_digest(
             {
                 "spend": self.route.spend.model_dump(mode="json"),
                 "route_revision_id": str(self.route_revision_id),
+                "max_inference_calls": self.max_inference_calls,
             }
         )
 
@@ -129,6 +140,21 @@ class BudgetGateway:
         paid: bool,
     ) -> ModelBudgetGrantModel | None:
         """Grant or refuse one paid call; free providers need no grant."""
+
+        if self.max_inference_calls is not None:
+            if self.mission_id is None or self.team_version_id is None:
+                raise BudgetDeniedError(("Team inference budget identity is incomplete",))
+            from jarvis_orchestrator.team_resources import reserve_inference_call
+
+            try:
+                await reserve_inference_call(
+                    session,
+                    self.mission_id,
+                    self.team_version_id,
+                    self.max_inference_calls,
+                )
+            except ValueError as error:
+                raise BudgetDeniedError((str(error),)) from None
 
         if not paid:
             return None
@@ -196,7 +222,13 @@ class BudgetGateway:
         return granted
 
 
-def bound_budget(context: NodeContext) -> BudgetGateway:
+def bound_budget(
+    context: NodeContext,
+    *,
+    max_inference_calls: int | None = None,
+    mission_id: UUID | None = None,
+    team_version_id: UUID | None = None,
+) -> BudgetGateway:
     """Bind the gateway to the node's immutable route policy revision.
 
     A node without a declared model route has no spend authority at all, so the
@@ -205,11 +237,29 @@ def bound_budget(context: NodeContext) -> BudgetGateway:
 
     reference = context.policy.model_route_ref
     if reference is None:
-        return BudgetGateway(None, None)
+        return BudgetGateway(
+            None,
+            None,
+            max_inference_calls=max_inference_calls,
+            mission_id=mission_id,
+            team_version_id=team_version_id,
+        )
     route = next(
         (row.spec for row in context.snapshot.revisions if row.revision_id == reference),
         None,
     )
     if not isinstance(route, RoutePolicySpec):
-        return BudgetGateway(None, None)
-    return BudgetGateway(route, reference)
+        return BudgetGateway(
+            None,
+            None,
+            max_inference_calls=max_inference_calls,
+            mission_id=mission_id,
+            team_version_id=team_version_id,
+        )
+    return BudgetGateway(
+        route,
+        reference,
+        max_inference_calls=max_inference_calls,
+        mission_id=mission_id,
+        team_version_id=team_version_id,
+    )

@@ -87,6 +87,32 @@ export function RegistryPage({
       setBusy(false);
     }
   }
+  async function clone(record: RegistryRecord) {
+    setBusy(true);
+    setError("");
+    try {
+      const suffix = crypto.randomUUID().slice(0, 8);
+      const copy = await client.save(kind, {
+        key: `${record.key.slice(0, 110)}-${suffix}`,
+        display_name: `${record.display_name} copy`,
+        description: record.description,
+        enabled: false,
+        archived: false,
+        expected_version: 0,
+        idempotency_key: crypto.randomUUID(),
+        spec: record.spec,
+        clear_secret: false,
+      });
+      setNotice(
+        `Cloned ${record.display_name} as ${copy.display_name}. Enable it after review.`,
+      );
+      await cache.invalidateQueries({ queryKey: ["registry"] });
+    } catch (error) {
+      setError(message(error));
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <div className="page-stack registry-page">
       <header className="page-header">
@@ -224,6 +250,14 @@ export function RegistryPage({
                 onClick={() => void validate(record)}
               >
                 Validate {record.display_name}
+              </button>
+              <button
+                className="text-button"
+                type="button"
+                disabled={busy}
+                onClick={() => void clone(record)}
+              >
+                Clone {record.display_name}
               </button>
               <button
                 className="text-button"

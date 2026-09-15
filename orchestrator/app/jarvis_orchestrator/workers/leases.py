@@ -6,7 +6,7 @@ import hashlib
 import secrets
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid6 import uuid7
 
@@ -18,6 +18,7 @@ from jarvis_persistence.models import (
     ConfigurationRevisionModel,
     TaskAttemptModel,
     TaskModel,
+    WorkerAssignmentModel,
     WorkerLeaseModel,
     WorkerSlotModel,
 )
@@ -43,11 +44,18 @@ class WorkerSlots:
                 raise WorkerBoundaryError("worker_lease_identity_invalid")
             if WorkerSpec.model_validate(revision.spec_json.get("spec")) != spec:
                 raise WorkerBoundaryError("worker_revision_spec_mismatch")
+            resource_id = spec.physical_resource_id or str(revision.configuration_id)
+            # Serialize first registration as well as acquisition. Unlike a revision
+            # id, this stable server-approved identity cannot multiply host capacity.
+            await session.execute(
+                text("SELECT pg_advisory_xact_lock(hashtext(:resource_id))"),
+                {"resource_id": resource_id},
+            )
             slots = list(
                 (
                     await session.scalars(
                         select(WorkerSlotModel)
-                        .where(WorkerSlotModel.worker_id == revision.configuration_id)
+                        .where(WorkerSlotModel.physical_resource_id == resource_id)
                         .order_by(WorkerSlotModel.slot_number)
                         .with_for_update()
                     )
@@ -58,6 +66,7 @@ class WorkerSlots:
                     slot = WorkerSlotModel(
                         id=uuid7(),
                         worker_id=revision.configuration_id,
+                        physical_resource_id=resource_id,
                         slot_number=number,
                         generation=0,
                     )
@@ -98,6 +107,16 @@ class WorkerSlots:
                     expires_at=now + self.ownership.ttl,
                 )
                 session.add(lease)
+                assignment = await session.scalar(
+                    select(WorkerAssignmentModel).where(
+                        WorkerAssignmentModel.task_attempt_id == attempt_id
+                    )
+                )
+                if assignment is not None:
+                    assignment.status = "reserved"
+                    assignment.selected_worker_revision_id = revision_id
+                    assignment.worker_lease_id = lease.id
+                    assignment.queued_reason = None
                 await self.ownership.event(
                     session,
                     run,
@@ -121,6 +140,7 @@ class WorkerSlots:
             generation=lease.generation,
             run_generation=lease.run_generation,
             expires_at=lease.expires_at,
+            physical_resource_id=slot.physical_resource_id,
         )
 
     async def require(self, session: AsyncSession, lease: WorkerSlotFence) -> WorkerLeaseModel:
@@ -134,6 +154,10 @@ class WorkerSlots:
             or row.generation != lease.generation
             or slot.generation != lease.generation
             or slot.slot_number != lease.slot
+            or (
+                lease.physical_resource_id is not None
+                and slot.physical_resource_id != lease.physical_resource_id
+            )
             or row.released_at is not None
             or row.expires_at <= self.ownership.clock.now()
         ):

@@ -37,6 +37,9 @@ from jarvis_contracts.missions import (
     MissionMessageView,
     MissionPage,
     MissionResourceLimits,
+    MissionTeamUpdate,
+    MissionTeamVersionPage,
+    MissionTeamVersionView,
     MissionView,
     MissionWakeupPage,
     MissionWakeupView,
@@ -49,6 +52,7 @@ from jarvis_contracts.registry import (
     ModelProfileSpec,
     ProviderSpec,
     TeamTemplateSpec,
+    WorkerPoolSpec,
     WorkerSpec,
 )
 from jarvis_contracts.runtime_api import JobCreate, RunView
@@ -67,6 +71,7 @@ from jarvis_persistence.models import (
     ConfigurationRevisionModel,
     EventGlobalCounterModel,
     ManagementTurnModel,
+    MergeCandidateModel,
     MissionAdmissionControlModel,
     MissionDirectiveModel,
     MissionMessageModel,
@@ -77,6 +82,9 @@ from jarvis_persistence.models import (
     MissionWorkItemModel,
     ProjectModel,
     RunModel,
+    TaskAttemptModel,
+    TaskModel,
+    WorkerAssignmentModel,
     WorkflowTemplateModel,
     WorkflowVersionModel,
 )
@@ -203,9 +211,24 @@ async def validate_team(
     )
     if not isinstance(template, TeamTemplateSpec) or template.mode != mode:
         raise ApiProblemError(422, "mission.mode_mismatch", "Mission and team modes differ")
+    eligible_workers: list[UUID] = []
+    for member in template.members:
+        for pool_revision_id in member.worker_pool_revision_ids:
+            pool = await registry._reference_spec(
+                session, pool_revision_id, "worker_pool", active=True
+            )
+            assert isinstance(pool, WorkerPoolSpec)
+            eligible_workers.extend(pool.worker_revision_ids)
+    eligible_workers = list(dict.fromkeys(eligible_workers))
     team = FixedTeamSelection(
         team_template_revision_id=team_template_revision_id,
         **template.model_dump(mode="python", exclude={"kind", "mode"}),
+        eligible_worker_revision_ids=tuple(eligible_workers),
+        worker_pool_snapshot_hash=(
+            sha256_digest({"worker_revision_ids": [str(item) for item in eligible_workers]})
+            if eligible_workers
+            else None
+        ),
     )
     roles = [
         (team.manager_role_revision_id, "manager"),
@@ -240,12 +263,17 @@ async def validate_team(
     worker = await registry._reference_spec(
         session, team.developer_worker_revision_id, "worker", active=True
     )
-    if not isinstance(worker, WorkerSpec) or worker.max_concurrency != 1:
-        raise ApiProblemError(
-            422, "mission.invalid_team", "Development team requires one exclusive worker"
-        )
+    if not isinstance(worker, WorkerSpec):
+        raise ApiProblemError(422, "mission.invalid_team", "Development worker is invalid")
     if (worker.adapter_kind == "demo") != (mode == "demo"):
         raise ApiProblemError(422, "mission.mode_mismatch", "Mission and worker modes differ")
+    for worker_revision_id in team.eligible_worker_revision_ids:
+        candidate = await registry._reference_spec(
+            session, worker_revision_id, "worker", active=True
+        )
+        assert isinstance(candidate, WorkerSpec)
+        if (candidate.adapter_kind == "demo") != (mode == "demo"):
+            raise ApiProblemError(422, "mission.mode_mismatch", "Pool worker mode differs")
     workflow = await session.scalar(
         select(WorkflowVersionModel)
         .join(
@@ -724,6 +752,98 @@ async def update_directive(
         return result
 
 
+@router.put("/{mission_id}/team", response_model=MissionView)
+async def update_team(
+    request: Request, mission_id: UUID, body: MissionTeamUpdate, principal: CsrfPrincipal
+) -> MissionView:
+    """Select a new immutable team version for future assignments only."""
+    async with sessions(request, principal).begin() as session:
+        await lock_events(session)
+        mission, current = await owned(session, mission_id, principal.user_id, lock=True)
+        if mission.version != body.expected_version:
+            raise ApiProblemError(409, "mission.version_conflict", "Mission changed; refresh")
+        try:
+            idem, fresh = await IdempotencyRepository().begin(
+                session,
+                scope=f"mission:team:{mission_id}",
+                key=body.idempotency_key,
+                request_digest=sha256_digest(body.model_dump(mode="json")),
+            )
+        except IdempotencyConflictError:
+            raise ApiProblemError(
+                409, "mission.idempotency_conflict", "Idempotency input changed"
+            ) from None
+        if not fresh:
+            return MissionView.model_validate(idem.response_json)
+        selection = await validate_team(
+            request, session, body.team_template_revision_id, principal.user_id, mission.mode
+        )
+        next_version = current.version + 1
+        team = MissionTeamVersionModel(
+            id=uuid7(),
+            mission_id=mission.id,
+            version=next_version,
+            selection_json=selection.model_dump(mode="json"),
+            content_hash=sha256_digest(selection.model_dump(mode="json")),
+        )
+        session.add(team)
+        await session.flush()
+        mission.selected_team_version_id = team.id
+        mission.version += 1
+        result = view(mission, next_version)
+        await emit(
+            session,
+            mission,
+            "mission.team_revised",
+            {
+                "mission_id": str(mission.id),
+                "team_version_id": str(team.id),
+                "team_version": next_version,
+                "applies_to": "future_assignments",
+            },
+        )
+        idem.state, idem.response_status, idem.response_json = (
+            "completed",
+            200,
+            result.model_dump(mode="json"),
+        )
+        return result
+
+
+@router.get("/{mission_id}/team-versions", response_model=MissionTeamVersionPage)
+async def list_team_versions(
+    request: Request,
+    mission_id: UUID,
+    principal: CurrentPrincipal,
+    after: UUID | None = None,
+    limit: Limit = 50,
+) -> MissionTeamVersionPage:
+    async with sessions(request, principal)() as session:
+        mission, _ = await owned(session, mission_id, principal.user_id)
+        query = select(MissionTeamVersionModel).where(
+            MissionTeamVersionModel.mission_id == mission_id
+        )
+        if after:
+            query = query.where(MissionTeamVersionModel.id > after)
+        rows = list(
+            await session.scalars(query.order_by(MissionTeamVersionModel.id).limit(limit + 1))
+        )
+        return MissionTeamVersionPage(
+            items=tuple(
+                MissionTeamVersionView(
+                    id=row.id,
+                    version=row.version,
+                    selection=FixedTeamSelection.model_validate(row.selection_json),
+                    content_hash=row.content_hash,
+                    active=row.id == mission.selected_team_version_id,
+                    created_at=row.created_at,
+                )
+                for row in rows[:limit]
+            ),
+            next_after=rows[limit - 1].id if len(rows) > limit else None,
+        )
+
+
 @router.post("/{mission_id}/messages", response_model=ManagementTurnView, status_code=202)
 async def create_message(
     request: Request, mission_id: UUID, body: MissionMessageCreate, principal: CsrfPrincipal
@@ -987,6 +1107,31 @@ async def item_view(session: AsyncSession, row: MissionWorkItemModel) -> WorkIte
     )
     team = await session.get(MissionTeamVersionModel, row.team_version_id)
     assert team is not None
+    attempt = None
+    assignment = None
+    merge = None
+    run = await session.get(RunModel, row.run_id) if row.run_id else None
+    if row.run_id:
+        attempt = await session.scalar(
+            select(TaskAttemptModel)
+            .join(TaskModel, TaskModel.id == TaskAttemptModel.task_id)
+            .where(TaskModel.run_id == row.run_id)
+            .order_by(TaskAttemptModel.created_at.desc())
+            .limit(1)
+        )
+    if attempt:
+        assignment = await session.scalar(
+            select(WorkerAssignmentModel).where(WorkerAssignmentModel.task_attempt_id == attempt.id)
+        )
+        merge = await session.scalar(
+            select(MergeCandidateModel)
+            .where(MergeCandidateModel.task_attempt_id == attempt.id)
+            .order_by(MergeCandidateModel.created_at.desc())
+            .limit(1)
+        )
+    selected_model = (
+        (run.runtime_json or {}).get("runtime_model_profile_revision_id") if run else None
+    )
     return WorkItemView(
         id=row.id,
         key=row.key,
@@ -998,8 +1143,20 @@ async def item_view(session: AsyncSession, row: MissionWorkItemModel) -> WorkIte
         lifecycle=row.lifecycle,
         directive_version=row.directive_version,
         team_version=team.version,
+        team_version_id=team.id,
         job_id=row.job_id,
         run_id=row.run_id,
+        selected_worker_revision_id=(
+            assignment.selected_worker_revision_id
+            if assignment
+            else attempt.worker_revision_id
+            if attempt
+            else None
+        ),
+        selected_model_profile_revision_id=UUID(str(selected_model)) if selected_model else None,
+        assignment_status=assignment.status if assignment else attempt.status if attempt else None,
+        queued_reason=assignment.queued_reason if assignment else None,
+        merge_queue_status=merge.status if merge else None,
         created_at=row.created_at,
     )
 

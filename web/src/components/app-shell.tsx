@@ -22,6 +22,7 @@ const navigation = [
   { href: "/roles", label: "Agent roles" },
   { href: "/teams", label: "Teams" },
   { href: "/workers", label: "Workers" },
+  { href: "/worker-pools", label: "Worker pools" },
   { href: "/providers", label: "Providers" },
   { href: "/models", label: "Models" },
   { href: "/routing", label: "Routing" },
