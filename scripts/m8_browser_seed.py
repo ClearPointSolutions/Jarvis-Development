@@ -71,6 +71,7 @@ async def seed_m8(url: str, directory: Path) -> str:
                 directory,
                 None,
                 IntegratedApi(client, api_sessions, settings, clock, owner.id, owner.username),
+                historical=False,
             )
         async with sessions.begin() as session:
             run = await session.scalar(

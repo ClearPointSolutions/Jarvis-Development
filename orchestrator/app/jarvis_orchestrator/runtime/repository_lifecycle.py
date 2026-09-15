@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from uuid import UUID
+
 from pydantic import JsonValue
 from sqlalchemy import func, select
 
@@ -17,6 +19,13 @@ from jarvis_persistence.models import (
     RunModel,
     WorkerInvocationModel,
 )
+
+
+def integration_target_branch(binding: RepositoryBinding, run_id: UUID) -> str:
+    """Historical work has a run-owned target within the real repository identity."""
+    if binding.base_policy == "historical":
+        return f"jarvis/history/{run_id.hex}"
+    return binding.project.branch
 
 
 async def accepted_source(
@@ -35,6 +44,8 @@ async def accepted_source(
             "worker_base_sha": binding.project.base_sha,
             "integration_base_sha": binding.project.base_sha,
         }
+        if binding.base_policy == "historical":
+            source["integration_target_branch"] = integration_target_branch(binding, run.id)
         if prior_binding:
             # An already bound pre-lifecycle run keeps its original run store
             # and seed. Never adopt work accepted after that run was started.

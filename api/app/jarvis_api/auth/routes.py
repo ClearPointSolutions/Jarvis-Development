@@ -27,7 +27,7 @@ from jarvis_contracts.api import (
     SessionUser,
 )
 
-EXPECTED_SCHEMA_REVISION = "0016"
+EXPECTED_SCHEMA_REVISION = "0017"
 """Alembic head this code requires; readiness is 503 until the database matches."""
 
 router = APIRouter(prefix="/api/v1")

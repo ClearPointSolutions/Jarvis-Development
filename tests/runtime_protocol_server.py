@@ -29,16 +29,21 @@ class ProtocolHandler(BaseHTTPRequestHandler):
             content = {"summary": "Create answer 42 and verify with pytest."}
         elif title == "TaskPlan":
             extending = "Extend completed project" in json.dumps(request["messages"])
+            continuing = "Continue accepted project" in json.dumps(request["messages"])
             content = {
                 "architecture": "A Python constant with an independent assertion.",
                 "tasks": [
                     {
                         "key": "DEV-001",
                         "title": "Answer",
-                        "description": "Extend completed project with bonus.py using ANSWER."
+                        "description": "Continue accepted project with continued.py using BONUS."
+                        if continuing
+                        else "Extend completed project with bonus.py using ANSWER."
                         if extending
                         else "Create answer.py with ANSWER = 42 and a test.",
-                        "acceptance_criteria": ["BONUS equals 43 and existing ANSWER remains 42"]
+                        "acceptance_criteria": ["CONTINUED equals 44 and BONUS remains 43"]
+                        if continuing
+                        else ["BONUS equals 43 and existing ANSWER remains 42"]
                         if extending
                         else ["ANSWER equals 42"],
                         "verification": [

@@ -112,7 +112,7 @@ test("M6 real demo, retry, durable decision, restart, artifacts and history", as
     .click();
   await page
     .getByLabel("Project", { exact: true })
-    .selectOption({ label: "DEMO browser project" });
+    .selectOption({ label: "DEMO browser project — python" });
   await page
     .getByLabel("Published workflow")
     .selectOption({ label: "DEMO deterministic development" });
@@ -223,7 +223,7 @@ test("M6 real demo, retry, durable decision, restart, artifacts and history", as
     await page.goto("/runs");
     await page
       .getByLabel("Project", { exact: true })
-      .selectOption({ label: "DEMO browser project" });
+      .selectOption({ label: "DEMO browser project — python" });
     await page
       .getByLabel("Published workflow")
       .selectOption({ label: "DEMO deterministic development" });

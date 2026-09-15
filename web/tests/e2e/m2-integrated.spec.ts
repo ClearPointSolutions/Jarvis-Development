@@ -71,7 +71,11 @@ test("M2 real auth, CSRF, durable SSE replay, projection and revocation", async 
     data: {},
   });
   expect(noOrigin.status()).toBe(403);
+  const workflowResponse = page.waitForResponse((response) =>
+    response.url().endsWith(`/runs/${runId}/workflow`),
+  );
   await page.goto(`/runs/${runId}`);
+  expect((await workflowResponse).status()).toBe(200);
   await expect(
     page.getByRole("heading", { name: "Run event monitor" }),
   ).toBeVisible();

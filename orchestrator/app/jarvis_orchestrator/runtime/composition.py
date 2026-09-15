@@ -45,7 +45,10 @@ from jarvis_orchestrator.runtime.historical import HistoricalPreparation
 from jarvis_orchestrator.runtime.model_selection import select_model
 from jarvis_orchestrator.runtime.ownership import RunFence, RunOwnership
 from jarvis_orchestrator.runtime.planning import PlanningEffect
-from jarvis_orchestrator.runtime.repository_lifecycle import accepted_source
+from jarvis_orchestrator.runtime.repository_lifecycle import (
+    accepted_source,
+    integration_target_branch,
+)
 from jarvis_orchestrator.verification.artifacts import EvidenceArtifacts
 from jarvis_orchestrator.verification.integration import LocalIntegrator
 from jarvis_orchestrator.verification.isolated_executor import IsolatedVerificationExecutor
@@ -388,6 +391,9 @@ class RealComposition:
                 if selector is None or binding.worker_revision_id not in permitted:
                     raise RuntimeDependencyError("workflow worker differs from repository binding")
         lifecycle = await accepted_source(owner, fence, binding)
+        integration_target = integration_target_branch(binding, fence.run_id)
+        if lifecycle.get("integration_target_branch", integration_target) != integration_target:
+            raise RuntimeDependencyError("immutable historical integration target changed")
         await freeze_binding(
             owner,
             fence,
@@ -635,7 +641,7 @@ class RealComposition:
                 workflow_id,
                 binding.project.repository_id,
                 str(lifecycle["integration_base_sha"]),
-                binding.project.branch,
+                integration_target,
                 binding.combined_commands,
                 no_remote_path,
                 transfer,

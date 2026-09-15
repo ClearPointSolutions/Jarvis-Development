@@ -3,12 +3,13 @@
 from datetime import timedelta
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from uuid6 import uuid7
 
 from jarvis_orchestrator.runtime.ownership import StaleExecutorError
 from jarvis_orchestrator.verification.leases import IntegrationLeases
-from jarvis_persistence.models import IntegrationHeadModel
+from jarvis_persistence.models import AcceptedTargetHeadModel, IntegrationHeadModel
 from tests.integration.test_m5_runtime import acquire, prepare_run
 from tests.integration.test_m8_evidence import task_rows
 
@@ -33,6 +34,17 @@ async def test_expired_generation_and_competing_integration_cannot_advance(
         row = await session.get(IntegrationHeadModel, (run_id, repository_id))
         assert row is not None
         row.expires_at = owner.clock.now() - timedelta(seconds=1)
+    # Run rows are projections: expiring one cannot steal a shared target lease.
+    assert await leases.acquire(repository_id, first) is None
+    async with session_factory.begin() as session:
+        accepted = await session.scalar(
+            select(AcceptedTargetHeadModel).where(
+                AcceptedTargetHeadModel.repository_id == repository_id,
+                AcceptedTargetHeadModel.target_branch == "main",
+            )
+        )
+        assert accepted is not None
+        accepted.lease_expires_at = owner.clock.now() - timedelta(seconds=1)
     replacement = await leases.acquire(repository_id, first)
     assert replacement is not None and replacement.generation == original.generation + 1
     with pytest.raises(StaleExecutorError):

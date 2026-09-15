@@ -1,5 +1,6 @@
 """M7 PostgreSQL queue -> compiled workflow -> M5 -> fake SSH acceptance."""
 
+import asyncio
 from datetime import timedelta
 from itertools import pairwise
 from pathlib import Path
@@ -249,7 +250,9 @@ async def setup_worker_run(
     return run_id, request, worker
 
 
-@pytest.mark.parametrize("scenario", ["success", "restart", "stale", "late_cancel", "unknown"])
+@pytest.mark.parametrize(
+    "scenario", ["success", "restart", "stale", "late_cancel", "unknown", "slow_collect"]
+)
 async def test_real_queue_compiler_orchestrator_fake_ssh(
     database_url: str,
     session_factory: async_sessionmaker[AsyncSession],
@@ -261,6 +264,13 @@ async def test_real_queue_compiler_orchestrator_fake_ssh(
     class LocalTransport(FakeWorkerSSH):
         async def execute(self, command: str, *, timeout: float, limit: int) -> TransportResult:
             response = await super().execute(command, timeout=timeout, limit=limit)
+            if scenario == "slow_collect" and self.operations[-1] == "collect":
+                # This fixture executes directly without the service tick loop.
+                # Keep the enclosing run alive, leaving slot renewal to runtime.
+                assert fence is not None
+                for _ in range(12):
+                    await asyncio.sleep(1)
+                    await owner.renew(fence)
             if scenario == "stale" and self.operations[-1] == "collect":
                 async with session_factory.begin() as session:
                     lease = await session.scalar(
@@ -291,7 +301,11 @@ async def test_real_queue_compiler_orchestrator_fake_ssh(
         queued = await session.get(RunModel, run_id)
         assert queued is not None
         queued.priority = 1000000
-    owner = RunOwnership(session_factory, owner=str(uuid7()))
+    owner = RunOwnership(
+        session_factory,
+        owner=str(uuid7()),
+        ttl=timedelta(seconds=9 if scenario == "slow_collect" else 30),
+    )
     await owner.register()
     fence = await owner.claim()
     assert fence is not None and fence.run_id == run_id
@@ -317,7 +331,7 @@ async def test_real_queue_compiler_orchestrator_fake_ssh(
             lease.expires_at = owner.clock.now() - timedelta(seconds=1)
         owner, fence = await acquire(session_factory, run_id)
         service = OrchestratorService(database_url, owner, worker_registry=registry)
-    if scenario in {"stale", "late_cancel", "unknown"}:
+    if scenario in {"stale", "late_cancel", "unknown", "slow_collect"}:
         await service.execute(fence)
     else:
         await service._execute(fence)
@@ -351,7 +365,13 @@ async def test_real_queue_compiler_orchestrator_fake_ssh(
             ).all()
         )
         assert "worker.lease_acquired" in events
-        assert ("worker.invocation_completed" in events) == (scenario in {"success", "restart"})
+        assert ("worker.invocation_completed" in events) == (
+            scenario in {"success", "restart", "slow_collect"}
+        )
+        if scenario == "slow_collect":
+            worker_lease = await session.get(WorkerLeaseModel, invocation.lease_id)
+            assert worker_lease is not None and worker_lease.released_at is not None
+            assert worker_lease.renewed_at - worker_lease.acquired_at >= timedelta(seconds=9)
         assert ("artifact.created" in events) == (scenario != "unknown")
         artifacts = list(
             (

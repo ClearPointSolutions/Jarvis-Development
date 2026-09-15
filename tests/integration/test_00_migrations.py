@@ -37,10 +37,44 @@ def test_postgresql_16_migration_round_trip_and_metadata_drift(database_url: str
             {"id": legacy_project_id, "slug": f"pre-m2-{legacy_project_id}"},
         )
 
+    command.upgrade(config, "0016")
+    accepted_id = uuid7()
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO control.accepted_target_heads "
+                "(id, repository_id, target_branch, head_sha, generation) "
+                "VALUES (:id, :id, 'main', :sha, 9)"
+            ),
+            {"id": accepted_id, "sha": "a" * 40},
+        )
     command.upgrade(config, "head")
     command.check(config)
     with engine.connect() as connection:
         inspector = inspect(connection)
+        assert (
+            connection.scalar(
+                text("SELECT generation FROM control.accepted_target_heads WHERE id = :id"),
+                {"id": accepted_id},
+            )
+            == 9
+        )
+        for column in ("effect_id", "created_at", "last_activity_at", "possibly_stalled"):
+            assert connection.scalar(
+                text(
+                    "SELECT has_column_privilege('jarvis_v1_api',"
+                    "'control.worker_invocations',:column,'SELECT')"
+                ),
+                {"column": column},
+            )
+        for column in ("request_json", "result_json", "diagnostic_result_json"):
+            assert not connection.scalar(
+                text(
+                    "SELECT has_column_privilege('jarvis_v1_api',"
+                    "'control.worker_invocations',:column,'SELECT')"
+                ),
+                {"column": column},
+            )
         schemas = set(inspector.get_schema_names())
         assert {"control", "event_store", "langgraph"}.issubset(schemas)
         assert inspector.get_pk_constraint("events", schema="event_store")[

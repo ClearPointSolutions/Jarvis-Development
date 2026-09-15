@@ -18,7 +18,15 @@ base = git("rev-parse", "HEAD")
 counter = Path("/invocations") / (payload["project_slug"] + ".attempts")
 number = int(counter.read_text()) + 1 if counter.exists() else 1
 counter.write_text(str(number))
-if "Extend completed project" in json.dumps(payload["task"]):
+if "Continue accepted project" in json.dumps(payload["task"]):
+    assert (root / "answer.py").read_text() == "ANSWER = 42\n"
+    assert "BONUS = ANSWER + 1" in (root / "bonus.py").read_text()
+    (root / "continued.py").write_text("from bonus import BONUS\nCONTINUED = BONUS + 1\n")
+    (root / "test_continued.py").write_text(
+        "from continued import CONTINUED\n\ndef test_continued():\n    assert CONTINUED == 44\n"
+    )
+    git("add", "continued.py", "test_continued.py")
+elif "Extend completed project" in json.dumps(payload["task"]):
     assert (root / "answer.py").read_text() == "ANSWER = 42\n"
     (root / "bonus.py").write_text("from answer import ANSWER\nBONUS = ANSWER + 1\n")
     (root / "test_bonus.py").write_text(
