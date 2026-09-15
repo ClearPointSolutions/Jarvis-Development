@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -10,9 +11,20 @@ from pydantic import Field, model_validator
 
 from jarvis_contracts.base import ContractModel
 
-MissionLifecycle = Literal["active", "waiting", "blocked", "completed", "archived"]
+MissionLifecycle = Literal[
+    "active",
+    "idle",
+    "waiting_for_capacity",
+    "waiting_for_approval",
+    "blocked",
+    "paused",
+    "cancelling",
+    "cancelled",
+    "completed",
+    "archived",
+]
 WorkItemLifecycle = Literal["pending", "ready", "started", "accepted", "blocked", "cancelled"]
-ManagerAction = Literal["explain", "propose", "clarify", "wait"]
+ManagerAction = Literal["explain", "propose", "clarify", "wait", "complete"]
 ConstraintText = Annotated[str, Field(min_length=1, max_length=2000)]
 WorkItemKey = Annotated[str, Field(pattern=r"^[A-Z][A-Z0-9_-]{1,39}$")]
 
@@ -28,12 +40,40 @@ class FixedTeamSelection(ContractModel):
     workflow_version_id: UUID
 
 
+class MissionResourceLimits(ContractModel):
+    """Conservative UTC-window limits for unattended mission activity."""
+
+    window_seconds: int = Field(default=86_400, ge=60, le=31_536_000)
+    timezone: Literal["UTC"] = "UTC"
+    max_calls: int = Field(default=20, ge=0, le=1_000_000)
+    max_input_tokens: int = Field(default=500_000, ge=0, le=1_000_000_000)
+    max_output_tokens: int = Field(default=100_000, ge=0, le=1_000_000_000)
+    max_active_jobs: int = Field(default=1, ge=0, le=128)
+    max_wall_seconds: int = Field(default=86_400, ge=0, le=31_536_000)
+    max_iterations: int = Field(default=20, ge=0, le=100_000)
+    max_new_work_items: int = Field(default=20, ge=0, le=100_000)
+    max_cost: Decimal | None = Field(default=None, ge=0, le=1_000_000)
+    currency: str = Field(default="USD", pattern=r"^[A-Z]{3}$")
+
+
+class MissionUsageView(ContractModel):
+    window_started_at: datetime
+    window_seconds: int
+    timezone: Literal["UTC"] = "UTC"
+    reserved: dict[str, int | str | None]
+    actual: dict[str, int | str | None]
+    unknown_liability: bool = False
+    limits: MissionResourceLimits
+
+
 class MissionCreate(ContractModel):
     project_id: UUID
     objective: str = Field(min_length=1, max_length=8000)
     constraints: tuple[ConstraintText, ...] = Field(default=(), max_length=40)
     mode: Literal["demo", "real"] = "demo"
     team_template_revision_id: UUID
+    autonomous: bool = False
+    limits: MissionResourceLimits = Field(default_factory=MissionResourceLimits)
     idempotency_key: str = Field(min_length=8, max_length=120)
 
 
@@ -54,6 +94,15 @@ class MissionView(ContractModel):
     version: int
     directive_version: int
     team_version: int
+    autonomous: bool = False
+    waiting_reason: str | None = None
+    next_action: str | None = None
+    next_action_basis: str | None = None
+    user_action_required: str | None = None
+    active_work_directive_version: int | None = None
+    controls: dict[str, str] = Field(default_factory=dict)
+    usage: MissionUsageView | None = None
+    paid_unattended_available: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -93,12 +142,15 @@ class ManagerDecision(ContractModel):
     action: ManagerAction
     message: str = Field(min_length=1, max_length=8000)
     work_items: tuple[WorkItemProposal, ...] = Field(default=(), max_length=8)
-    lifecycle: Literal["active", "waiting", "blocked"] = "active"
+    lifecycle: Literal["active", "idle", "waiting_for_approval", "blocked", "completed"] = "active"
+    scheduled_wakeup_at: datetime | None = None
 
     @model_validator(mode="after")
     def bounded_action(self) -> ManagerDecision:
         if (self.action == "propose") != bool(self.work_items):
             raise ValueError("only propose actions may contain work items")
+        if self.action == "complete" and self.lifecycle != "completed":
+            raise ValueError("complete action requires completed lifecycle")
         keys = {item.key for item in self.work_items}
         if len(keys) != len(self.work_items):
             raise ValueError("work item keys must be unique")
@@ -129,6 +181,58 @@ class MissionMessageCreate(ContractModel):
     expected_version: int = Field(ge=1)
     idempotency_key: str = Field(min_length=8, max_length=120)
     allow_paid_inference: bool = False
+
+
+class MissionAutonomyUpdate(ContractModel):
+    enabled: bool
+    expected_version: int = Field(ge=1)
+    idempotency_key: str = Field(min_length=8, max_length=120)
+
+
+class MissionControlRequest(ContractModel):
+    scope: Literal["mission", "team", "global"] = "mission"
+    action: Literal["pause", "resume", "drain", "safe_point", "cancel"]
+    instruction: str | None = Field(default=None, min_length=1, max_length=2000)
+    limits: MissionResourceLimits | None = None
+    expected_version: int = Field(ge=1)
+    idempotency_key: str = Field(min_length=8, max_length=120)
+
+    @model_validator(mode="after")
+    def instruction_matches_action(self) -> MissionControlRequest:
+        if (self.action == "safe_point") != (self.instruction is not None):
+            raise ValueError("safe_point requires an instruction and other actions forbid one")
+        return self
+
+
+class MissionControlView(ContractModel):
+    scope: Literal["mission", "team", "global"]
+    state: Literal["open", "paused", "draining", "cancelling"]
+    instruction: str | None = None
+    limits: MissionResourceLimits
+    version: int
+
+
+class MissionWakeupView(ContractModel):
+    id: UUID
+    kind: Literal[
+        "user_direction",
+        "job_completed",
+        "job_failed",
+        "approval_decided",
+        "deadline",
+    ]
+    status: Literal["pending", "claimed", "turn_queued", "committed", "stale", "failed"]
+    deduplication_key: str
+    directive_version: int
+    source_event_cursor: int | None = None
+    management_turn_id: UUID | None = None
+    scheduled_for: datetime
+    created_at: datetime
+
+
+class MissionWakeupPage(ContractModel):
+    items: tuple[MissionWakeupView, ...]
+    next_after: UUID | None = None
 
 
 class WorkItemView(ContractModel):

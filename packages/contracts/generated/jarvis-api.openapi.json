@@ -1662,7 +1662,8 @@
               "explain",
               "propose",
               "clarify",
-              "wait"
+              "wait",
+              "complete"
             ],
             "title": "Action",
             "type": "string"
@@ -1671,8 +1672,10 @@
             "default": "active",
             "enum": [
               "active",
-              "waiting",
-              "blocked"
+              "idle",
+              "waiting_for_approval",
+              "blocked",
+              "completed"
             ],
             "title": "Lifecycle",
             "type": "string"
@@ -1682,6 +1685,18 @@
             "minLength": 1,
             "title": "Message",
             "type": "string"
+          },
+          "scheduled_wakeup_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled Wakeup At"
           },
           "work_items": {
             "default": [],
@@ -1700,9 +1715,158 @@
         "title": "ManagerDecision",
         "type": "object"
       },
+      "MissionAutonomyUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "idempotency_key": {
+            "maxLength": 120,
+            "minLength": 8,
+            "title": "Idempotency Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "expected_version",
+          "idempotency_key"
+        ],
+        "title": "MissionAutonomyUpdate",
+        "type": "object"
+      },
+      "MissionControlRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "pause",
+              "resume",
+              "drain",
+              "safe_point",
+              "cancel"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "idempotency_key": {
+            "maxLength": 120,
+            "minLength": 8,
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "instruction": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instruction"
+          },
+          "limits": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MissionResourceLimits-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "default": "mission",
+            "enum": [
+              "mission",
+              "team",
+              "global"
+            ],
+            "title": "Scope",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "expected_version",
+          "idempotency_key"
+        ],
+        "title": "MissionControlRequest",
+        "type": "object"
+      },
+      "MissionControlView": {
+        "additionalProperties": false,
+        "properties": {
+          "instruction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instruction"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/MissionResourceLimits-Output"
+          },
+          "scope": {
+            "enum": [
+              "mission",
+              "team",
+              "global"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "open",
+              "paused",
+              "draining",
+              "cancelling"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scope",
+          "state",
+          "limits",
+          "version"
+        ],
+        "title": "MissionControlView",
+        "type": "object"
+      },
       "MissionCreate": {
         "additionalProperties": false,
         "properties": {
+          "autonomous": {
+            "default": false,
+            "title": "Autonomous",
+            "type": "boolean"
+          },
           "constraints": {
             "default": [],
             "items": {
@@ -1719,6 +1883,9 @@
             "minLength": 8,
             "title": "Idempotency Key",
             "type": "string"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/MissionResourceLimits-Input"
           },
           "mode": {
             "default": "demo",
@@ -1920,15 +2087,290 @@
         "title": "MissionPage",
         "type": "object"
       },
+      "MissionResourceLimits-Input": {
+        "additionalProperties": false,
+        "description": "Conservative UTC-window limits for unattended mission activity.",
+        "properties": {
+          "currency": {
+            "default": "USD",
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency",
+            "type": "string"
+          },
+          "max_active_jobs": {
+            "default": 1,
+            "maximum": 128.0,
+            "minimum": 0.0,
+            "title": "Max Active Jobs",
+            "type": "integer"
+          },
+          "max_calls": {
+            "default": 20,
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Max Calls",
+            "type": "integer"
+          },
+          "max_cost": {
+            "anyOf": [
+              {
+                "maximum": 1000000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Cost"
+          },
+          "max_input_tokens": {
+            "default": 500000,
+            "maximum": 1000000000.0,
+            "minimum": 0.0,
+            "title": "Max Input Tokens",
+            "type": "integer"
+          },
+          "max_iterations": {
+            "default": 20,
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Max Iterations",
+            "type": "integer"
+          },
+          "max_new_work_items": {
+            "default": 20,
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Max New Work Items",
+            "type": "integer"
+          },
+          "max_output_tokens": {
+            "default": 100000,
+            "maximum": 1000000000.0,
+            "minimum": 0.0,
+            "title": "Max Output Tokens",
+            "type": "integer"
+          },
+          "max_wall_seconds": {
+            "default": 86400,
+            "maximum": 31536000.0,
+            "minimum": 0.0,
+            "title": "Max Wall Seconds",
+            "type": "integer"
+          },
+          "timezone": {
+            "const": "UTC",
+            "default": "UTC",
+            "title": "Timezone",
+            "type": "string"
+          },
+          "window_seconds": {
+            "default": 86400,
+            "maximum": 31536000.0,
+            "minimum": 60.0,
+            "title": "Window Seconds",
+            "type": "integer"
+          }
+        },
+        "title": "MissionResourceLimits",
+        "type": "object"
+      },
+      "MissionResourceLimits-Output": {
+        "additionalProperties": false,
+        "description": "Conservative UTC-window limits for unattended mission activity.",
+        "properties": {
+          "currency": {
+            "default": "USD",
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency",
+            "type": "string"
+          },
+          "max_active_jobs": {
+            "default": 1,
+            "maximum": 128.0,
+            "minimum": 0.0,
+            "title": "Max Active Jobs",
+            "type": "integer"
+          },
+          "max_calls": {
+            "default": 20,
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Max Calls",
+            "type": "integer"
+          },
+          "max_cost": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Cost"
+          },
+          "max_input_tokens": {
+            "default": 500000,
+            "maximum": 1000000000.0,
+            "minimum": 0.0,
+            "title": "Max Input Tokens",
+            "type": "integer"
+          },
+          "max_iterations": {
+            "default": 20,
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Max Iterations",
+            "type": "integer"
+          },
+          "max_new_work_items": {
+            "default": 20,
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Max New Work Items",
+            "type": "integer"
+          },
+          "max_output_tokens": {
+            "default": 100000,
+            "maximum": 1000000000.0,
+            "minimum": 0.0,
+            "title": "Max Output Tokens",
+            "type": "integer"
+          },
+          "max_wall_seconds": {
+            "default": 86400,
+            "maximum": 31536000.0,
+            "minimum": 0.0,
+            "title": "Max Wall Seconds",
+            "type": "integer"
+          },
+          "timezone": {
+            "const": "UTC",
+            "default": "UTC",
+            "title": "Timezone",
+            "type": "string"
+          },
+          "window_seconds": {
+            "default": 86400,
+            "maximum": 31536000.0,
+            "minimum": 60.0,
+            "title": "Window Seconds",
+            "type": "integer"
+          }
+        },
+        "title": "MissionResourceLimits",
+        "type": "object"
+      },
+      "MissionUsageView": {
+        "additionalProperties": false,
+        "properties": {
+          "actual": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Actual",
+            "type": "object"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/MissionResourceLimits-Output"
+          },
+          "reserved": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Reserved",
+            "type": "object"
+          },
+          "timezone": {
+            "const": "UTC",
+            "default": "UTC",
+            "title": "Timezone",
+            "type": "string"
+          },
+          "unknown_liability": {
+            "default": false,
+            "title": "Unknown Liability",
+            "type": "boolean"
+          },
+          "window_seconds": {
+            "title": "Window Seconds",
+            "type": "integer"
+          },
+          "window_started_at": {
+            "format": "date-time",
+            "title": "Window Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "window_started_at",
+          "window_seconds",
+          "reserved",
+          "actual",
+          "limits"
+        ],
+        "title": "MissionUsageView",
+        "type": "object"
+      },
       "MissionView": {
         "additionalProperties": false,
         "properties": {
+          "active_work_directive_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Work Directive Version"
+          },
+          "autonomous": {
+            "default": false,
+            "title": "Autonomous",
+            "type": "boolean"
+          },
           "constraints": {
             "items": {
               "type": "string"
             },
             "title": "Constraints",
             "type": "array"
+          },
+          "controls": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Controls",
+            "type": "object"
           },
           "created_at": {
             "format": "date-time",
@@ -1947,8 +2389,13 @@
           "lifecycle": {
             "enum": [
               "active",
-              "waiting",
+              "idle",
+              "waiting_for_capacity",
+              "waiting_for_approval",
               "blocked",
+              "paused",
+              "cancelling",
+              "cancelled",
               "completed",
               "archived"
             ],
@@ -1963,9 +2410,36 @@
             "title": "Mode",
             "type": "string"
           },
+          "next_action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Action"
+          },
+          "next_action_basis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Action Basis"
+          },
           "objective": {
             "title": "Objective",
             "type": "string"
+          },
+          "paid_unattended_available": {
+            "default": false,
+            "title": "Paid Unattended Available",
+            "type": "boolean"
           },
           "project_id": {
             "format": "uuid",
@@ -1981,9 +2455,41 @@
             "title": "Updated At",
             "type": "string"
           },
+          "usage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MissionUsageView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "user_action_required": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Action Required"
+          },
           "version": {
             "title": "Version",
             "type": "integer"
+          },
+          "waiting_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waiting Reason"
           }
         },
         "required": [
@@ -2000,6 +2506,120 @@
           "updated_at"
         ],
         "title": "MissionView",
+        "type": "object"
+      },
+      "MissionWakeupPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MissionWakeupView"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_after": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next After"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "MissionWakeupPage",
+        "type": "object"
+      },
+      "MissionWakeupView": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "deduplication_key": {
+            "title": "Deduplication Key",
+            "type": "string"
+          },
+          "directive_version": {
+            "title": "Directive Version",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "user_direction",
+              "job_completed",
+              "job_failed",
+              "approval_decided",
+              "deadline"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "management_turn_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Management Turn Id"
+          },
+          "scheduled_for": {
+            "format": "date-time",
+            "title": "Scheduled For",
+            "type": "string"
+          },
+          "source_event_cursor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Event Cursor"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "claimed",
+              "turn_queued",
+              "committed",
+              "stale",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "deduplication_key",
+          "directive_version",
+          "scheduled_for",
+          "created_at"
+        ],
+        "title": "MissionWakeupView",
         "type": "object"
       },
       "ModelBinding": {
@@ -4303,6 +4923,78 @@
           "items"
         ],
         "title": "RunPage",
+        "type": "object"
+      },
+      "RunReconciliationReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "duplicate": {
+            "default": false,
+            "title": "Duplicate",
+            "type": "boolean"
+          },
+          "effect_id": {
+            "format": "uuid",
+            "title": "Effect Id",
+            "type": "string"
+          },
+          "effect_status": {
+            "enum": [
+              "dispatched",
+              "running",
+              "cancel_requested",
+              "unknown"
+            ],
+            "title": "Effect Status",
+            "type": "string"
+          },
+          "queued_for_inspection": {
+            "title": "Queued For Inspection",
+            "type": "boolean"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "effect_id",
+          "effect_status",
+          "queued_for_inspection"
+        ],
+        "title": "RunReconciliationReceipt",
+        "type": "object"
+      },
+      "RunReconciliationRequest": {
+        "additionalProperties": false,
+        "description": "Request evidence collection for an existing ambiguous external identity.",
+        "properties": {
+          "effect_id": {
+            "format": "uuid",
+            "title": "Effect Id",
+            "type": "string"
+          },
+          "expected_run_version": {
+            "minimum": 0.0,
+            "title": "Expected Run Version",
+            "type": "integer"
+          },
+          "idempotency_key": {
+            "maxLength": 200,
+            "minLength": 8,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]+$",
+            "title": "Idempotency Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "effect_id",
+          "idempotency_key",
+          "expected_run_version"
+        ],
+        "title": "RunReconciliationRequest",
         "type": "object"
       },
       "RunUsage": {
@@ -7939,6 +8631,312 @@
         ]
       }
     },
+    "/api/v1/missions/{mission_id}/autonomy": {
+      "put": {
+        "operationId": "update_autonomy_api_v1_missions__mission_id__autonomy_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Mission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MissionAutonomyUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Update Autonomy",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/api/v1/missions/{mission_id}/controls": {
+      "post": {
+        "operationId": "control_mission_api_v1_missions__mission_id__controls_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Mission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MissionControlRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionControlView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Control Mission",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
     "/api/v1/missions/{mission_id}/directive": {
       "put": {
         "operationId": "update_directive_api_v1_missions__mission_id__directive_put",
@@ -8575,6 +9573,178 @@
           }
         },
         "summary": "List Turns",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/api/v1/missions/{mission_id}/wakeups": {
+      "get": {
+        "operationId": "list_wakeups_api_v1_missions__mission_id__wakeups_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Mission Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "After"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionWakeupPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "List Wakeups",
         "tags": [
           "missions"
         ]
@@ -12593,6 +13763,160 @@
           }
         },
         "summary": "Get Nodes",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/reconciliation": {
+      "post": {
+        "description": "Requeue inspection of one existing ambiguous identity without replacing it.",
+        "operationId": "request_reconciliation_api_v1_runs__run_id__reconciliation_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunReconciliationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunReconciliationReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Request Reconciliation",
         "tags": [
           "runs"
         ]

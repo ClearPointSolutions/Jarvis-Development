@@ -76,7 +76,7 @@ approval.resumed artifact.created artifact.unavailable artifact.verified command
 command.failed command.output_summary command.started command.timed_out config.created
 config.revised
 effect.prepared effect.dispatched effect.succeeded effect.cancel_requested
-effect.cancelled effect.unknown
+effect.cancelled effect.unknown effect.reconciliation_requested
 project.created
 config.validated failure.classified file.created file.deleted file.read file.snapshot_created
 file.write_completed file.write_started git.branch_created git.ci_updated git.commit_created
@@ -87,6 +87,7 @@ git.push_completed git.push_started graph.checkpointed graph.compile_failed grap
 graph.fanout_started graph.join_completed graph.route_selected instruction.applied
 instruction.queued job.blocked job.cancelled job.completed job.created job.failed job.status_changed
 lease.expired message.created mission.created mission.directive_revised mission.lifecycle_changed
+mission.autonomy_changed mission.control_changed mission.wakeup_created mission.wakeup_claimed
 management.turn_queued management.turn_started management.turn_applied management.turn_stale
 management.turn_failed work_item.created work_item.updated work_item.ready work_item.started
 work_item.accepted work_item.blocked work_item.cancelled model.budget_authorized
@@ -107,6 +108,7 @@ task.retry_scheduled task.reviewing task.succeeded task.verifying test.completed
 test.started
 thread.created tool.completed tool.failed tool.started worker.cancel_requested worker.cancelled
 worker.health_changed worker.heartbeat worker.invocation_completed worker.invocation_dispatched
+worker.capacity_waiting
 worker.workspace_prepared
 worker.invocation_failed worker.lease_acquired worker.lease_lost workflow.published
 """

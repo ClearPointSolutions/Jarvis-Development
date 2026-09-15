@@ -141,6 +141,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/missions/{mission_id}/autonomy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Autonomy */
+        put: operations["update_autonomy_api_v1_missions__mission_id__autonomy_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/missions/{mission_id}/controls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Control Mission */
+        post: operations["control_mission_api_v1_missions__mission_id__controls_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/missions/{mission_id}/directive": {
         parameters: {
             query?: never;
@@ -185,6 +219,23 @@ export interface paths {
         };
         /** List Turns */
         get: operations["list_turns_api_v1_missions__mission_id__turns_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/missions/{mission_id}/wakeups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Wakeups */
+        get: operations["list_wakeups_api_v1_missions__mission_id__wakeups_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -532,6 +583,26 @@ export interface paths {
         get: operations["get_nodes_api_v1_runs__run_id__nodes_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/runs/{run_id}/reconciliation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Reconciliation
+         * @description Requeue inspection of one existing ambiguous identity without replacing it.
+         */
+        post: operations["request_reconciliation_api_v1_runs__run_id__reconciliation_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1420,23 +1491,78 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "explain" | "propose" | "clarify" | "wait";
+            action: "explain" | "propose" | "clarify" | "wait" | "complete";
             /**
              * Lifecycle
              * @default active
              * @enum {string}
              */
-            lifecycle: "active" | "waiting" | "blocked";
+            lifecycle: "active" | "idle" | "waiting_for_approval" | "blocked" | "completed";
             /** Message */
             message: string;
+            /** Scheduled Wakeup At */
+            scheduled_wakeup_at?: string | null;
             /**
              * Work Items
              * @default []
              */
             work_items: components["schemas"]["WorkItemProposal"][];
         };
+        /** MissionAutonomyUpdate */
+        MissionAutonomyUpdate: {
+            /** Enabled */
+            enabled: boolean;
+            /** Expected Version */
+            expected_version: number;
+            /** Idempotency Key */
+            idempotency_key: string;
+        };
+        /** MissionControlRequest */
+        MissionControlRequest: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "pause" | "resume" | "drain" | "safe_point" | "cancel";
+            /** Expected Version */
+            expected_version: number;
+            /** Idempotency Key */
+            idempotency_key: string;
+            /** Instruction */
+            instruction?: string | null;
+            limits?: components["schemas"]["MissionResourceLimits-Input"] | null;
+            /**
+             * Scope
+             * @default mission
+             * @enum {string}
+             */
+            scope: "mission" | "team" | "global";
+        };
+        /** MissionControlView */
+        MissionControlView: {
+            /** Instruction */
+            instruction?: string | null;
+            limits: components["schemas"]["MissionResourceLimits-Output"];
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "mission" | "team" | "global";
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "open" | "paused" | "draining" | "cancelling";
+            /** Version */
+            version: number;
+        };
         /** MissionCreate */
         MissionCreate: {
+            /**
+             * Autonomous
+             * @default false
+             */
+            autonomous: boolean;
             /**
              * Constraints
              * @default []
@@ -1444,6 +1570,7 @@ export interface components {
             constraints: string[];
             /** Idempotency Key */
             idempotency_key: string;
+            limits?: components["schemas"]["MissionResourceLimits-Input"];
             /**
              * Mode
              * @default demo
@@ -1525,10 +1652,169 @@ export interface components {
             /** Next After */
             next_after?: string | null;
         };
+        /**
+         * MissionResourceLimits
+         * @description Conservative UTC-window limits for unattended mission activity.
+         */
+        "MissionResourceLimits-Input": {
+            /**
+             * Currency
+             * @default USD
+             */
+            currency: string;
+            /**
+             * Max Active Jobs
+             * @default 1
+             */
+            max_active_jobs: number;
+            /**
+             * Max Calls
+             * @default 20
+             */
+            max_calls: number;
+            /** Max Cost */
+            max_cost?: number | string | null;
+            /**
+             * Max Input Tokens
+             * @default 500000
+             */
+            max_input_tokens: number;
+            /**
+             * Max Iterations
+             * @default 20
+             */
+            max_iterations: number;
+            /**
+             * Max New Work Items
+             * @default 20
+             */
+            max_new_work_items: number;
+            /**
+             * Max Output Tokens
+             * @default 100000
+             */
+            max_output_tokens: number;
+            /**
+             * Max Wall Seconds
+             * @default 86400
+             */
+            max_wall_seconds: number;
+            /**
+             * Timezone
+             * @default UTC
+             * @constant
+             */
+            timezone: "UTC";
+            /**
+             * Window Seconds
+             * @default 86400
+             */
+            window_seconds: number;
+        };
+        /**
+         * MissionResourceLimits
+         * @description Conservative UTC-window limits for unattended mission activity.
+         */
+        "MissionResourceLimits-Output": {
+            /**
+             * Currency
+             * @default USD
+             */
+            currency: string;
+            /**
+             * Max Active Jobs
+             * @default 1
+             */
+            max_active_jobs: number;
+            /**
+             * Max Calls
+             * @default 20
+             */
+            max_calls: number;
+            /** Max Cost */
+            max_cost?: string | null;
+            /**
+             * Max Input Tokens
+             * @default 500000
+             */
+            max_input_tokens: number;
+            /**
+             * Max Iterations
+             * @default 20
+             */
+            max_iterations: number;
+            /**
+             * Max New Work Items
+             * @default 20
+             */
+            max_new_work_items: number;
+            /**
+             * Max Output Tokens
+             * @default 100000
+             */
+            max_output_tokens: number;
+            /**
+             * Max Wall Seconds
+             * @default 86400
+             */
+            max_wall_seconds: number;
+            /**
+             * Timezone
+             * @default UTC
+             * @constant
+             */
+            timezone: "UTC";
+            /**
+             * Window Seconds
+             * @default 86400
+             */
+            window_seconds: number;
+        };
+        /** MissionUsageView */
+        MissionUsageView: {
+            /** Actual */
+            actual: {
+                [key: string]: number | string | null;
+            };
+            limits: components["schemas"]["MissionResourceLimits-Output"];
+            /** Reserved */
+            reserved: {
+                [key: string]: number | string | null;
+            };
+            /**
+             * Timezone
+             * @default UTC
+             * @constant
+             */
+            timezone: "UTC";
+            /**
+             * Unknown Liability
+             * @default false
+             */
+            unknown_liability: boolean;
+            /** Window Seconds */
+            window_seconds: number;
+            /**
+             * Window Started At
+             * Format: date-time
+             */
+            window_started_at: string;
+        };
         /** MissionView */
         MissionView: {
+            /** Active Work Directive Version */
+            active_work_directive_version?: number | null;
+            /**
+             * Autonomous
+             * @default false
+             */
+            autonomous: boolean;
             /** Constraints */
             constraints: string[];
+            /** Controls */
+            controls?: {
+                [key: string]: string;
+            };
             /**
              * Created At
              * Format: date-time
@@ -1545,14 +1831,23 @@ export interface components {
              * Lifecycle
              * @enum {string}
              */
-            lifecycle: "active" | "waiting" | "blocked" | "completed" | "archived";
+            lifecycle: "active" | "idle" | "waiting_for_capacity" | "waiting_for_approval" | "blocked" | "paused" | "cancelling" | "cancelled" | "completed" | "archived";
             /**
              * Mode
              * @enum {string}
              */
             mode: "demo" | "real";
+            /** Next Action */
+            next_action?: string | null;
+            /** Next Action Basis */
+            next_action_basis?: string | null;
             /** Objective */
             objective: string;
+            /**
+             * Paid Unattended Available
+             * @default false
+             */
+            paid_unattended_available: boolean;
             /**
              * Project Id
              * Format: uuid
@@ -1565,8 +1860,56 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            usage?: components["schemas"]["MissionUsageView"] | null;
+            /** User Action Required */
+            user_action_required?: string | null;
             /** Version */
             version: number;
+            /** Waiting Reason */
+            waiting_reason?: string | null;
+        };
+        /** MissionWakeupPage */
+        MissionWakeupPage: {
+            /** Items */
+            items: components["schemas"]["MissionWakeupView"][];
+            /** Next After */
+            next_after?: string | null;
+        };
+        /** MissionWakeupView */
+        MissionWakeupView: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Deduplication Key */
+            deduplication_key: string;
+            /** Directive Version */
+            directive_version: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "user_direction" | "job_completed" | "job_failed" | "approval_decided" | "deadline";
+            /** Management Turn Id */
+            management_turn_id?: string | null;
+            /**
+             * Scheduled For
+             * Format: date-time
+             */
+            scheduled_for: string;
+            /** Source Event Cursor */
+            source_event_cursor?: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "claimed" | "turn_queued" | "committed" | "stale" | "failed";
         };
         /** ModelBinding */
         ModelBinding: {
@@ -2499,6 +2842,46 @@ export interface components {
             items: components["schemas"]["RunView"][];
             /** Next After */
             next_after?: string | null;
+        };
+        /** RunReconciliationReceipt */
+        RunReconciliationReceipt: {
+            /**
+             * Duplicate
+             * @default false
+             */
+            duplicate: boolean;
+            /**
+             * Effect Id
+             * Format: uuid
+             */
+            effect_id: string;
+            /**
+             * Effect Status
+             * @enum {string}
+             */
+            effect_status: "dispatched" | "running" | "cancel_requested" | "unknown";
+            /** Queued For Inspection */
+            queued_for_inspection: boolean;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+        };
+        /**
+         * RunReconciliationRequest
+         * @description Request evidence collection for an existing ambiguous external identity.
+         */
+        RunReconciliationRequest: {
+            /**
+             * Effect Id
+             * Format: uuid
+             */
+            effect_id: string;
+            /** Expected Run Version */
+            expected_run_version: number;
+            /** Idempotency Key */
+            idempotency_key: string;
         };
         /** RunUsage */
         RunUsage: {
@@ -4517,6 +4900,256 @@ export interface operations {
             };
         };
     };
+    update_autonomy_api_v1_missions__mission_id__autonomy_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mission_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MissionAutonomyUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissionView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    control_mission_api_v1_missions__mission_id__controls_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mission_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MissionControlRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissionControlView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
     update_directive_api_v1_missions__mission_id__directive_put: {
         parameters: {
             query?: never;
@@ -4912,6 +5545,130 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ManagementTurnPage"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    list_wakeups_api_v1_missions__mission_id__wakeups_get: {
+        parameters: {
+            query?: {
+                after?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                mission_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissionWakeupPage"];
                 };
             };
             /** @description Bad Request */
@@ -8006,6 +8763,131 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NodePage"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    request_reconciliation_api_v1_runs__run_id__reconciliation_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunReconciliationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunReconciliationReceipt"];
                 };
             };
             /** @description Bad Request */
