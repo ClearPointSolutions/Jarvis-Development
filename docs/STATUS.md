@@ -1,5 +1,25 @@
 # Jarvis V1 Status
 
+## Post-Phase-5 CI stabilization (2026-09-15, locally verified)
+
+Branch `codex/post-phase-05-ci-stabilization`; clean fetched main/base
+`552c37d131d528bd1979246129961343cf31bc88`. Completion criteria:
+
+- [x] Reproduce and repair default metadata drift with fresh/upgrade coverage.
+- [x] Verify shared target lease expiry, queue ordering and stale fencing.
+- [x] Restore owner-scoped diagnostics under the least-privilege API role.
+- [x] Isolate historical integration while preserving provenance and replay.
+- [x] Run affected and related tests, then the complete CI-equivalent verification
+  pipeline with disposable PostgreSQL 16 and mandatory SSH/isolation fixtures.
+- [x] Record exact evidence, review the diff and commit the focused repair.
+
+Repair code: `836cdc61217c6feb9823eb958ba6b5903c15d4be`. Final `scripts/verify.sh`
+exited 0: 919 Python tests passed, 81.84% coverage; frontend/build/browser/demo
+gates passed. Nine POSIX tests skipped on Windows passed separately in Linux;
+four live-model tests remain intentionally unrun. See
+[the stabilization handoff](development/post-phase-05-ci-stabilization.md).
+Remote CI, deployment and elapsed-time live qualification remain unverified.
+
 ## Phase 5 unattended operations (2026-09-15, implementation in progress)
 
 Branch `phase/05-unattended-operations`; clean fetched base
