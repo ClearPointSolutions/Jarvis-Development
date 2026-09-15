@@ -1,5 +1,39 @@
 # Jarvis V1 Status
 
+## Phase 2 bounded autonomy (2026-09-14, in progress)
+
+Branch `phase/02-bounded-autonomy`; fetched clean base
+`5b7a5caefba9d9acccd21085c2232c515ed31dcc` (current `origin/main`, including
+the merged Phase 1 mission work). Milestone criteria:
+
+- [ ] Enforce an explicit durable mission state machine and autonomous opt-in,
+  with mission/team/global admission pause, drain, safe-point instruction, and
+  cancellation controls checked immediately before inference and dispatch.
+- [ ] Persist event-driven manager wakeups, deduplication identities, frozen
+  input cursors/snapshots, receipts, decisions, enqueue intents, and crash-safe
+  recovery so accepted outcomes create at most one logical next assignment.
+- [ ] Reserve worker capacity atomically before dispatch; represent saturation
+  as durable capacity waiting without spending a semantic coding attempt, and
+  require evidence-backed reconciliation for expired or ambiguous invocations.
+- [ ] Enforce mission/team/global and time-window resource limits with
+  transactional maximum-liability reservations, worker-inclusive accounting,
+  unknown-liability retention, currency/unit compatibility checks, and paid
+  unattended execution disabled until worker spending cannot bypass controls.
+- [ ] Expose governing directive, active snapshot, next intended action/basis,
+  wait/user-action reasons, controls, budgets, reservations, actual/unknown
+  usage, observed worker/model evidence, and honest freshness in the API/UI.
+- [ ] Prove two successive useful jobs from one direction, duplicate/crash
+  convergence, stale-proposal rejection, budget races/unknown charges, capacity
+  waits, outages, approval expiry, pause/dispatch races, and idle-no-inference;
+  add all deterministic tests to the normal gate.
+- [ ] Run focused and full local gates, browser/console/generated-contract
+  checks, review the diff, update canonical docs, write the Phase 2 handoff,
+  commit cohesively, push the branch, and open/update a draft PR when authorized.
+
+No live staging, paid provider call, legacy-path change, deployment, main merge,
+or repository-protection change is authorized by this milestone. Live and CI
+evidence remain UNVERIFIED until actually observed against the exact final SHA.
+
 ## Phase 1 persistent missions (2026-09-14, code + CI complete; live gate open)
 
 Branch `phase/01-persistent-missions`; fetched base
