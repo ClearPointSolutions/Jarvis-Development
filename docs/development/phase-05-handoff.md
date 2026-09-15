@@ -4,11 +4,14 @@
 
 - Base SHA: `dca6a9c1fbb5dfbe5f997c7f2f1ef7ae862a45c1`
 - Branch: `phase/05-unattended-operations`
-- Implementation SHA: `f63a601` (full SHA available from `git rev-parse HEAD`)
+- Implementation SHA: `f63a601c5a5a6206d3d755893ea741152cc2901c`
 - Final branch SHA: the documentation commit containing this handoff; obtain it
   from `git rev-parse HEAD` because a commit cannot contain its own identity
 - CI identity: UNVERIFIED
 - Live identity: UNVERIFIED
+- Published branch: `origin/phase/05-unattended-operations`
+- Draft PR: not created because GitHub CLI is unavailable in this environment;
+  use the [pre-filled compare page](https://github.com/ClearPointSolutions/Jarvis-Development/compare/main...phase/05-unattended-operations?expand=1)
 
 ## IMPLEMENTED
 
