@@ -518,7 +518,9 @@ class MissionResourceReservationModel(Base):
     actual_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="reserved")
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
-    price_unit: Mapped[str] = mapped_column(String(40), nullable=False, default="currency")
+    price_unit: Mapped[str] = mapped_column(
+        String(40), nullable=False, default="currency", server_default="currency"
+    )
     window_started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

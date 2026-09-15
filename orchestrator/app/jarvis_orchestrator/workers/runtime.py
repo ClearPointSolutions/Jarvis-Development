@@ -216,13 +216,15 @@ class WorkerEffectAdapter:
                         )
                     )
                     attempt = await session.get(TaskAttemptModel, request.task_attempt_id)
-                    if attempt is None or attempt.status != "queued":
+                    if attempt is None or attempt.status not in {"queued", "running"}:
                         raise WorkerBoundaryError("worker_attempt_activation_invalid")
-                    attempt.status = "running"
-                    attempt.started_at = self.ownership.clock.now()
                     task = await session.get(TaskModel, attempt.task_id)
                     assert task is not None
-                    task.status = "running"
+                    activate = attempt.status == "queued"
+                    if activate:
+                        attempt.status = "running"
+                        attempt.started_at = self.ownership.clock.now()
+                        task.status = "running"
                     job = await session.get(JobModel, run.job_id)
                     if job is not None:
                         job.status = "active"
@@ -237,16 +239,17 @@ class WorkerEffectAdapter:
                     if mission is not None and mission.lifecycle == "waiting_for_capacity":
                         mission.lifecycle = "active"
                         mission.waiting_reason = None
-                    await self.ownership.event(
-                        session,
-                        run,
-                        "task.attempt_started",
-                        {
-                            "task_id": str(task.id),
-                            "task_attempt_id": str(attempt.id),
-                            "attempt": attempt.attempt_number,
-                        },
-                    )
+                    if activate:
+                        await self.ownership.event(
+                            session,
+                            run,
+                            "task.attempt_started",
+                            {
+                                "task_id": str(task.id),
+                                "task_attempt_id": str(attempt.id),
+                                "attempt": attempt.attempt_number,
+                            },
+                        )
             pending = asyncio.create_task(self._dispatch_prepared(prepared))
             try:
                 while not pending.done():

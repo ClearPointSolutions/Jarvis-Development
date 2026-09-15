@@ -111,7 +111,20 @@ async def test_one_direction_creates_two_jobs_then_completes_with_deduped_wakeup
                 MissionWorkItemModel.key == "DEV-001",
             )
         )
-        assert first is not None and first.run_id is not None and first.lifecycle == "started"
+        stored = await session.get(MissionModel, mission_id)
+        turn = await session.scalar(
+            select(ManagementTurnModel).where(ManagementTurnModel.mission_id == mission_id)
+        )
+        diagnostic = {
+            "mission_lifecycle": stored.lifecycle if stored else None,
+            "waiting_reason": stored.waiting_reason if stored else None,
+            "turn_status": turn.status if turn else None,
+            "turn_failure": turn.failure_code if turn else None,
+            "item_lifecycle": first.lifecycle if first else None,
+        }
+        assert first is not None and first.run_id is not None and first.lifecycle == "started", (
+            diagnostic
+        )
         first_run_id = first.run_id
     await finish(session_factory, first_run_id)
     for _ in range(50):
