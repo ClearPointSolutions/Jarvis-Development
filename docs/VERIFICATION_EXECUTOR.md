@@ -1,10 +1,20 @@
 # Disposable verification executor
 
 Implementation and acceptance are tracked in `V1_HARDENING_MATRIX.md`.
-The initial profile is offline Python 3.12 with pytest. It supports at most
+The compatible initial profile is offline Python 3.12 with pytest. It supports at most
 1,000 UTF-8 files and 4 MiB of source, excluding binary, LFS, symlink and submodule
 content. Dependencies must be present in the pinned image; tests cannot install
-from the network. Other project profiles remain a separate V1 requirement.
+from the network. Phase 3 adds explicit Node build/unit and Playwright browser
+profiles without changing that Python path.
+
+Node/browser profiles resolve a published registry revision through private
+executor configuration to an immutable image ID and exact tool versions. Before
+execution, preflight checks project type, command capability, source bounds and
+formats, `package.json`, package-lock v2/v3, integrity fields, and allowlisted
+HTTPS dependency sources. The broker runs `npm ci --ignore-scripts` on a dedicated
+registry-only network, bounds output/cache/resources, and records preparation
+evidence. It then mounts `node_modules` read only into a no-network verification
+container. Playwright reaches only an app in the same container via loopback.
 
 Core seals committed source and sends a bounded request containing run,
 execution, candidate/tree SHA, files and command. The dedicated broker validates
@@ -54,6 +64,13 @@ The broker configuration is private, owned by the executor account and contains:
   "receipt_root": "/opt/jarvis-v1/executor/receipts"
 }
 ```
+
+For web profiles, use the full shape in
+`deploy/verification-broker.example.json`: add the dedicated preparation network,
+the single approved HTTPS registry URL, and a `profiles` mapping keyed by registry
+revision UUID. Each value is a complete `ResolvedExecutionProfile` and must match
+the corresponding private Core runtime binding byte-for-byte. The executor
+rejects a caller-supplied or stale profile even when its command looks valid.
 
 Use a dedicated SSH key restricted to the fixed command:
 

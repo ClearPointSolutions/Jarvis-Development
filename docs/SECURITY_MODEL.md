@@ -135,6 +135,23 @@ Bounded request bodies, pagination, SSE connection limits, per-user job/call quo
 - Stale lease results and duplicate approval/command/effect requests cannot advance state twice.
 - Legacy `/opt/jarvis` is never mounted writable or mutated by V1 deployment.
 
+### 14.1 Web-profile isolation acceptance
+
+- A profile is an immutable registry revision resolved by private configuration
+  to an exact local image ID and observed tool versions; the browser cannot
+  supply an image, executable path, Docker option, network, or registry URL.
+- npm preparation requires `package.json`, lockfile v2/v3, integrity metadata,
+  and allowlisted HTTPS `resolved` hosts. `npm ci --ignore-scripts` runs without
+  Core secrets or Docker authority on a dedicated, externally egress-filtered
+  registry network. That network must deny host, LAN, metadata, and all endpoints
+  except the configured registries; a normal bridge network is not sufficient.
+- Verification always uses `--network none`. Browser and application processes
+  share container loopback, receive no published port, and are killed/removed by
+  the broker or identity-checking watchdog. Dependency volumes are mounted read
+  only and removed only after their exact digest label is verified.
+- The retained Python profile uses dependencies already pinned into its image;
+  it does not enable general-purpose pip installation on Core or at runtime.
+
 ## 15. Residual risks
 
 - The existing OpenHands worker is highly privileged and not intrinsically idempotent; isolation plus the V1 invocation wrapper and staging reconciliation tests are required before production trust.

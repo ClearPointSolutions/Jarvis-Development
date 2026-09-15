@@ -153,7 +153,34 @@ Demo labels are visible throughout; no real network adapter or production secret
 14. **GitHub publishing/PR works when configured/approved:** create one branch/PR in the disposable private allowed repository; configured CI state appears. If GitHub is deliberately not configured, this release-blocking step is not waived—it remains not passed.
 15. **History survives service restart:** restart API/orchestrator (and V1 containers as planned), reload and verify complete event/task/attempt/approval/artifact/usage/PR history and terminal status. Confirm legacy remains untouched.
 
-## 13. Whole-project release gate
+## 13. Phase 3 web-profile acceptance
+
+- **WEB-001 Profile preflight:** immutable Python, Node build/unit, and browser
+  revisions resolve only through private image/tool bindings. Unsupported tools,
+  project type, files, source size, timeout, and output bounds fail with a precise
+  capability code before execution.
+- **WEB-002 Dependency boundary:** npm requires matching manifest/lockfile,
+  integrity fields, and allowlisted HTTPS sources. Preparation denies lifecycle
+  scripts, credentials, and Docker authority; verification denies host, LAN,
+  metadata, and public networking and exposes no port.
+- **WEB-003 Evidence identity:** changing source SHA, resolved image, manifest or
+  lockfile, command, profile revision, or required checks changes the applicable
+  digest. Empty required suites, truncated output, timeout, incomplete parsing,
+  and unexpected exits cannot pass.
+- **WEB-004 Required checks:** published build/unit/browser checks are immutable
+  and automatically reattached. Developer-added tests are additive; omission or
+  replacement of a protected check fails admission/execution.
+- **WEB-005 Repository context:** one source/tree revision supplies deterministic
+  prioritized excerpts with paths, line ranges, provenance, digests, selection,
+  and omissions. Missing required paths and partial “complete” reviews fail.
+- **WEB-006 Full-stack fixture:** clean dependency install, frontend build, Python
+  API and Node unit suites, form validation, persisted item reload, and the
+  follow-on completion/reload browser journey pass from the checked-in fixture.
+- **WEB-007 Real orchestration:** on an authorized V1 target, run the full-stack
+  project and follow-on change through real worker, isolated build/unit/browser,
+  independent review, and integration. Protocol/local fixtures are not live proof.
+
+## 14. Whole-project release gate
 
 - **PERF-001 Control responsiveness:** with 100 queued runs and configured worker capacity saturated, enqueue/control API p95 remains below 500 ms on the target LAN test profile; handlers do not wait for worker/model completion.
 - **PERF-002 Stream capacity:** 20 authenticated SSE clients reconnect/read while events commit; committed events normally reach connected clients within 2 seconds, all clients recover by cursor, and queue/orchestrator correctness is unchanged.

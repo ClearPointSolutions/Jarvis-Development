@@ -172,3 +172,22 @@ checksum verification, a separate Python environment, immutable revision binding
 independently pinned host keys, protected invocation storage and the later staging
 test sequence. This is documentation only. M7 local validation does not deploy or
 contact any homelab service, and preserves the existing runner and environments.
+
+## Phase 3 executor images and private bindings
+
+Build `deploy/verification.Dockerfile`, `deploy/verification-node.Dockerfile`, and
+`deploy/verification-browser.Dockerfile` on the dedicated executor. Resolve every
+tag to `docker image inspect`'s `sha256:` ID and place revision-keyed profile
+bindings in the private broker/runtime manifests. Public registry revisions hold
+policy and display data only; they never grant an image that private
+configuration has not installed and matched.
+
+Create a dedicated dependency-preparation network whose host firewall or egress
+proxy allows only the declared registry hosts over TLS and denies host, LAN,
+cloud-metadata, and other public destinations. Do not substitute the default
+Compose or Docker bridge. Verification containers remain on `--network none` and
+publish no ports. Install the existing reaper timer for the executor account and
+verify timeout, cancellation, crash reconciliation, and digest-labeled volume
+cleanup before enabling a web profile. `deploy/verification-broker.example.json`
+is a shape-only example; its synthetic image digest and empty profile map are not
+deployable values.

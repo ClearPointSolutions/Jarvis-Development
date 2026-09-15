@@ -298,3 +298,14 @@ Adapter output that arrives after its lease/fence expires is stored as a non-aut
 - Contract tests prove append-only database privileges/triggers and deterministic formatting.
 - UI tests prove unknown event types render a safe generic row and do not crash the stream.
 - An upcaster reads older supported major versions into the current in-memory view; stored events are never rewritten during upgrades.
+
+## 10. Phase 3 execution evidence
+
+`dependency.prepared` records the selected profile revision/digest, resolved
+image ID, lockfile path/digest, dependency digest, preparation artifact, denied
+lifecycle scripts, and the restricted-network policy. It never contains registry
+credentials or raw environment data. `test.started`, `test.completed`, and
+`test.failed` additionally expose profile/image/dependency/command and
+required-check-set digests plus output-truncation state. The referenced artifact
+holds the authoritative parsed result. A missing, empty-required, incomplete,
+unexpected-exit, timed-out, or truncated result is never emitted as passing.
