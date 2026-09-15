@@ -5,6 +5,15 @@ Scope: V1 control plane, runtime, integrations, and operator UI
 
 Technology baseline: Next.js, React, TypeScript, Tailwind CSS, shadcn/ui or an accessibility-equivalent component system, React Flow, TanStack Query, selective Zustand, and xterm.js on the frontend; Python 3.12+, FastAPI, Pydantic, SQLAlchemy 2.x, Alembic, asyncio, LangGraph, and `langgraph-checkpoint-postgres` on the backend; PostgreSQL, pytest, frontend component tests, Playwright, type checks, and linting across the system. Exact compatible versions are pinned and proven in M0/M1 rather than assumed from the legacy inventory.
 
+Phase 1 adds a durable mission layer above, rather than inside, the run engine.
+A mission manager selects and revises bounded backlog intent; it never advances a
+LangGraph run. Explicit user launch calls the same authenticated job service as
+ordinary work, after which the published workflow, immutable run snapshot,
+planner, worker, verifier, reviewer, approvals, and integration machinery remain
+authoritative. Manager inference is a separately owned, leased model call with a
+durable input snapshot and response receipt. Applying its proposal is conditional
+on the directive and fixed-team versions still matching.
+
 ## 1. Architectural invariants
 
 1. LangGraph is the orchestration source of truth. React Flow is an editor/visualization, not a scheduler.

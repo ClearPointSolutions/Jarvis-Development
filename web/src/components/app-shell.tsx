@@ -14,10 +14,13 @@ import { useUiStore } from "@/lib/ui-store";
 
 const navigation = [
   { href: "/", label: "Mission" },
+  { href: "/missions", label: "Missions" },
   { href: "/projects", label: "Projects" },
   { href: "/runs", label: "Runs" },
   { href: "/workflows", label: "Workflows" },
   { href: "/registry", label: "Registry" },
+  { href: "/roles", label: "Agent roles" },
+  { href: "/teams", label: "Teams" },
   { href: "/workers", label: "Workers" },
   { href: "/providers", label: "Providers" },
   { href: "/models", label: "Models" },

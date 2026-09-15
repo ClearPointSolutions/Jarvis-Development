@@ -9,7 +9,7 @@ from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, cast
 
-from pydantic import Field, JsonValue
+from pydantic import Field, JsonValue, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from uuid6 import uuid7
 
@@ -29,11 +29,21 @@ class OrchestratorSettings(BaseSettings):
     lease_seconds: int = Field(default=30, ge=5, le=600)
     poll_seconds: float = Field(default=0.2, ge=0.01, le=1)
     grace_seconds: float = Field(default=10, ge=0, le=300)
+    manager_call_timeout_seconds: int = Field(default=120, ge=5, le=300)
+    manager_lease_seconds: int = Field(default=180, ge=60, le=600)
+    manager_max_attempts: int = Field(default=2, ge=1, le=5)
+    manager_max_output_tokens: int = Field(default=2048, ge=128, le=8192)
     runtime_mode: Literal["real", "demo"] = "real"
     runtime_file: Path | None = None
     artifact_root: Path = Field(
         default=Path("var/artifacts"), validation_alias="JARVIS_ARTIFACT_ROOT"
     )
+
+    @model_validator(mode="after")
+    def manager_lease_covers_call(self) -> "OrchestratorSettings":
+        if self.manager_lease_seconds < self.manager_call_timeout_seconds + 30:
+            raise ValueError("Manager lease must exceed its call timeout by at least 30 seconds")
+        return self
 
 
 async def serve() -> None:
@@ -105,6 +115,10 @@ async def serve() -> None:
             demo=settings.runtime_mode == "demo",
             artifact_root=settings.artifact_root,
             real_composition=composition,
+            manager_lease_seconds=settings.manager_lease_seconds,
+            manager_max_attempts=settings.manager_max_attempts,
+            manager_call_timeout_seconds=settings.manager_call_timeout_seconds,
+            manager_max_output_tokens=settings.manager_max_output_tokens,
         ).serve(stop)
     finally:
         for signum, handler in previous.items():

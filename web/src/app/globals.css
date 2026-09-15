@@ -1327,3 +1327,46 @@ h1 {
 .run-experience-card li {
   margin-bottom: 0.4rem;
 }
+
+.mission-team-grid,
+.mission-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.mission-team-grid label {
+  display: grid;
+  gap: 0.4rem;
+}
+.mission-chat,
+.backlog-list {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0;
+}
+.mission-message,
+.backlog-list > li {
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  padding: 1rem;
+}
+.mission-message-manager {
+  border-color: var(--accent);
+}
+.mission-message span {
+  float: right;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+.mission-message p {
+  margin-bottom: 0;
+  white-space: pre-wrap;
+}
+@media (max-width: 900px) {
+  .mission-team-grid,
+  .mission-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}

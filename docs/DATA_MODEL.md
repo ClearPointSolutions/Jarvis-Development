@@ -71,6 +71,29 @@ No hidden reasoning field exists. A user message that becomes a runtime instruct
 
 ## 4. Projects and repositories
 
+### Phase 1 missions
+
+`missions` binds a continuing objective and constraint projection to one project,
+lifecycle, real/demo mode, current directive version, and selected immutable team
+version. `mission_directives` and `mission_team_versions` are append-only version
+rows protected by database triggers. `mission_messages` has a per-mission durable
+sequence and user/manager/system identity plus queued, delivered, stale, or failed
+disposition.
+
+`management_turns` owns the persisted input snapshot, governing directive/team
+versions, lease/retry state, per-turn paid-inference authorization, model-call
+identity, validated response, and application disposition. A
+`model_response_receipt` belongs to exactly one run or management turn; receipt
+persistence does not imply that a stale response was applied.
+
+`mission_work_items` keeps stable scoped keys, bounded objectives, acceptance
+criteria, priority, dependency-aware lifecycle, and optional one-to-one job/run
+links. `mission_work_item_dependencies` stores the acyclic dependency edges.
+Pending/ready items may be revised by a later valid manager proposal without
+changing identity; started or terminal items may not. Only an explicit API launch
+creates the ordinary job/run, and only a completed run reconciles the item to
+accepted.
+
 ### `projects`
 
 `id`, `owner_user_id`, unique `slug`, `name`, `description`, `default_workflow_version_id`, `default_branch_policy_id`, `status`, timestamps, `archived_at`.
@@ -106,6 +129,16 @@ Configuration identities have a mutable display row and immutable revision rows.
 `id`, `worker_id`, `revision`, `adapter_kind`, `config_schema_version`, `config_json`, `capabilities_json`, `max_concurrency`, `created_by`, `created_at`, unique (`worker_id`, `revision`).
 
 For Worker-01, `config_json` includes configured host alias/address, SSH user, key `secret_ref`, workspace/runner/invocation roots, timeouts, and host-key policy. Responses redact the secret reference details as configured.
+
+### `agent_roles` and `team_templates`
+
+These use the shared `configurations` / immutable `configuration_revisions`
+physical registry. Agent-role specs separate manager, developer, and reviewer
+responsibilities from execution bindings. A fixed team-template revision names
+its mode and exact role, manager/reviewer model-profile, exclusive developer
+worker, and published workflow version references. Mission assignment copies
+those references into an immutable mission-team version so later template edits
+cannot alter active work.
 
 ### `provider_connections`
 

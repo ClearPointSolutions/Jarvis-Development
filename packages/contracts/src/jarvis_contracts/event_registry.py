@@ -86,7 +86,11 @@ command.normalized
 git.push_completed git.push_started graph.checkpointed graph.compile_failed graph.compiled
 graph.fanout_started graph.join_completed graph.route_selected instruction.applied
 instruction.queued job.blocked job.cancelled job.completed job.created job.failed job.status_changed
-lease.expired message.created model.budget_authorized model.budget_denied
+lease.expired message.created mission.created mission.directive_revised mission.lifecycle_changed
+management.turn_queued management.turn_started management.turn_applied management.turn_stale
+management.turn_failed work_item.created work_item.updated work_item.ready work_item.started
+work_item.accepted work_item.blocked work_item.cancelled model.budget_authorized
+model.budget_denied
 model.call_completed model.call_failed model.call_started
 model.failover
 model.health_changed model.route_selected model.stream_progress model.usage_recorded node.cancelled
@@ -123,6 +127,8 @@ _PREFIX_CATEGORIES = {
     "job": EventCategory.JOB,
     "lease": EventCategory.SYSTEM,
     "message": EventCategory.THREAD,
+    "mission": EventCategory.THREAD,
+    "management": EventCategory.THREAD,
     "model": EventCategory.MODEL,
     "node": EventCategory.NODE,
     "orchestrator": EventCategory.SYSTEM,
@@ -137,6 +143,7 @@ _PREFIX_CATEGORIES = {
     "thread": EventCategory.THREAD,
     "tool": EventCategory.TOOL,
     "worker": EventCategory.WORKER,
+    "work_item": EventCategory.TASK,
     "workflow": EventCategory.CONFIG,
 }
 

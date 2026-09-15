@@ -1,5 +1,42 @@
 # Jarvis V1 Status
 
+## Phase 1 persistent missions (2026-09-14, code + CI complete; live gate open)
+
+Branch `phase/01-persistent-missions`; fetched base
+`29780ba722f93d72ed725fff64a85b2eef7fda43` (merged Phase 0 tip). Milestone
+criteria:
+
+- mission goals, immutable directive/team versions, chat, manager turns, and
+  bounded dependency-checked work items survive API/orchestrator restart;
+- one fixed manager/developer/reviewer team freezes active registry revisions,
+  an exclusive worker, and a published workflow whose resolved snapshot contains
+  the execution bindings;
+- the bounded manager queue persists input before inference and a private
+  response receipt before applying validated proposals, rejects stale direction,
+  separates real/demo routing, and requires per-turn paid authorization;
+- manual work-item launch is idempotently linked through the ordinary job/run
+  enqueue service and completion is accepted only from the existing verified run
+  lifecycle;
+- authenticated paginated APIs and a usable mission/chat/backlog/run-evidence UI
+  pass migrations, focused tests, generated-contract checks, frontend checks,
+  browser acceptance, and the normal verification gate; unavailable CI/live
+  staging evidence remains explicitly unverified.
+
+Implemented through `304017e`: migration `0012`; registry-backed fixed team
+templates and role revisions; persistent missions/directives/messages/turns/work
+items; bounded receipt-backed manager execution; idempotent explicit launch through
+the ordinary job service; normalized events; generated contracts; and the mission/
+team UI. The repository-local non-database test execution completed with `678
+passed, 10 skipped`; local `scripts/verify.sh` could not satisfy its unchanged 80%
+coverage gate without PostgreSQL and reached 54.63%. Static/generated/frontend
+gates, Vitest (`54 passed`), production build, npm audit, and mocked Playwright (`6
+passed, 6 database-backed skipped`) pass. Exact implementation CI run
+[`34910019452`](https://github.com/ClearPointSolutions/Jarvis-Development/actions/runs/34910019452)
+passed PostgreSQL migrations/full Python (`879 passed, 4 skipped`, 84.42%), generated
+contracts, frontend/build/audit, mandatory protocol fixture, database-backed
+Playwright (`11 passed, 1 skipped`), and the deterministic demo browser run. Real V1
+staging remains UNVERIFIED; see `docs/development/phase-01-handoff.md`.
+
 ## Phase 0 operational baseline (2026-09-14, code complete; live gate open)
 
 Branch `phase/00-operational-baseline`; fetched base
