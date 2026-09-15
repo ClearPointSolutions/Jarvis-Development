@@ -4,6 +4,7 @@ import type {
   RegistryRecord,
   RoutePolicySpec,
   RouteCandidate,
+  WorkerPoolSpec,
 } from "@jarvis/contracts";
 import type { RegistryKind } from "@/lib/api/registry";
 
@@ -11,10 +12,17 @@ type WithKind<T> = T extends { kind?: infer K }
   ? Omit<T, "kind"> & { kind: NonNullable<K> }
   : never;
 export type Spec =
-  | Exclude<WithKind<RegistryWrite["spec"]>, { kind: "route_policy" }>
+  | Exclude<
+      WithKind<RegistryWrite["spec"]>,
+      { kind: "route_policy" | "worker_pool" }
+    >
   | (Omit<RoutePolicySpec, "kind" | "candidates"> & {
       kind: "route_policy";
       candidates: RouteCandidate[];
+    })
+  | (Omit<WorkerPoolSpec, "kind" | "worker_revision_ids"> & {
+      kind: "worker_pool";
+      worker_revision_ids: string[];
     });
 
 function ListInput({
@@ -50,6 +58,7 @@ export const registryTitles: Record<RegistryKind, string> = {
   retry_policy: "Retry policies",
   permission_policy: "Permission policies",
   execution_profile: "Execution profiles",
+  worker_pool: "Worker pools",
 };
 const timeout = {
   connect_seconds: 10,
@@ -77,6 +86,22 @@ export function defaultSpec(kind: RegistryKind): Spec {
         reviewer_role_revision_id: "",
         reviewer_profile_revision_id: "",
         workflow_version_id: "",
+        members: [],
+        budgets: {
+          max_active_assignments: 2,
+          max_execution_seconds: 14400,
+          max_inference_calls: 100,
+          reserve_management_slots: 1,
+          reserve_review_slots: 1,
+        },
+      };
+    case "worker_pool":
+      return {
+        kind,
+        worker_revision_ids: [],
+        permitted_project_ids: [],
+        required_capabilities: [],
+        health_freshness_seconds: 60,
       };
     case "worker":
       return {
@@ -89,6 +114,11 @@ export function defaultSpec(kind: RegistryKind): Spec {
         timeouts: timeout,
         model_binding: { mode: "none", allowed_profile_revision_ids: [] },
         deployment_configured: false,
+        physical_resource_id: null,
+        permitted_project_ids: [],
+        execution_profile_revision_ids: [],
+        observed_build_digest: null,
+        observed_wrapper_version: null,
       };
     case "provider_connection":
       return {
@@ -258,7 +288,7 @@ const fields: Record<RegistryKind, Field[]> = {
     {
       path: "responsibility",
       label: "Responsibility",
-      options: ["manager", "developer", "reviewer"],
+      options: ["manager", "developer", "reviewer", "specialist"],
     },
     { path: "purpose", label: "Purpose", required: true },
     {
@@ -310,6 +340,11 @@ const fields: Record<RegistryKind, Field[]> = {
       label: "Published workflow version UUID",
       required: true,
     },
+    {
+      path: "members",
+      label: "Custom member bindings (JSON array)",
+      type: "json",
+    },
   ],
   worker: [
     {
@@ -333,6 +368,20 @@ const fields: Record<RegistryKind, Field[]> = {
       type: "number",
       min: 1,
       max: 128,
+    },
+    {
+      path: "physical_resource_id",
+      label: "Stable physical resource identity",
+    },
+    {
+      path: "permitted_project_ids",
+      label: "Permitted project UUIDs",
+      type: "list",
+    },
+    {
+      path: "execution_profile_revision_ids",
+      label: "Execution profile revision UUIDs",
+      type: "list",
     },
     { path: "labels", label: "Labels (JSON object)", type: "json" },
     {
@@ -597,6 +646,30 @@ const fields: Record<RegistryKind, Field[]> = {
       max: 67108864,
     },
     { path: "source_formats", label: "Allowed source suffixes", type: "list" },
+  ],
+  worker_pool: [
+    {
+      path: "worker_revision_ids",
+      label: "Authorized worker revisions",
+      type: "list",
+    },
+    {
+      path: "permitted_project_ids",
+      label: "Permitted project UUIDs",
+      type: "list",
+    },
+    {
+      path: "required_capabilities",
+      label: "Required capabilities",
+      type: "list",
+    },
+    {
+      path: "health_freshness_seconds",
+      label: "Health freshness (seconds)",
+      type: "number",
+      min: 5,
+      max: 3600,
+    },
   ],
 };
 function getValue(object: unknown, path: string): unknown {

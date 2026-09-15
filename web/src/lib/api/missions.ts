@@ -11,11 +11,14 @@ import type {
   MissionPage,
   MissionView,
   MissionWakeupPage,
+  MissionTeamUpdate,
+  MissionTeamVersionPage,
   RunView,
   WorkItemPage,
   WorkItemStart,
 } from "@jarvis/contracts";
 import { ApiRequestError } from "./client";
+import { collectPages } from "./pagination";
 
 export function createMissionClient(csrfToken?: string) {
   async function request<T>(path: string, method = "GET", body?: unknown) {
@@ -42,13 +45,24 @@ export function createMissionClient(csrfToken?: string) {
     return response.json() as Promise<T>;
   }
   return {
-    list: () => request<MissionPage>("?limit=100"),
+    list: () =>
+      collectPages<MissionPage>((after) =>
+        request<MissionPage>(
+          `?limit=100${after ? `&after=${encodeURIComponent(after)}` : ""}`,
+        ),
+      ),
     create: (body: MissionCreate) => request<MissionView>("", "POST", body),
     get: (id: string) => request<MissionView>(`/${encodeURIComponent(id)}`),
     directive: (id: string, body: DirectiveUpdate) =>
       request<MissionView>(`/${encodeURIComponent(id)}/directive`, "PUT", body),
     autonomy: (id: string, body: MissionAutonomyUpdate) =>
       request<MissionView>(`/${encodeURIComponent(id)}/autonomy`, "PUT", body),
+    team: (id: string, body: MissionTeamUpdate) =>
+      request<MissionView>(`/${encodeURIComponent(id)}/team`, "PUT", body),
+    teamVersions: (id: string) =>
+      request<MissionTeamVersionPage>(
+        `/${encodeURIComponent(id)}/team-versions?limit=100`,
+      ),
     control: (id: string, body: MissionControlRequest) =>
       request<MissionControlView>(
         `/${encodeURIComponent(id)}/controls`,

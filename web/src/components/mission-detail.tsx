@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createMissionClient } from "@/lib/api/missions";
+import { createRegistryClient } from "@/lib/api/registry";
 import { useSession } from "@/lib/session";
 
 export function MissionDetail() {
@@ -14,6 +15,10 @@ export function MissionDetail() {
   const session = useSession();
   const client = useMemo(
     () => createMissionClient(session.data?.csrf_token),
+    [session.data?.csrf_token],
+  );
+  const registry = useMemo(
+    () => createRegistryClient(session.data?.csrf_token),
     [session.data?.csrf_token],
   );
   const enabled = Boolean(session.data && id);
@@ -47,11 +52,25 @@ export function MissionDetail() {
     enabled,
     refetchInterval: 2000,
   });
+  const teams = useQuery({
+    queryKey: ["registry", "team_template", "mission-team-edit"],
+    queryFn: () => registry.list("team_template"),
+    enabled,
+  });
+  const teamVersions = useQuery({
+    queryKey: ["mission-team-versions", id],
+    queryFn: () => client.teamVersions(id),
+    enabled,
+  });
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [controlScope, setControlScope] = useState<
     "mission" | "team" | "global"
   >("mission");
+  const activeTeamVersion = teamVersions.data?.items.find(
+    (version) => version.active,
+  );
+  const teamBudgets = activeTeamVersion?.selection.budgets;
   async function refresh() {
     await queryClient.invalidateQueries({ queryKey: ["mission"] });
   }
@@ -102,6 +121,28 @@ export function MissionDetail() {
       setNotice(
         error instanceof Error ? error.message : "Directive update failed",
       );
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function reviseTeam(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!mission.data) return;
+    const data = new FormData(event.currentTarget);
+    setBusy(true);
+    try {
+      await client.team(id, {
+        team_template_revision_id: String(data.get("team")),
+        expected_version: mission.data.version,
+        idempotency_key: crypto.randomUUID(),
+      });
+      setNotice(
+        "Team version created. Existing assignments retain their original version.",
+      );
+      await refresh();
+      await teamVersions.refetch();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Team update failed");
     } finally {
       setBusy(false);
     }
@@ -415,8 +456,37 @@ export function MissionDetail() {
                   <p>{item.objective}</p>
                   <p>
                     {item.lifecycle} · priority {item.priority} · directive v
-                    {item.directive_version}
+                    {item.directive_version} · team v{item.team_version}
                   </p>
+                  {item.assignment_status ? (
+                    <dl className="registry-facts">
+                      <div>
+                        <dt>Assignment</dt>
+                        <dd>{item.assignment_status}</dd>
+                      </div>
+                      <div>
+                        <dt>Selected worker</dt>
+                        <dd>
+                          {item.selected_worker_revision_id ??
+                            "Waiting for capacity"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Selected model</dt>
+                        <dd>
+                          {item.selected_model_profile_revision_id ??
+                            "Not selected"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Merge queue</dt>
+                        <dd>{item.merge_queue_status ?? "Not queued"}</dd>
+                      </div>
+                    </dl>
+                  ) : null}
+                  {item.queued_reason ? (
+                    <p role="status">Queued: {item.queued_reason}</p>
+                  ) : null}
                   <ul>
                     {item.acceptance_criteria.map((criterion) => (
                       <li key={criterion}>{criterion}</li>
@@ -464,6 +534,59 @@ export function MissionDetail() {
         <button className="button" disabled={busy}>
           Create directive version {mission.data.directive_version + 1}
         </button>
+      </form>
+      <form className="content-card login-form" onSubmit={reviseTeam}>
+        <h2>Team assignment policy</h2>
+        <p>
+          Active work keeps its frozen team. A change creates version{" "}
+          {mission.data.team_version + 1}
+          for future assignments only.
+        </p>
+        <label>
+          Team template revision
+          <select name="team" required>
+            <option value="">Select an enabled team</option>
+            {teams.data?.items
+              .filter((team) => team.enabled && !team.archived)
+              .map((team) => (
+                <option key={team.revision_id} value={team.revision_id}>
+                  {team.display_name} · revision {team.revision}
+                </option>
+              ))}
+          </select>
+        </label>
+        <button className="button" disabled={busy}>
+          Create future team version
+        </button>
+        <p>
+          {teamVersions.data?.items.length ?? 0} immutable team versions
+          recorded.
+        </p>
+        {activeTeamVersion ? (
+          <dl className="registry-facts" aria-label="Team capacity policy">
+            <div>
+              <dt>Execution admission</dt>
+              <dd>
+                {mission.data.usage?.reserved.active_jobs ?? 0} /{" "}
+                {teamBudgets?.max_active_assignments ?? 2} active assignments
+              </dd>
+            </div>
+            <div>
+              <dt>Inference budget</dt>
+              <dd>
+                {mission.data.usage?.actual.calls ?? 0} /{" "}
+                {teamBudgets?.max_inference_calls ?? 100} calls
+              </dd>
+            </div>
+            <div>
+              <dt>Reserved inference admission</dt>
+              <dd>
+                {teamBudgets?.reserve_management_slots ?? 1} manager ·{" "}
+                {teamBudgets?.reserve_review_slots ?? 1} reviewer
+              </dd>
+            </div>
+          </dl>
+        ) : null}
       </form>
       <section className="content-card">
         <h2>Durable wakeups</h2>
